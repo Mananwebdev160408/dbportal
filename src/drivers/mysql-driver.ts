@@ -1,4 +1,4 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult } from './types.js';
+import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult, DatabaseSchema, TableSchema } from './types.js';
 
 type MySqlConnection = {
   execute: <T = unknown>(sql: string, values?: any) => Promise<[T, unknown]>;
@@ -94,6 +94,69 @@ export class MySqlDriver implements DatabaseDriver {
     const [rows] = await connection.execute<Record<string, unknown>[]>(sql, params);
 
     return rows;
+  }
+
+  async getSchema(): Promise<DatabaseSchema> {
+    const connection = await this.getConnection();
+
+    const [columnRows] = await connection.execute<Array<{
+      table_name: string;
+      column_name: string;
+      data_type: string;
+      is_nullable: 'YES' | 'NO';
+      column_key: string | null;
+    }>>(
+      `SELECT table_name, column_name, data_type, is_nullable, column_key
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+       ORDER BY table_name, ordinal_position`
+    );
+
+    const [foreignRows] = await connection.execute<Array<{
+      table_name: string;
+      column_name: string;
+      referenced_table_name: string;
+      referenced_column_name: string;
+    }>>(
+      `SELECT table_name, column_name, referenced_table_name, referenced_column_name
+       FROM information_schema.key_column_usage
+       WHERE table_schema = DATABASE()
+         AND referenced_table_name IS NOT NULL`
+    );
+
+    const tableMap = new Map<string, TableSchema>();
+    for (const row of columnRows) {
+      const table = row.table_name;
+      if (!tableMap.has(table)) {
+        tableMap.set(table, { name: table, columns: [], foreignKeys: [] });
+      }
+
+      tableMap.get(table)!.columns.push({
+        name: row.column_name,
+        type: row.data_type,
+        isNullable: row.is_nullable === 'YES',
+        isPrimary: row.column_key === 'PRI',
+      });
+    }
+
+    for (const row of foreignRows) {
+      const table = row.table_name;
+      if (!tableMap.has(table)) {
+        tableMap.set(table, { name: table, columns: [], foreignKeys: [] });
+      }
+
+      tableMap.get(table)!.foreignKeys.push({
+        table,
+        column: row.column_name,
+        refTable: row.referenced_table_name,
+        refColumn: row.referenced_column_name,
+      });
+    }
+
+    return {
+      dbType: 'mysql',
+      tables: Array.from(tableMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    };
   }
 
 

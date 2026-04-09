@@ -154,6 +154,17 @@ const main = async () => {
     }
   });
 
+  app.get("/api/schema", async (request, response) => {
+    const dbId = String(request.query.dbId || "primary");
+    try {
+      const conn = manager.getConnection(dbId);
+      const schema = await conn.getSchema();
+      response.status(200).json(schema);
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
   app.get('/api/data/:name', async (request, response) => {
     const dbId = String(request.query.dbId || 'primary');
     const { name } = request.params;

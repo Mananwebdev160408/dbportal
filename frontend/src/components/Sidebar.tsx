@@ -9,6 +9,7 @@ interface SidebarProps {
   appMode: AppMode;
   onOverviewClick: () => void;
   onQueryClick: () => void;
+  onSchemaClick: () => void;
   onTableClick: (name: string) => void;
   onDbChange: (id: string) => void;
 }
@@ -32,6 +33,16 @@ const QueryIcon = () => (
   </svg>
 );
 
+const SchemaIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="8.5" y="14" width="7" height="7" />
+    <path d="M10 7h4" />
+    <path d="M12 10v4" />
+  </svg>
+);
+
 const DbIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, color: 'var(--text)' }}>
     <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -42,7 +53,7 @@ const DbIcon = () => (
 
 export default function Sidebar({ 
   connections, activeDbId, tables, activeTable, appMode, 
-  onOverviewClick, onQueryClick, onTableClick, onDbChange 
+  onOverviewClick, onQueryClick, onSchemaClick, onTableClick, onDbChange 
 }: SidebarProps) {
   const [tableFilter, setTableFilter] = useState('');
 
@@ -52,6 +63,11 @@ export default function Sidebar({
 
   return (
     <aside className="sidebar">
+
+
+
+
+
       <div className="sidebar-glow" aria-hidden="true" />
       <div className="sidebar-header">
         <div className="brand-row">
@@ -60,13 +76,12 @@ export default function Sidebar({
           </div>
           <div className="brand-block">
             <h1 className="brand">dbportal</h1>
-            <div className="brand-subtitle">Multi-Link System v3.0</div>
           </div>
         </div>
 
         <div className="sidebar-meta-strip">
-          <span className="meta-pill">{connections.length} Links</span>
-          <span className="meta-pill accent">{tables.length} Objects</span>
+          <span className="meta-pill">{connections.length} Connections</span>
+          <span className="meta-pill accent">{tables.length} Tables</span>
         </div>
       </div>
 
@@ -102,7 +117,7 @@ export default function Sidebar({
           type="button"
         >
           <GridIcon />
-          <span>General Overview</span>
+          <span>Overview</span>
         </button>
 
         <button
@@ -111,7 +126,16 @@ export default function Sidebar({
           type="button"
         >
           <QueryIcon />
-          <span>Central Query Console</span>
+          <span>Query Console</span>
+        </button>
+
+        <button
+          className={`overview-btn${appMode === 'schema' ? ' active' : ''}`}
+          onClick={onSchemaClick}
+          type="button"
+        >
+          <SchemaIcon />
+          <span>Schema</span>
         </button>
 
         <div className="table-nav-group">

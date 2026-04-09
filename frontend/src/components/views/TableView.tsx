@@ -189,21 +189,23 @@ export default function TableView({ rows, sortBy, sortOrder, filters = {}, dbId,
                     );
                   }
                   if (typeof val === 'object') {
-                    const summary = JSON.stringify(val).substring(0, 50);
+                    const fullJson = JSON.stringify(val);
+                    const summary = fullJson.substring(0, 50);
+                    const titleText = (isMongo ? "Double click to edit string value\n\n" : "Click to log to console\n\n") + fullJson;
                     return (
                       <td
                         key={col}
                         className="json-cell"
-                        title={isMongo ? "Double click to edit string value" : "Click to log to console"}
+                        title={titleText}
                         onClick={() => !isMongo && console.log(`[dbportal] Row ${rowIdx} — ${col}:`, val)}
                         onDoubleClick={() => startEdit(rowIdx, col, summary)}
                       >
-                        <code dangerouslySetInnerHTML={{ __html: `${escapeHtml(summary)}${summary.length >= 50 ? '...' : ''}` }} />
+                        <code dangerouslySetInnerHTML={{ __html: `${escapeHtml(summary)}${fullJson.length >= 50 ? '...' : ''}` }} />
                       </td>
                     );
                   }
                   return (
-                    <td key={col} onDoubleClick={() => startEdit(rowIdx, col, val)}>
+                    <td key={col} title={String(val)} onDoubleClick={() => startEdit(rowIdx, col, val)}>
                       {String(val)}
                     </td>
                   );

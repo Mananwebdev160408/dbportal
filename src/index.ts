@@ -1,7 +1,7 @@
 import { MongoDriver } from './drivers/mongodb-driver.js';
 import { MySqlDriver } from './drivers/mysql-driver.js';
 import { PostgresDriver } from './drivers/postgres-driver.js';
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput } from './drivers/types.js';
+import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, DatabaseSchema } from './drivers/types.js';
 
 export type SupportedDatabase = string;
 
@@ -136,6 +136,10 @@ export class DatabaseConnection {
       totalRecords,
       tables,
     };
+  }
+
+  async getSchema(): Promise<DatabaseSchema> {
+    return this.driver.getSchema();
   }
 
   async query(raw: DriverQueryInput): Promise<any> {

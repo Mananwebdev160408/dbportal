@@ -24,6 +24,31 @@ export interface QueryResult {
 
 export type DriverQueryInput = string | StructuredQuery;
 
+export interface ColumnSchema {
+  name: string;
+  type: string;
+  isNullable: boolean;
+  isPrimary: boolean;
+}
+
+export interface ForeignKeySchema {
+  table: string;
+  column: string;
+  refTable: string;
+  refColumn: string;
+}
+
+export interface TableSchema {
+  name: string;
+  columns: ColumnSchema[];
+  foreignKeys: ForeignKeySchema[];
+}
+
+export interface DatabaseSchema {
+  dbType: string;
+  tables: TableSchema[];
+}
+
 export interface DatabaseDriver {
   connect(): Promise<void>;
   getCapabilities(): DriverCapabilities;
@@ -37,6 +62,7 @@ export interface DatabaseDriver {
     sortOrder?: 'asc' | 'desc',
     filters?: Record<string, string>
   ): Promise<Record<string, unknown>[]>;
+  getSchema(): Promise<DatabaseSchema>;
   query?(query: DriverQueryInput): Promise<QueryResult>;
   updateRecord?(collection: string, filter: Record<string, unknown>, update: Record<string, unknown>): Promise<void>;
   close?(): Promise<void>;

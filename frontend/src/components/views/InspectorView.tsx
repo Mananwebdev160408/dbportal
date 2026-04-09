@@ -14,7 +14,7 @@ const getRowLabel = (row: Record<string, unknown>, index: number): string => {
     }
   }
   const firstKey = Object.keys(row)[0];
-  if (!firstKey) return `RECORD_${(index + 1).toString().padStart(3, '0')}`;
+  if (!firstKey) return `Record ${index + 1}`;
   return `${firstKey.toUpperCase()}: ${String(row[firstKey])}`;
 };
 

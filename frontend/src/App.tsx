@@ -8,9 +8,10 @@ import DocumentsView from './components/views/DocumentsView';
 import JsonView from './components/views/JsonView';
 import InspectorView from './components/views/InspectorView';
 import QueryWorkbench from './components/views/QueryWorkbench';
+import SchemaView from './components/views/SchemaView';
 
 export type ViewMode = 'table' | 'documents' | 'json' | 'inspector';
-export type AppMode = 'overview' | 'table' | 'query';
+export type AppMode = 'overview' | 'table' | 'query' | 'schema';
 
 export interface DriverCapabilities {
   rawQuery: boolean;
@@ -75,13 +76,14 @@ export default function App() {
   const [overview, setOverview] = useState<MultiDatabaseOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [status, setStatus] = useState('Establishing technical link...');
+  const [status, setStatus] = useState('Connecting...');
   const [statusError, setStatusError] = useState(false);
   const [search, setSearch] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [filters, setFilters] = useState<Record<string, string>>({});
+  const [schemaReloadKey, setSchemaReloadKey] = useState(0);
 
   // Apply theme & mode to <body>
   useEffect(() => {
@@ -161,7 +163,7 @@ export default function App() {
       const payload = await res.json();
       if (!res.ok) throw new Error(payload.error || 'Failed to load multi-overview.');
       setOverview(payload);
-      showStatus('All systems active');
+      showStatus('Connected');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       showStatus(msg, true);
@@ -219,7 +221,7 @@ export default function App() {
       const payload = await res.json();
       if (!res.ok) throw new Error(payload.error || 'Failed to load table data.');
       setData(payload.data || []);
-      showStatus(`Packet stream optimized: ${(payload.data || []).length} records`);
+      showStatus(`Loaded ${(payload.data || []).length} records`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       showStatus(msg, true);
@@ -238,12 +240,23 @@ export default function App() {
     showStatus('Query workspace ready');
   }, []);
 
+  const openSchemaVisualizer = useCallback(() => {
+    setAppMode('schema');
+    setCurrentTable('');
+    setSearch('');
+    setError('');
+    setLoading(false);
+    showStatus('Schema visualizer ready');
+  }, []);
+
   const handleReload = () => {
     setReloadKey((k) => k + 1);
     if (appMode === 'overview') {
       loadOverview();
     } else if (currentTable) {
       loadTable(currentTable);
+    } else if (appMode === 'schema') {
+      setSchemaReloadKey((k) => k + 1);
     }
   };
 
@@ -319,6 +332,17 @@ export default function App() {
       );
     }
 
+    if (appMode === 'schema') {
+      return (
+        <SchemaView
+          dbId={activeDbId}
+          dbType={dbType}
+          refreshKey={schemaReloadKey}
+          onStatus={showStatus}
+        />
+      );
+    }
+
     return (
       <EmptyState>
         <p>Select a table from the sidebar to get started.</p>
@@ -337,12 +361,21 @@ export default function App() {
         onOverviewClick={loadOverview}
         onTableClick={loadTable}
         onQueryClick={openQueryWorkspace}
+        onSchemaClick={openSchemaVisualizer}
         onDbChange={switchDatabase}
       />
       <main className="main-area">
         <Toolbar
-          title={appMode === 'overview' ? 'Overview' : appMode === 'query' ? 'Query Workspace' : currentTable || 'Select a Table'}
-          dbType={appMode === 'overview' && (overview?.databases?.length ?? 0) > 1 ? 'MULTI-LINK' : dbType}
+          title={
+            appMode === 'overview'
+              ? 'Overview'
+              : appMode === 'query'
+              ? 'Query Console'
+              : appMode === 'schema'
+              ? 'Schema'
+              : currentTable || 'Select a Table'
+          }
+          dbType={appMode === 'overview' && (overview?.databases?.length ?? 0) > 1 ? 'Overview' : dbType}
           theme={theme}
           mode={mode}
           viewMode={viewMode}

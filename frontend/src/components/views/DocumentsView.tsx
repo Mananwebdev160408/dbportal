@@ -18,8 +18,7 @@ export default function DocumentsView({ rows }: DocumentsViewProps) {
       {rows.map((row, index) => (
         <article key={index} className="doc-card">
           <div className="doc-header">
-            <span style={{ fontFamily: 'var(--font-mono)' }}>DATA_PACKET_{ (index + 1).toString().padStart(3, '0') }</span>
-            <span style={{ opacity: 0.5, fontSize: '9px' }}>STATUS: VALID</span>
+            <span style={{ fontFamily: 'var(--font-mono)' }}>Record {index + 1}</span>
           </div>
           <pre className="doc-body">{JSON.stringify(row, null, 2)}</pre>
         </article>

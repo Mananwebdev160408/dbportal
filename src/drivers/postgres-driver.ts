@@ -1,4 +1,4 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult } from './types.js';
+import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult, DatabaseSchema, TableSchema } from './types.js';
 
 export class PostgresDriver implements DatabaseDriver {
   private client: { connect: () => Promise<unknown>; query: (sql: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>; end: () => Promise<void> } | null = null;
@@ -88,6 +88,90 @@ export class PostgresDriver implements DatabaseDriver {
     const raw = result.rows[0]?.count;
     const parsed = Number.parseInt(String(raw ?? '0'), 10);
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  async getSchema(): Promise<DatabaseSchema> {
+    const client = await this.getClient();
+
+    const columnsResult = await client.query(
+      `SELECT table_name, column_name, data_type, is_nullable
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+       ORDER BY table_name, ordinal_position`
+    );
+
+    const primaryKeyResult = await client.query(
+      `SELECT tc.table_name, kcu.column_name
+       FROM information_schema.table_constraints tc
+       JOIN information_schema.key_column_usage kcu
+         ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+       WHERE tc.table_schema = 'public'
+         AND tc.constraint_type = 'PRIMARY KEY'`
+    );
+
+    const foreignKeyResult = await client.query(
+      `SELECT tc.table_name, kcu.column_name,
+              ccu.table_name AS foreign_table_name,
+              ccu.column_name AS foreign_column_name
+       FROM information_schema.table_constraints tc
+       JOIN information_schema.key_column_usage kcu
+         ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+       JOIN information_schema.constraint_column_usage ccu
+         ON ccu.constraint_name = tc.constraint_name
+        AND ccu.table_schema = tc.table_schema
+       WHERE tc.table_schema = 'public'
+         AND tc.constraint_type = 'FOREIGN KEY'`
+    );
+
+    const primaryMap = new Map<string, Set<string>>();
+    for (const row of primaryKeyResult.rows) {
+      const table = String(row.table_name);
+      const column = String(row.column_name);
+      if (!primaryMap.has(table)) {
+        primaryMap.set(table, new Set());
+      }
+      primaryMap.get(table)!.add(column);
+    }
+
+    const tableMap = new Map<string, TableSchema>();
+    for (const row of columnsResult.rows) {
+      const table = String(row.table_name);
+      const column = String(row.column_name);
+      const type = String(row.data_type);
+      const isNullable = String(row.is_nullable).toLowerCase() === 'yes';
+      const isPrimary = primaryMap.get(table)?.has(column) ?? false;
+
+      if (!tableMap.has(table)) {
+        tableMap.set(table, { name: table, columns: [], foreignKeys: [] });
+      }
+
+      tableMap.get(table)!.columns.push({ name: column, type, isNullable, isPrimary });
+    }
+
+    for (const row of foreignKeyResult.rows) {
+      const table = String(row.table_name);
+      const column = String(row.column_name);
+      const refTable = String(row.foreign_table_name);
+      const refColumn = String(row.foreign_column_name);
+
+      if (!tableMap.has(table)) {
+        tableMap.set(table, { name: table, columns: [], foreignKeys: [] });
+      }
+
+      tableMap.get(table)!.foreignKeys.push({
+        table,
+        column,
+        refTable,
+        refColumn,
+      });
+    }
+
+    return {
+      dbType: 'postgres',
+      tables: Array.from(tableMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    };
   }
 
   async query(query: string): Promise<QueryResult> {

@@ -426,7 +426,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
         <div className="query-header">
           <h3>Query Engine</h3>
           <span className="query-helper">{helperText}</span>
-          <span className="query-helper">Active Link: {dbId} // {dbType || 'Unknown'}</span>
+          <span className="query-helper">Connection: {dbId} ({dbType || 'Unknown'})</span>
         </div>
 
         <div className="query-help-card">
@@ -648,16 +648,16 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
           {telemetry && (
             <div className="telemetry-strip">
               <div className="telemetry-item">
-                <span className="telemetry-label">LATENCY</span>
+                <span className="telemetry-label">Latency</span>
                 <span className="telemetry-value">{telemetry.executionTimeMs}ms</span>
               </div>
               <div className="telemetry-item">
-                <span className="telemetry-label">RECORDS_IMPACTED</span>
+                <span className="telemetry-label">Rows</span>
                 <span className="telemetry-value">{telemetry.affectedRows ?? resultRows.length}</span>
               </div>
               <div className="telemetry-item">
-                <span className="telemetry-label">STATUS</span>
-                <span className="telemetry-value success">READY</span>
+                <span className="telemetry-label">Status</span>
+                <span className="telemetry-value success">Ready</span>
               </div>
             </div>
           )}
@@ -683,24 +683,24 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
           <div className="technical-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-group">
-                <span className="modal-badge">HISTORY_DEEP_INSPECT</span>
-                <h4 className="modal-title">Query Entry: {selectedHistoryEntry.id}</h4>
+                <span className="modal-badge">History Entry</span>
+                <h4 className="modal-title">{selectedHistoryEntry.id}</h4>
               </div>
               <button className="modal-close" onClick={() => setSelectedHistoryEntry(null)}>×</button>
             </div>
             <div className="modal-body">
               <div className="modal-meta-grid">
                 <div className="meta-item">
-                  <span className="meta-label">TIMESTAMP</span>
+                  <span className="meta-label">Time</span>
                   <span className="meta-value">{new Date(selectedHistoryEntry.createdAt).toLocaleString()}</span>
                 </div>
                 <div className="meta-item">
-                  <span className="meta-label">QUERY_MODE</span>
+                  <span className="meta-label">Mode</span>
                   <span className="meta-value">{selectedHistoryEntry.mode.toUpperCase()}</span>
                 </div>
               </div>
               <div className="modal-content-area">
-                <span className="meta-label">FULL_PAYLOAD</span>
+                <span className="meta-label">Query</span>
                 <pre className="modal-code-block">{selectedHistoryEntry.payload}</pre>
               </div>
             </div>
@@ -715,7 +715,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
                     setTimeout(() => runQuery(), 50);
                   }}
                 >
-                  RUN IMMEDIATELY
+                  Run
                 </button>
                 <button 
                   className="query-run-btn secondary" 
@@ -724,11 +724,11 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
                     setSelectedHistoryEntry(null);
                   }}
                 >
-                  LOAD INTO EDITOR
+                  Load into Editor
                 </button>
               </div>
               <button className="query-clear-btn" onClick={() => setSelectedHistoryEntry(null)}>
-                CLOSE
+                Close
               </button>
             </div>
           </div>

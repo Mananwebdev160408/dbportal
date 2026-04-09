@@ -1,4 +1,4 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, StructuredQuery, QueryResult } from './types.js';
+import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, StructuredQuery, QueryResult, DatabaseSchema } from './types.js';
 
 type MongoDatabase = {
   listCollections: () => { toArray: () => Promise<Array<{ name: string }>> };
@@ -88,6 +88,34 @@ export class MongoDriver implements DatabaseDriver {
   async getTableCount(name: string): Promise<number> {
     const db = await this.getDatabase();
     return db.collection(name).countDocuments({});
+  }
+
+  async getSchema(): Promise<DatabaseSchema> {
+    const db = await this.getDatabase();
+    const collections = await db.listCollections().toArray();
+
+    const tables = [];
+    for (const collection of collections) {
+      const sample = await db.collection(collection.name).find({}).limit(1).toArray();
+      const doc = sample[0] ?? {};
+      const columns = Object.keys(doc).map((key) => ({
+        name: key,
+        type: this.inferType((doc as any)[key]),
+        isNullable: (doc as any)[key] === null || (doc as any)[key] === undefined,
+        isPrimary: key === '_id',
+      }));
+
+      tables.push({
+        name: collection.name,
+        columns,
+        foreignKeys: [],
+      });
+    }
+
+    return {
+      dbType: 'mongodb',
+      tables: tables.sort((a, b) => a.name.localeCompare(b.name)),
+    };
   }
 
   async query(input: DriverQueryInput): Promise<QueryResult> {
@@ -236,5 +264,13 @@ export class MongoDriver implements DatabaseDriver {
     }
 
     return normalized;
+  }
+
+  private inferType(value: unknown): string {
+    if (value === null) return 'null';
+    if (Array.isArray(value)) return 'array';
+    const t = typeof value;
+    if (t === 'object') return 'object';
+    return t;
   }
 }
