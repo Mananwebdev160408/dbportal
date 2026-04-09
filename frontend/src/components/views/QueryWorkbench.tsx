@@ -35,7 +35,7 @@ interface QueryHistoryEntry {
   createdAt: number;
 }
 
-const HISTORY_KEY = 'dbportal-query-history';
+const HISTORY_KEY_PREFIX = 'dbportal-query-history';
 
 const parseJsonObject = (label: string, value: string): Record<string, unknown> | undefined => {
   const trimmed = value.trim();
@@ -139,9 +139,10 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
   const [telemetry, setTelemetry] = useState<QueryTelemetry | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState('');
+  const historyKey = `${HISTORY_KEY_PREFIX}:${dbType}:${dbId}`;
   const [history, setHistory] = useState<QueryHistoryEntry[]>(() => {
     try {
-      const raw = localStorage.getItem(HISTORY_KEY);
+      const raw = localStorage.getItem(historyKey);
       const parsed = raw ? (JSON.parse(raw) as QueryHistoryEntry[]) : [];
       return Array.isArray(parsed) ? parsed.slice(0, 8) : [];
     } catch {
@@ -256,9 +257,20 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
     }
   }, [collection, supportsStructured, tables]);
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(historyKey);
+      const parsed = raw ? (JSON.parse(raw) as QueryHistoryEntry[]) : [];
+      setHistory(Array.isArray(parsed) ? parsed.slice(0, 8) : []);
+    } catch {
+      setHistory([]);
+    }
+    setSelectedHistoryEntry(null);
+  }, [historyKey]);
+
   const persistHistory = (next: QueryHistoryEntry[]) => {
     setHistory(next);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    localStorage.setItem(historyKey, JSON.stringify(next));
   };
 
   const addHistory = (mode: QueryHistoryEntry['mode'], payload: string) => {

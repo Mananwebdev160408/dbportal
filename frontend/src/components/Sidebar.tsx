@@ -33,7 +33,7 @@ const QueryIcon = () => (
 );
 
 const DbIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, color: '#fff' }}>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, color: 'var(--text)' }}>
     <path d="M12 2L2 7l10 5 10-5-10-5z" />
     <path d="M2 17l10 5 10-5" />
     <path d="M2 12l10 5 10-5" />
@@ -52,15 +52,21 @@ export default function Sidebar({
 
   return (
     <aside className="sidebar">
+      <div className="sidebar-glow" aria-hidden="true" />
       <div className="sidebar-header">
-        <div className="logo-icon">
-          <DbIcon />
-        </div>
-        <div>
-          <h1 className="brand">dbportal</h1>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-dim)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            Multi-Link System v3.0
+        <div className="brand-row">
+          <div className="logo-icon">
+            <DbIcon />
           </div>
+          <div className="brand-block">
+            <h1 className="brand">dbportal</h1>
+            <div className="brand-subtitle">Multi-Link System v3.0</div>
+          </div>
+        </div>
+
+        <div className="sidebar-meta-strip">
+          <span className="meta-pill">{connections.length} Links</span>
+          <span className="meta-pill accent">{tables.length} Objects</span>
         </div>
       </div>
 
@@ -80,12 +86,15 @@ export default function Sidebar({
                   <span className="name">{conn.name}</span>
                   <span className="kind">{conn.kind.toUpperCase()}</span>
                 </div>
+                <span className="conn-tag">{activeDbId === conn.id ? 'LIVE' : 'READY'}</span>
               </button>
             ))}
           </div>
         </div>
 
         <div className="section-divider" />
+
+        <div className="section-label">Workspace</div>
 
         <button
           className={`overview-btn${appMode === 'overview' ? ' active' : ''}`}
