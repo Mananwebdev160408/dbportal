@@ -1,0 +1,52 @@
+{
+  "name": "dbportal",
+  "version": "1.0.0",
+  "description": "A universal, agnostic database GUI for any connection string.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "dbportal": "./bin/cli.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "dev": "tsup src/index.ts src/cli.ts --watch --format cjs,esm",
+    "dev:ui": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend && tsup src/index.ts src/cli.ts --format cjs,esm --clean && tsc --emitDeclarationOnly --declaration --outDir dist",
+    "build:all": "npm run build",
+    "lint": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "database",
+    "gui",
+    "viewer",
+    "mongodb",
+    "postgres",
+    "mysql",
+    "universal"
+  ],
+  "author": "Manan Gupta",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "mysql2": "^3.15.2",
+    "mongodb": "^6.20.0",
+    "open": "^10.2.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^25.5.2",
+    "@types/pg": "^8.15.6",
+    "prettier": "^3.8.1",
+    "tsup": "^8.5.1",
+    "typescript": "5.4"
+  }
+}
