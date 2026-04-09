@@ -16,9 +16,11 @@ export default function DocumentsView({ rows }: DocumentsViewProps) {
   return (
     <div className="doc-grid">
       {rows.map((row, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: no stable key
         <article key={index} className="doc-card">
-          <div className="doc-header">Document {index + 1}</div>
+          <div className="doc-header">
+            <span style={{ fontFamily: 'var(--font-mono)' }}>DATA_PACKET_{ (index + 1).toString().padStart(3, '0') }</span>
+            <span style={{ opacity: 0.5, fontSize: '9px' }}>STATUS: VALID</span>
+          </div>
           <pre className="doc-body">{JSON.stringify(row, null, 2)}</pre>
         </article>
       ))}

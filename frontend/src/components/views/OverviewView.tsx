@@ -1,24 +1,28 @@
-import type { DatabaseOverview } from '../../App';
+import type { MultiDatabaseOverview, DatabaseOverview, TableOverview } from '../../App';
 import EmptyState from '../EmptyState';
 
 interface OverviewViewProps {
-  overview: DatabaseOverview;
-  onTableClick: (name: string) => void;
+  overview: MultiDatabaseOverview;
+  onTableClick: (name: string, dbId?: string) => void;
 }
 
 export default function OverviewView({ overview, onTableClick }: OverviewViewProps) {
-  const counts = overview.tables.map((table) => table.count);
-  const totalTables = overview.totalTables;
-  const totalRecords = overview.totalRecords;
-  const activeTables = counts.filter((count) => count > 0).length;
+  // Always work with the provided databases (App.tsx will filter to the active one)
+  const single = overview.databases[0];
+  if (!single) return <EmptyState><p>No active database node selected.</p></EmptyState>;
+  
+  const counts = single.tables.map((table: TableOverview) => table.count);
+  const totalTables = single.totalTables;
+  const totalRecords = single.totalRecords;
+  const activeTables = counts.filter((count: number) => count > 0).length;
   const emptyTables = Math.max(totalTables - activeTables, 0);
   const avgPerTable = totalTables > 0 ? totalRecords / totalTables : 0;
 
-  const topTable = overview.tables[0];
+  const topTable = single.tables[0];
   const topShare = totalRecords > 0 && topTable ? (topTable.count / totalRecords) * 100 : 0;
 
-  const topFive = overview.tables.slice(0, 5);
-  const maxCount = topFive.reduce((max, table) => Math.max(max, table.count), 0);
+  const topFive = single.tables.slice(0, 5);
+  const maxCount = topFive.reduce((max: number, table: TableOverview) => Math.max(max, table.count), 0);
 
   const sortedCounts = [...counts].sort((a, b) => a - b);
   const mid = Math.floor(sortedCounts.length / 2);
@@ -30,11 +34,11 @@ export default function OverviewView({ overview, onTableClick }: OverviewViewPro
       : sortedCounts[mid];
 
   const concentrationRatio =
-    totalRecords > 0 ? ((topFive.reduce((sum, table) => sum + table.count, 0) / totalRecords) * 100).toFixed(1) : '0.0';
+    totalRecords > 0 ? ((topFive.reduce((sum: number, table: TableOverview) => sum + table.count, 0) / totalRecords) * 100).toFixed(1) : '0.0';
 
-  const topFiveTotal = topFive.reduce((sum, table) => sum + table.count, 0);
+  const topFiveTotal = topFive.reduce((sum: number, table: TableOverview) => sum + table.count, 0);
   const othersCount = Math.max(totalRecords - topFiveTotal, 0);
-  const donutSegments = [...topFive.map((table) => ({ label: table.name, value: table.count })), { label: 'Others', value: othersCount }]
+  const donutSegments = [...topFive.map((table: TableOverview) => ({ label: table.name, value: table.count })), { label: 'Others', value: othersCount }]
     .filter((item) => item.value > 0)
     .map((item) => ({
       ...item,
@@ -42,14 +46,18 @@ export default function OverviewView({ overview, onTableClick }: OverviewViewPro
     }));
 
   let cumulative = 0;
-  const donutStops = donutSegments
-    .map((segment, index) => {
+  const colors = ['var(--accent)', '#06b6d4', '#3b82f6', '#14b8a6', '#ff9f0a', '#48484a'];
+  const donutSegmentsWithColor = donutSegments.map((segment, index) => {
+    const color = colors[index % colors.length];
+    return { ...segment, color };
+  });
+
+  const donutStops = donutSegmentsWithColor
+    .map((segment) => {
       const start = cumulative;
       cumulative += segment.percent;
       const end = cumulative;
-      const colors = ['#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#f59e0b', '#64748b'];
-      const color = colors[index % colors.length];
-      return `${color} ${start}% ${end}%`;
+      return `${segment.color} ${start}% ${end}%`;
     })
     .join(', ');
 
@@ -57,19 +65,19 @@ export default function OverviewView({ overview, onTableClick }: OverviewViewPro
     <div className="overview-wrap">
       <div className="overview-metrics">
         <div className="metric-card">
-          <span className="metric-label">Database Type</span>
-          <span className="metric-value">{overview.dbType || '—'}</span>
+          <span className="metric-label">SYS_ID // DB_TYPE</span>
+          <span className="metric-value">{single.dbType || '—'}</span>
         </div>
         <div className="metric-card">
-          <span className="metric-label">Tables / Collections</span>
-          <span className="metric-value">{overview.totalTables.toLocaleString()}</span>
+          <span className="metric-label">TOTAL_OBJECTS</span>
+          <span className="metric-value">{single.totalTables.toLocaleString()}</span>
         </div>
         <div className="metric-card">
-          <span className="metric-label">Total Records</span>
-          <span className="metric-value">{overview.totalRecords.toLocaleString()}</span>
+          <span className="metric-label">RECORD_COUNT</span>
+          <span className="metric-value">{single.totalRecords.toLocaleString()}</span>
         </div>
         <div className="metric-card">
-          <span className="metric-label">Active Objects</span>
+          <span className="metric-label">ACTIVE_HANDLES</span>
           <span className="metric-value">{activeTables.toLocaleString()}</span>
         </div>
       </div>
@@ -84,9 +92,12 @@ export default function OverviewView({ overview, onTableClick }: OverviewViewPro
                 <div className="donut-center">{totalRecords.toLocaleString()}</div>
               </div>
               <div className="legend-list">
-                {donutSegments.map((segment) => (
+                {donutSegmentsWithColor.map((segment) => (
                   <div key={segment.label} className="legend-item">
-                    <span>{segment.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className="legend-indicator" style={{ background: segment.color }} />
+                      <span>{segment.label}</span>
+                    </div>
                     <span>{segment.percent.toFixed(1)}%</span>
                   </div>
                 ))}
@@ -101,7 +112,7 @@ export default function OverviewView({ overview, onTableClick }: OverviewViewPro
           <h4>Top Objects by Records</h4>
           {topFive.length > 0 ? (
             <div className="bar-chart-list">
-              {topFive.map((table) => {
+              {topFive.map((table: TableOverview) => {
                 const width = maxCount > 0 ? (table.count / maxCount) * 100 : 0;
                 return (
                   <button
@@ -154,7 +165,7 @@ export default function OverviewView({ overview, onTableClick }: OverviewViewPro
 
       <div className="overview-card">
         <h3 className="overview-card-title">Objects by Record Count</h3>
-        {overview.tables.length > 0 ? (
+        {single.tables.length > 0 ? (
           <table className="overview-table">
             <thead>
               <tr>
@@ -164,7 +175,7 @@ export default function OverviewView({ overview, onTableClick }: OverviewViewPro
               </tr>
             </thead>
             <tbody>
-              {overview.tables.map((table, index) => (
+              {single.tables.map((table: TableOverview, index: number) => (
                 <tr key={table.name} onClick={() => onTableClick(table.name)}>
                   <td>{index + 1}</td>
                   <td>{table.name}</td>

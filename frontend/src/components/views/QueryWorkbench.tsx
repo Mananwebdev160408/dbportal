@@ -7,6 +7,7 @@ import type { DriverCapabilities } from '../../App';
 type ResultMode = 'table' | 'json';
 
 interface QueryWorkbenchProps {
+  dbId: string;
   dbType: string;
   tables: string[];
   capabilities: DriverCapabilities;
@@ -19,6 +20,12 @@ interface StructuredQueryPayload {
   projection?: Record<string, unknown>;
   sort?: Record<string, 1 | -1>;
   limit?: number;
+  pipeline?: any[];
+}
+
+interface QueryTelemetry {
+  executionTimeMs: number;
+  affectedRows?: number;
 }
 
 interface QueryHistoryEntry {
@@ -118,15 +125,18 @@ const formatSqlIdentifier = (databaseType: string, identifier: string): string =
   return trimmed;
 };
 
-export default function QueryWorkbench({ dbType, tables, capabilities, onStatus }: QueryWorkbenchProps) {
+export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onStatus }: QueryWorkbenchProps) {
   const [rawQuery, setRawQuery] = useState('');
   const [collection, setCollection] = useState(tables[0] || '');
   const [filterText, setFilterText] = useState('{}');
   const [projectionText, setProjectionText] = useState('');
   const [sortText, setSortText] = useState('');
   const [limitText, setLimitText] = useState('100');
+  const [pipelineText, setPipelineText] = useState('[\n  { "$match": { } }\n]');
+  const [queryMode, setQueryMode] = useState<'structured' | 'aggregation'>('structured');
   const [resultMode, setResultMode] = useState<ResultMode>('table');
   const [resultRows, setResultRows] = useState<Record<string, unknown>[]>([]);
+  const [telemetry, setTelemetry] = useState<QueryTelemetry | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState('');
   const [history, setHistory] = useState<QueryHistoryEntry[]>(() => {
@@ -138,6 +148,7 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
       return [];
     }
   });
+  const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<QueryHistoryEntry | null>(null);
 
   const supportsStructured = capabilities.structuredQuery;
   const supportsRaw = capabilities.rawQuery;
@@ -272,7 +283,7 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
       throw new Error('Query cannot be empty.');
     }
 
-    const res = await fetch('/api/query', {
+    const res = await fetch(`/api/query?dbId=${dbId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
@@ -292,9 +303,11 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
       throw new Error('Structured query is not supported by this driver.');
     }
 
-    const query = buildMongoPayload(collection, filterText, projectionText, sortText, limitText);
+    const query = queryMode === 'aggregation' 
+      ? { collection, pipeline: JSON.parse(pipelineText) }
+      : buildMongoPayload(collection, filterText, projectionText, sortText, limitText);
 
-    const res = await fetch('/api/query', {
+    const res = await fetch(`/api/query?dbId=${dbId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
@@ -306,17 +319,35 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
     }
 
     addHistory('structured', JSON.stringify(query, null, 2));
+    setTelemetry(payload.telemetry);
     return payload.data as Record<string, unknown>[];
   };
 
   const runQuery = async () => {
     setRunning(true);
     setRunError('');
+    setTelemetry(null);
 
     try {
-      const rows = supportsStructured && !supportsRaw ? await runStructuredQuery() : await runRawQuery();
+      let rows: Record<string, unknown>[] = [];
+      if (supportsStructured && !supportsRaw) {
+        rows = await runStructuredQuery();
+      } else {
+        const query = rawQuery.trim();
+        const res = await fetch(`/api/query?dbId=${dbId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error || 'Query failed');
+        setTelemetry(payload.telemetry);
+        rows = payload.data;
+        addHistory('raw', query);
+      }
+      
       setResultRows(Array.isArray(rows) ? rows : []);
-      onStatus(`Query executed: ${Array.isArray(rows) ? rows.length : 0} record(s)`, false);
+      onStatus(`Query executed successfully`, false);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown query error';
       setRunError(message);
@@ -383,7 +414,7 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
         <div className="query-header">
           <h3>Query Engine</h3>
           <span className="query-helper">{helperText}</span>
-          <span className="query-helper">Connected database: {dbType || 'Unknown'}</span>
+          <span className="query-helper">Active Link: {dbId} // {dbType || 'Unknown'}</span>
         </div>
 
         <div className="query-help-card">
@@ -427,22 +458,54 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
         {supportsStructured && (
           <div className="query-group">
             <label htmlFor="query-collection">Collection/Table</label>
-            <select
-              id="query-collection"
-              className="query-input"
-              value={collection}
-              onChange={(event) => setCollection(event.target.value)}
-            >
-              {tables.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select
+                id="query-collection"
+                className="query-input"
+                style={{ flex: 1 }}
+                value={collection}
+                onChange={(event) => setCollection(event.target.value)}
+              >
+                {tables.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              {dbType.toLowerCase().includes('mongo') && (
+                <div className="query-mode-toggle">
+                  <button 
+                    className={`mode-btn ${queryMode === 'structured' ? 'active' : ''}`}
+                    onClick={() => setQueryMode('structured')}
+                  >
+                    FIND
+                  </button>
+                  <button 
+                    className={`mode-btn ${queryMode === 'aggregation' ? 'active' : ''}`}
+                    onClick={() => setQueryMode('aggregation')}
+                  >
+                    AGGREGATE
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {supportsStructured && (
+        {supportsStructured && queryMode === 'aggregation' && (
+           <div className="query-group">
+              <label htmlFor="query-pipeline">Pipeline (JSON Array)</label>
+              <textarea
+                id="query-pipeline"
+                className="query-textarea query-textarea-lg"
+                value={pipelineText}
+                onChange={(event) => setPipelineText(event.target.value)}
+                spellCheck={false}
+              />
+           </div>
+        )}
+
+        {supportsStructured && queryMode === 'structured' && (
           <>
             <div className="query-grid-two">
               <div className="query-group">
@@ -546,7 +609,7 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
           ) : (
             <div className="query-history-list">
               {history.map((entry) => (
-                <button key={entry.id} type="button" className="query-history-item" onClick={() => applyHistory(entry)}>
+                <button key={entry.id} type="button" className="query-history-item" onClick={() => setSelectedHistoryEntry(entry)}>
                   <span className="query-history-mode">{entry.mode === 'raw' ? 'SQL' : 'Structured'}</span>
                   <code>{entry.payload.slice(0, 120)}</code>
                 </button>
@@ -570,17 +633,95 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
         </div>
 
         <div className="query-result-body">
+          {telemetry && (
+            <div className="telemetry-strip">
+              <div className="telemetry-item">
+                <span className="telemetry-label">LATENCY</span>
+                <span className="telemetry-value">{telemetry.executionTimeMs}ms</span>
+              </div>
+              <div className="telemetry-item">
+                <span className="telemetry-label">RECORDS_IMPACTED</span>
+                <span className="telemetry-value">{telemetry.affectedRows ?? resultRows.length}</span>
+              </div>
+              <div className="telemetry-item">
+                <span className="telemetry-label">STATUS</span>
+                <span className="telemetry-value success">READY</span>
+              </div>
+            </div>
+          )}
           {resultRows.length === 0 ? (
             <EmptyState>
               <p>Run a query to see results here.</p>
             </EmptyState>
           ) : resultMode === 'table' ? (
-            <TableView rows={resultRows} />
+            <TableView 
+              rows={resultRows} 
+              dbId={dbId}
+              dbType={dbType}
+              tableName={collection}
+            />
           ) : (
             <JsonView rows={resultRows} />
           )}
         </div>
       </section>
+
+      {selectedHistoryEntry && (
+        <div className="modal-overlay" onClick={() => setSelectedHistoryEntry(null)}>
+          <div className="technical-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <span className="modal-badge">HISTORY_DEEP_INSPECT</span>
+                <h4 className="modal-title">Query Entry: {selectedHistoryEntry.id}</h4>
+              </div>
+              <button className="modal-close" onClick={() => setSelectedHistoryEntry(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-meta-grid">
+                <div className="meta-item">
+                  <span className="meta-label">TIMESTAMP</span>
+                  <span className="meta-value">{new Date(selectedHistoryEntry.createdAt).toLocaleString()}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">QUERY_MODE</span>
+                  <span className="meta-value">{selectedHistoryEntry.mode.toUpperCase()}</span>
+                </div>
+              </div>
+              <div className="modal-content-area">
+                <span className="meta-label">FULL_PAYLOAD</span>
+                <pre className="modal-code-block">{selectedHistoryEntry.payload}</pre>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  className="query-run-btn" 
+                  onClick={async () => {
+                    applyHistory(selectedHistoryEntry);
+                    setSelectedHistoryEntry(null);
+                    // Short timeout to allow state to settle
+                    setTimeout(() => runQuery(), 50);
+                  }}
+                >
+                  RUN IMMEDIATELY
+                </button>
+                <button 
+                  className="query-run-btn secondary" 
+                  onClick={() => {
+                    applyHistory(selectedHistoryEntry);
+                    setSelectedHistoryEntry(null);
+                  }}
+                >
+                  LOAD INTO EDITOR
+                </button>
+              </div>
+              <button className="query-clear-btn" onClick={() => setSelectedHistoryEntry(null)}>
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

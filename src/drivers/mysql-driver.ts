@@ -1,4 +1,4 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput } from './types.js';
+import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult } from './types.js';
 
 type MySqlConnection = {
   execute: <T = unknown>(sql: string, values?: any) => Promise<[T, unknown]>;
@@ -56,31 +56,64 @@ export class MySqlDriver implements DatabaseDriver {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  async getTableData(name: string, limit: number): Promise<Record<string, unknown>[]> {
+  async getTableData(
+    name: string,
+    limit: number,
+    offset: number = 0,
+    sortBy?: string,
+    sortOrder: 'asc' | 'desc' = 'asc',
+    filters: Record<string, string> = {}
+  ): Promise<Record<string, unknown>[]> {
     const safeName = this.toSafeIdentifier(name);
     const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
+    const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
+
+    let sql = `SELECT * FROM \`${safeName}\``;
+    const params: any[] = [];
+
+    const filterEntries = Object.entries(filters).filter(([_, val]) => val.trim().length > 0);
+    if (filterEntries.length > 0) {
+      sql += ' WHERE ';
+      const clauses = filterEntries.map(([field, value]) => {
+        const safeField = this.toSafeIdentifier(field);
+        params.push(`%${value}%`);
+        return `\`${safeField}\` LIKE ?`;
+      });
+      sql += clauses.join(' AND ');
+    }
+
+    if (sortBy) {
+      const safeSortBy = this.toSafeIdentifier(sortBy);
+      sql += ` ORDER BY \`${safeSortBy}\` ${sortOrder.toUpperCase()}`;
+    }
+
+    sql += ` LIMIT ? OFFSET ?`;
+    params.push(safeLimit, safeOffset);
+
     const connection = await this.getConnection();
-    const [rows] = await connection.execute<Record<string, unknown>[]>(
-      `SELECT * FROM \`${safeName}\` LIMIT ?`,
-      [safeLimit]
-    );
+    const [rows] = await connection.execute<Record<string, unknown>[]>(sql, params);
 
     return rows;
   }
 
-  async query(rawQuery: DriverQueryInput): Promise<Record<string, unknown>[]> {
+
+  async query(rawQuery: DriverQueryInput): Promise<QueryResult> {
     if (typeof rawQuery !== 'string') {
       throw new Error('MySQL query endpoint expects a SQL string.');
     }
 
+    const startTime = performance.now();
     const connection = await this.getConnection();
-    const [rows] = await connection.execute<Record<string, unknown>[]>(rawQuery);
-
-    if (Array.isArray(rows)) {
-      return rows;
-    }
-
-    return [];
+    const [rows]: [any, any] = await connection.execute(rawQuery);
+    const endTime = performance.now();
+    
+    return {
+      data: Array.isArray(rows) ? rows : [rows],
+      telemetry: {
+        executionTimeMs: Math.round(endTime - startTime),
+        affectedRows: Array.isArray(rows) ? rows.length : (rows as any).affectedRows || 0
+      }
+    };
   }
 
   async close(): Promise<void> {

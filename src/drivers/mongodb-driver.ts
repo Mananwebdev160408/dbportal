@@ -1,4 +1,4 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, StructuredQuery } from './types.js';
+import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, StructuredQuery, QueryResult } from './types.js';
 
 type MongoDatabase = {
   listCollections: () => { toArray: () => Promise<Array<{ name: string }>> };
@@ -57,10 +57,32 @@ export class MongoDriver implements DatabaseDriver {
     return collections.map((collection) => collection.name).sort((a, b) => a.localeCompare(b));
   }
 
-  async getTableData(name: string, limit: number): Promise<Record<string, unknown>[]> {
+  async getTableData(
+    name: string,
+    limit: number,
+    offset: number = 0,
+    sortBy?: string,
+    sortOrder: 'asc' | 'desc' = 'asc',
+    filters: Record<string, string> = {}
+  ): Promise<Record<string, unknown>[]> {
     const db = await this.getDatabase();
     const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
-    return db.collection(name).find({}).limit(safeLimit).toArray();
+    const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
+
+    const mongoFilter: Record<string, any> = {};
+    for (const [field, value] of Object.entries(filters)) {
+      if (value.trim().length > 0) {
+        mongoFilter[field] = { $regex: value, $options: 'i' };
+      }
+    }
+
+    let cursor: any = db.collection(name).find(mongoFilter);
+
+    if (sortBy) {
+      cursor = cursor.sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 });
+    }
+
+    return cursor.skip(safeOffset).limit(safeLimit).toArray();
   }
 
   async getTableCount(name: string): Promise<number> {
@@ -68,9 +90,12 @@ export class MongoDriver implements DatabaseDriver {
     return db.collection(name).countDocuments({});
   }
 
-  async query(input: DriverQueryInput): Promise<Record<string, unknown>[]> {
+  async query(input: DriverQueryInput): Promise<QueryResult> {
+    const startTime = performance.now();
+    let data: Record<string, unknown>[];
+
     if (typeof input === 'string') {
-      let parsed: unknown;
+      let parsed: any;
       try {
         parsed = JSON.parse(input);
       } catch {
@@ -78,11 +103,24 @@ export class MongoDriver implements DatabaseDriver {
           'MongoDB query expects structured JSON. Example: {"collection":"users","filter":{},"limit":50}'
         );
       }
-
-      return this.executeStructuredQuery(parsed as StructuredQuery);
+      data = await this.executeStructuredQuery(parsed);
+    } else {
+      data = await this.executeStructuredQuery(input);
     }
 
-    return this.executeStructuredQuery(input);
+    const endTime = performance.now();
+    return {
+      data,
+      telemetry: {
+        executionTimeMs: Math.round(endTime - startTime),
+        affectedRows: data.length
+      }
+    };
+  }
+
+  async updateRecord(collection: string, filter: Record<string, unknown>, update: Record<string, unknown>): Promise<void> {
+    const db = await this.getDatabase();
+    await (db.collection(collection) as any).updateOne(filter, { $set: update });
   }
 
   async close(): Promise<void> {
@@ -124,12 +162,18 @@ export class MongoDriver implements DatabaseDriver {
       throw new Error('MongoDB structured query requires "collection".');
     }
 
+    const db = await this.getDatabase();
+    
+    // Check for aggregation pipeline
+    if (input.pipeline && Array.isArray(input.pipeline)) {
+      return (db.collection(collectionName) as any).aggregate(input.pipeline).toArray();
+    }
+
     const filter = this.toPlainObject(input.filter);
     const projection = this.toOptionalPlainObject(input.projection);
     const sort = this.toOptionalSort(input.sort);
     const limit = Number.isFinite(input.limit) ? Math.max(1, Math.min(Number(input.limit), 500)) : 100;
 
-    const db = await this.getDatabase();
     let cursor: {
       project: (spec: Record<string, unknown>) => typeof cursor;
       sort: (spec: Record<string, 1 | -1>) => typeof cursor;

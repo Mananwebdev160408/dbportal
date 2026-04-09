@@ -14,8 +14,8 @@ const getRowLabel = (row: Record<string, unknown>, index: number): string => {
     }
   }
   const firstKey = Object.keys(row)[0];
-  if (!firstKey) return `Record ${index + 1}`;
-  return `${firstKey}: ${String(row[firstKey])}`;
+  if (!firstKey) return `RECORD_${(index + 1).toString().padStart(3, '0')}`;
+  return `${firstKey.toUpperCase()}: ${String(row[firstKey])}`;
 };
 
 const formatFieldValue = (value: unknown): string => {
@@ -40,20 +40,19 @@ export default function InspectorView({ rows }: InspectorViewProps) {
 
   return (
     <div className="inspector-layout">
-      <section className="inspector-list">
-        {rows.map((row, index) => (
-          <button
-            // biome-ignore lint/suspicious/noArrayIndexKey: no stable key
-            key={index}
-            className={`inspector-row-btn${index === safeIndex ? ' active' : ''}`}
-            onClick={() => setSelectedIndex(index)}
-            type="button"
-          >
-            <span className="inspector-row-title">{getRowLabel(row, index)}</span>
-            <span className="inspector-row-meta">{Object.keys(row).length} field(s)</span>
-          </button>
-        ))}
-      </section>
+       <section className="inspector-list">
+         {rows.map((row, index) => (
+           <button
+             key={index}
+             className={`inspector-row-btn${index === safeIndex ? ' active' : ''}`}
+             onClick={() => setSelectedIndex(index)}
+             type="button"
+           >
+             <div className="inspector-row-title">{getRowLabel(row, index)}</div>
+             <div className="inspector-row-meta">FIELDS: {Object.keys(row).length.toString().padStart(2, '0')}</div>
+           </button>
+         ))}
+       </section>
 
       <section className="inspector-detail">
         {Object.keys(selectedRow).length > 0 ? (

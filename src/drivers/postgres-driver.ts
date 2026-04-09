@@ -1,4 +1,4 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput } from './types.js';
+import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult } from './types.js';
 
 export class PostgresDriver implements DatabaseDriver {
   private client: { connect: () => Promise<unknown>; query: (sql: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>; end: () => Promise<void> } | null = null;
@@ -41,12 +41,43 @@ export class PostgresDriver implements DatabaseDriver {
     return result.rows.map((row) => String(row.table_name));
   }
 
-  async getTableData(name: string, limit: number): Promise<Record<string, unknown>[]> {
+  async getTableData(
+    name: string,
+    limit: number,
+    offset: number = 0,
+    sortBy?: string,
+    sortOrder: 'asc' | 'desc' = 'asc',
+    filters: Record<string, string> = {}
+  ): Promise<Record<string, unknown>[]> {
     const safeName = this.toSafeIdentifier(name);
     const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
-    const sql = `SELECT * FROM "${safeName}" LIMIT $1`;
+    const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
+
+    let sql = `SELECT * FROM "${safeName}"`;
+    const params: (string | number)[] = [];
+
+    const filterEntries = Object.entries(filters).filter(([_, val]) => val.trim().length > 0);
+    if (filterEntries.length > 0) {
+      sql += ' WHERE ';
+      const clauses = filterEntries.map(([field, value], idx) => {
+        const safeField = this.toSafeIdentifier(field);
+        params.push(`%${value}%`);
+        return `"${safeField}"::text ILIKE $${params.length}`;
+      });
+      sql += clauses.join(' AND ');
+    }
+
+    if (sortBy) {
+      const safeSortBy = this.toSafeIdentifier(sortBy);
+      sql += ` ORDER BY "${safeSortBy}" ${sortOrder.toUpperCase()}`;
+    }
+
+    // Parameters for LIMIT and OFFSET
+    sql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(safeLimit, safeOffset);
+
     const client = await this.getClient();
-    const result = await client.query(sql, [safeLimit]);
+    const result = await client.query(sql, params);
     return result.rows;
   }
 
@@ -59,14 +90,19 @@ export class PostgresDriver implements DatabaseDriver {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  async query(rawQuery: DriverQueryInput): Promise<Record<string, unknown>[]> {
-    if (typeof rawQuery !== 'string') {
-      throw new Error('PostgreSQL query endpoint expects a SQL string.');
-    }
-
+  async query(query: string): Promise<QueryResult> {
+    const startTime = performance.now();
     const client = await this.getClient();
-    const result = await client.query(rawQuery);
-    return result.rows;
+    const result = (await client.query(query)) as any;
+    const endTime = performance.now();
+    
+    return {
+      data: result.rows,
+      telemetry: {
+        executionTimeMs: Math.round(endTime - startTime),
+        affectedRows: result.rowCount ?? result.rows.length
+      }
+    };
   }
 
   async close(): Promise<void> {
