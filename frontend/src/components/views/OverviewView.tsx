@@ -150,14 +150,6 @@ export default function OverviewView({ overview, onTableClick }: OverviewViewPro
           </ul>
         </div>
 
-        <div className="explain-card">
-          <h4>Suggested Actions</h4>
-          <ul>
-            <li>Review highly concentrated datasets for indexing and query optimization.</li>
-            <li>Inspect empty objects before migration or archival to reduce clutter.</li>
-            <li>Use query workspace to sample largest collections quickly.</li>
-          </ul>
-        </div>
       </div>
 
       <div className="overview-card">

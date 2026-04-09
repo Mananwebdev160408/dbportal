@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import EmptyState from '../EmptyState';
 import TableView from './TableView';
 import JsonView from './JsonView';
@@ -100,6 +100,24 @@ const buildMongoPayload = (
   return payload;
 };
 
+const formatSqlIdentifier = (databaseType: string, identifier: string): string => {
+  const trimmed = identifier.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  const normalizedType = databaseType.toLowerCase();
+  if (normalizedType.includes('postgres')) {
+    return `"${trimmed.replace(/"/g, '""')}"`;
+  }
+
+  if (normalizedType.includes('mysql') || normalizedType.includes('mariadb')) {
+    return `\`${trimmed.replace(/`/g, '``')}\``;
+  }
+
+  return trimmed;
+};
+
 export default function QueryWorkbench({ dbType, tables, capabilities, onStatus }: QueryWorkbenchProps) {
   const [rawQuery, setRawQuery] = useState('');
   const [collection, setCollection] = useState(tables[0] || '');
@@ -123,6 +141,10 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
 
   const supportsStructured = capabilities.structuredQuery;
   const supportsRaw = capabilities.rawQuery;
+  const activeObjectName = useMemo(
+    () => collection || tables[0] || (supportsStructured ? 'collection' : 'table'),
+    [collection, supportsStructured, tables]
+  );
 
   const helperText = useMemo(() => {
     if (supportsStructured && !supportsRaw) {
@@ -139,6 +161,89 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
 
     return 'This driver does not currently expose query execution.';
   }, [supportsRaw, supportsStructured]);
+
+  const queryRecommendations = useMemo(() => {
+    if (supportsStructured && !supportsRaw) {
+      return [
+        'Start with a small filter like {} or {"status":"active"}.',
+        'Use projection to keep only the fields you need.',
+        'Sort uses 1 for ascending and -1 for descending.',
+        'Limit is capped at 500 records to keep the UI responsive.',
+      ];
+    }
+
+    if (supportsRaw && !supportsStructured) {
+      return [
+        'Start with SELECT queries before trying writes or DDL.',
+        'Add LIMIT early while exploring a table.',
+        'Use WHERE and ORDER BY to narrow and rank results.',
+        'Quote mixed-case Postgres identifiers, for example "AcademicCalendarEvent".',
+        'Be careful with UPDATE, DELETE, DROP, and TRUNCATE on shared databases.',
+      ];
+    }
+
+    if (supportsRaw && supportsStructured) {
+      return [
+        'Pick the mode that matches the driver: SQL for relational, structured JSON for MongoDB.',
+        'Keep query payloads tight and add filters before expanding result sets.',
+        'Use history to iterate quickly on the same query shape.',
+      ];
+    }
+
+    return ['This database driver does not currently expose query execution.'];
+  }, [supportsRaw, supportsStructured]);
+
+  const rawExamples = useMemo(() => {
+    const name = formatSqlIdentifier(dbType, activeObjectName);
+    return [
+      {
+        label: 'First 50 rows',
+        sql: `SELECT * FROM ${name} LIMIT 50;`,
+      },
+      {
+        label: 'Recent records',
+        sql: `SELECT * FROM ${name} ORDER BY 1 DESC LIMIT 25;`,
+      },
+    ];
+  }, [activeObjectName, dbType]);
+
+  const structuredExamples = useMemo(() => {
+    const name = activeObjectName;
+    return [
+      {
+        label: 'Basic filter',
+        query: {
+          collection: name,
+          filter: {},
+          limit: 25,
+        },
+      },
+      {
+        label: 'Projected fields',
+        query: {
+          collection: name,
+          filter: { status: 'active' },
+          projection: { _id: 0, name: 1, email: 1 },
+          sort: { createdAt: -1 as 1 | -1 },
+          limit: 25,
+        },
+      },
+    ];
+  }, [activeObjectName]);
+
+  useEffect(() => {
+    if (!supportsStructured) {
+      return;
+    }
+
+    if (collection && tables.includes(collection)) {
+      return;
+    }
+
+    if (tables.length > 0) {
+      setCollection(tables[0]);
+    }
+  }, [collection, supportsStructured, tables]);
 
   const persistHistory = (next: QueryHistoryEntry[]) => {
     setHistory(next);
@@ -239,12 +344,84 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
     }
   };
 
+  const resetQueryEditor = () => {
+    setRawQuery('');
+    setCollection(tables[0] || '');
+    setFilterText('{}');
+    setProjectionText('');
+    setSortText('');
+    setLimitText('100');
+    setRunError('');
+    onStatus('Query editor reset', false);
+  };
+
+  const applyRawExample = (sql: string) => {
+    setRawQuery(sql);
+    setRunError('');
+    onStatus('Raw query example loaded', false);
+  };
+
+  const applyStructuredExample = (query: {
+    collection: string;
+    filter?: Record<string, unknown>;
+    projection?: Record<string, unknown>;
+    sort?: Record<string, 1 | -1>;
+    limit?: number;
+  }) => {
+    setCollection(query.collection);
+    setFilterText(JSON.stringify(query.filter ?? {}, null, 2));
+    setProjectionText(query.projection ? JSON.stringify(query.projection, null, 2) : '');
+    setSortText(query.sort ? JSON.stringify(query.sort, null, 2) : '');
+    setLimitText(String(query.limit ?? 100));
+    setRunError('');
+    onStatus('Structured query example loaded', false);
+  };
+
   return (
     <div className="query-workspace">
       <section className="query-panel">
         <div className="query-header">
           <h3>Query Engine</h3>
           <span className="query-helper">{helperText}</span>
+          <span className="query-helper">Connected database: {dbType || 'Unknown'}</span>
+        </div>
+
+        <div className="query-help-card">
+          <div className="query-help-title">Recommendations</div>
+          <ul className="query-tip-list">
+            {queryRecommendations.map((tip) => (
+              <li key={tip}>{tip}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="query-help-card">
+          <div className="query-help-title">Quick examples</div>
+          {supportsRaw && (
+            <div className="query-example-list">
+              {rawExamples.map((example) => (
+                <button key={example.label} type="button" className="query-example-btn" onClick={() => applyRawExample(example.sql)}>
+                  <span>{example.label}</span>
+                  <code>{example.sql}</code>
+                </button>
+              ))}
+            </div>
+          )}
+          {supportsStructured && (
+            <div className="query-example-list">
+              {structuredExamples.map((example) => (
+                <button
+                  key={example.label}
+                  type="button"
+                  className="query-example-btn"
+                  onClick={() => applyStructuredExample(example.query)}
+                >
+                  <span>{example.label}</span>
+                  <code>{JSON.stringify(example.query)}</code>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {supportsStructured && (
@@ -347,6 +524,17 @@ export default function QueryWorkbench({ dbType, tables, capabilities, onStatus 
           >
             Clear Results
           </button>
+          <button type="button" className="query-clear-btn secondary" onClick={resetQueryEditor}>
+            Reset Editor
+          </button>
+        </div>
+
+        <div className="query-help-card subtle">
+          <div className="query-help-title">Tips</div>
+          <p className="query-help-copy">
+            Use history to revisit a query, switch between table and JSON results for debugging, and keep raw SQL or structured
+            JSON focused on the selected database object: {activeObjectName}.
+          </p>
         </div>
 
         {runError && <p className="query-error">{runError}</p>}

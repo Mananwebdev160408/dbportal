@@ -7,3 +7,7 @@ dist
 # Frontend
 frontend/node_modules
 frontend/dist
+.agents/
+.claude/
+.qoder/
+skills-lock.json
