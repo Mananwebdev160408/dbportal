@@ -228,8 +228,8 @@ const main = async () => {
     }
   });
 
-  // SPA fallback — serve index.html for any unmatched GET route
-  app.get("*", (_request, response) => {
+  // SPA fallback — serve index.html for any unmatched route
+  app.use((request, response) => {
     response.sendFile(path.join(frontendDist, "index.html"));
   });
 
