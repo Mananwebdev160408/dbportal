@@ -1,0 +1,30 @@
+# Source Files
+src/
+frontend/src/
+frontend/public/
+frontend/index.html
+frontend/vite.config.ts
+frontend/tsconfig.json
+frontend/package.json
+frontend/package-lock.json
+frontend/node_modules/
+
+# Config & Tooling
+tsconfig.json
+tsup.config.ts
+.env
+.env.example
+.gemini/
+.git/
+.gitignore
+.npmignore
+node_modules/
+package-lock.json
+
+# Documentation/Media
+screenshots/
+docs/
+*.md
+!README.md
+!README.npm.md
+!LICENSE
