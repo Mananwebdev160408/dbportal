@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AppMode, DatabaseConnectionInfo } from '../App';
+import type { AppMode, DatabaseConnectionInfo, DriverCapabilities } from '../App';
 
 interface SidebarProps {
   connections: DatabaseConnectionInfo[];
@@ -7,6 +7,7 @@ interface SidebarProps {
   tables: string[];
   activeTable: string;
   appMode: AppMode;
+  capabilities: DriverCapabilities;
   onOverviewClick: () => void;
   onQueryClick: () => void;
   onSchemaClick: () => void;
@@ -52,7 +53,7 @@ const DbIcon = () => (
 );
 
 export default function Sidebar({ 
-  connections, activeDbId, tables, activeTable, appMode, 
+  connections, activeDbId, tables, activeTable, appMode, capabilities,
   onOverviewClick, onQueryClick, onSchemaClick, onTableClick, onDbChange 
 }: SidebarProps) {
   const [tableFilter, setTableFilter] = useState('');
@@ -120,14 +121,16 @@ export default function Sidebar({
           <span>Overview</span>
         </button>
 
-        <button
-          className={`overview-btn${appMode === 'query' ? ' active' : ''}`}
-          onClick={onQueryClick}
-          type="button"
-        >
-          <QueryIcon />
-          <span>Query Console</span>
-        </button>
+        {(capabilities.rawQuery || capabilities.structuredQuery) && (
+          <button
+            className={`overview-btn${appMode === 'query' ? ' active' : ''}`}
+            onClick={onQueryClick}
+            type="button"
+          >
+            <QueryIcon />
+            <span>Query Console</span>
+          </button>
+        )}
 
         <button
           className={`overview-btn${appMode === 'schema' ? ' active' : ''}`}

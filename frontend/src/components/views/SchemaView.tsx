@@ -1,5 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import EmptyState from '../EmptyState';
+import { 
+  ReactFlow, 
+  Controls, 
+  Background, 
+  MarkerType, 
+  useNodesState, 
+  useEdgesState,
+  Handle,
+  Position,
+  NodeProps,
+  Edge,
+  Node
+} from '@xyflow/react';
+import dagre from 'dagre';
 
 interface ColumnSchema {
   name: string;
@@ -33,23 +47,75 @@ interface SchemaViewProps {
   onStatus: (msg: string, isError?: boolean) => void;
 }
 
+const TableNode = ({ data, selected }: NodeProps) => {
+  return (
+    <div className={`schema-node${selected ? ' active' : ''}`} style={{
+      width: 140,
+      height: 52,
+      borderRadius: 10,
+      background: selected ? 'var(--accent-soft)' : 'var(--surface-raised)',
+      border: `1px solid ${selected ? 'var(--accent)' : 'var(--line-strong)'}`,
+      color: selected ? 'var(--accent)' : 'var(--text)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '12px',
+      fontFamily: 'var(--font-mono)',
+      boxShadow: selected ? 'var(--glow-accent)' : 'var(--shadow-subtle)',
+      cursor: 'pointer'
+    }}>
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <div style={{ fontWeight: 600 }}>{data.label as string}</div>
+      <div style={{ color: 'var(--text-muted)', fontSize: '10px', marginTop: 4 }}>{data.fieldCount as number} fields</div>
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+    </div>
+  );
+};
+
+const nodeTypes = {
+  tableMode: TableNode,
+};
+
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  dagreGraph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 100 });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: 140, height: 52 });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      targetPosition: Position.Top,
+      sourcePosition: Position.Bottom,
+      position: {
+        x: nodeWithPosition.x - 70,
+        y: nodeWithPosition.y - 26,
+      },
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
+};
+
 export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: SchemaViewProps) {
   const [schema, setSchema] = useState<DatabaseSchema | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selected, setSelected] = useState<string | null>(null);
-  const [scale, setScale] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const dragState = useRef<{
-    mode: 'pan' | 'node' | null;
-    startX: number;
-    startY: number;
-    originX: number;
-    originY: number;
-    nodeName?: string;
-    nodeX?: number;
-    nodeY?: number;
-  }>({ mode: null, startX: 0, startY: 0, originX: 0, originY: 0 });
+  const [selectedTableName, setSelectedTableName] = useState<string | null>(null);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
 
   useEffect(() => {
     let alive = true;
@@ -62,7 +128,48 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
         if (!res.ok) throw new Error(payload.error || 'Failed to load schema.');
         if (!alive) return;
         setSchema(payload);
-        setSelected(payload.tables?.[0]?.name ?? null);
+        
+        // Transform schema to raw nodes and edges
+        const initialNodes: Node[] = payload.tables.map((t: TableSchema) => ({
+          id: t.name,
+          type: 'tableMode',
+          position: { x: 0, y: 0 },
+          data: { label: t.name, fieldCount: t.columns.length, table: t },
+        }));
+
+        const initialEdges: Edge[] = [];
+        payload.tables.forEach((t: TableSchema) => {
+          t.foreignKeys.forEach((fk, idx) => {
+            initialEdges.push({
+              id: `edge-${t.name}-${fk.column}-${fk.refTable}-${fk.refColumn}-${idx}`,
+              source: t.name,
+              target: fk.refTable,
+              label: fk.column,
+              animated: true,
+              style: { stroke: 'var(--text-muted)', strokeWidth: 1.5, opacity: 0.6 },
+              labelStyle: { fill: 'var(--text)', fontSize: 10, fontFamily: 'var(--font-mono)' },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: 'var(--text-muted)',
+              },
+            });
+          });
+        });
+
+        // Run dagre layout computation
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(initialNodes, initialEdges, 'TB');
+        
+        setNodes(layoutedNodes);
+        setEdges(layoutedEdges);
+
+        const defaultSelected = payload.tables?.[0]?.name ?? null;
+        setSelectedTableName(defaultSelected);
+
+        // Visually select the first node
+        if (defaultSelected) {
+          setNodes((nds) => nds.map(n => ({ ...n, selected: n.id === defaultSelected })));
+        }
+
         onStatus(`Schema ready for ${dbId}`);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -77,176 +184,13 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
     return () => {
       alive = false;
     };
-  }, [dbId, refreshKey, onStatus]);
+  }, [dbId, refreshKey, onStatus, setNodes, setEdges]);
 
-  const layout = useMemo(() => {
-    const tables = schema?.tables ?? [];
-    const count = tables.length || 1;
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedTableName(node.id);
+  }, []);
 
-    if (count <= 8) {
-      const radius = Math.max(160, Math.min(320, 110 + Math.sqrt(count) * 70));
-      const width = Math.round(radius * 2 + 300);
-      const height = Math.round(radius * 2 + 240);
-      const centerX = width / 2;
-      const centerY = height / 2;
-
-      const nodes = tables.map((table, index) => {
-        const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
-        const x = centerX + Math.cos(angle) * radius;
-        const y = centerY + Math.sin(angle) * radius;
-        return { table, x, y };
-      });
-
-      const nodeMap = new Map(nodes.map((n) => [n.table.name, n]));
-      const edges = tables.flatMap((table) =>
-        table.foreignKeys
-          .map((fk) => {
-            const from = nodeMap.get(table.name);
-            const to = nodeMap.get(fk.refTable);
-            if (!from || !to) return null;
-            return {
-              from,
-              to,
-              label: `${fk.column} → ${fk.refTable}.${fk.refColumn}`,
-            };
-          })
-          .filter(Boolean)
-      ) as Array<{ from: typeof nodes[number]; to: typeof nodes[number]; label: string }>;
-
-      return { width, height, nodes, edges };
-    }
-
-    const columns = Math.min(5, Math.max(2, Math.ceil(Math.sqrt(count))));
-    const rows = Math.ceil(count / columns);
-    const cellW = 180;
-    const cellH = 120;
-    const width = columns * cellW + 160;
-    const height = rows * cellH + 140;
-    const offsetX = 80;
-    const offsetY = 70;
-
-    const nodes = tables.map((table, index) => {
-      const col = index % columns;
-      const row = Math.floor(index / columns);
-      const x = offsetX + col * cellW;
-      const y = offsetY + row * cellH;
-      return { table, x, y };
-    });
-
-    const nodeMap = new Map(nodes.map((n) => [n.table.name, n]));
-
-    const edges = tables.flatMap((table) =>
-      table.foreignKeys
-        .map((fk) => {
-          const from = nodeMap.get(table.name);
-          const to = nodeMap.get(fk.refTable);
-          if (!from || !to) return null;
-          return {
-            from,
-            to,
-            label: `${fk.column} → ${fk.refTable}.${fk.refColumn}`,
-          };
-        })
-        .filter(Boolean)
-    ) as Array<{ from: typeof nodes[number]; to: typeof nodes[number]; label: string }>;
-
-    return { width, height, nodes, edges };
-  }, [schema]);
-
-  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({});
-
-  useEffect(() => {
-    if (!schema) return;
-    const next: Record<string, { x: number; y: number }> = {};
-    for (const node of layout.nodes) {
-      next[node.table.name] = { x: node.x, y: node.y };
-    }
-    setNodePositions(next);
-    setScale(1);
-    setPan({ x: 0, y: 0 });
-  }, [schema, layout.nodes]);
-
-  const selectedTable = schema?.tables.find((t) => t.name === selected) ?? schema?.tables[0] ?? null;
-
-  const clampScale = (value: number) => Math.min(2.2, Math.max(0.55, value));
-
-  const onWheel = (event: React.WheelEvent<SVGSVGElement>) => {
-    event.preventDefault();
-    const delta = event.deltaY > 0 ? -0.08 : 0.08;
-    setScale((s) => clampScale(Number((s + delta).toFixed(2))));
-  };
-
-  const onPointerDownCanvas = (event: React.PointerEvent<SVGSVGElement>) => {
-    if ((event.target as HTMLElement).closest('.schema-node')) {
-      return;
-    }
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragState.current = {
-      mode: 'pan',
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: pan.x,
-      originY: pan.y,
-    };
-  };
-
-  const onPointerMoveCanvas = (event: React.PointerEvent<SVGSVGElement>) => {
-    if (dragState.current.mode !== 'pan') return;
-    const dx = event.clientX - dragState.current.startX;
-    const dy = event.clientY - dragState.current.startY;
-    setPan({
-      x: dragState.current.originX + dx,
-      y: dragState.current.originY + dy,
-    });
-  };
-
-  const onPointerUpCanvas = (event: React.PointerEvent<SVGSVGElement>) => {
-    if (dragState.current.mode) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    dragState.current.mode = null;
-  };
-
-  const onNodePointerDown = (event: React.PointerEvent<SVGGElement>, name: string) => {
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const pos = nodePositions[name];
-    dragState.current = {
-      mode: 'node',
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: pan.x,
-      originY: pan.y,
-      nodeName: name,
-      nodeX: pos?.x ?? 0,
-      nodeY: pos?.y ?? 0,
-    };
-    setSelected(name);
-  };
-
-  const onNodePointerMove = (event: React.PointerEvent<SVGGElement>) => {
-    if (dragState.current.mode !== 'node' || !dragState.current.nodeName) return;
-    const dx = (event.clientX - dragState.current.startX) / scale;
-    const dy = (event.clientY - dragState.current.startY) / scale;
-    const name = dragState.current.nodeName;
-    setNodePositions((prev) => ({
-      ...prev,
-      [name]: {
-        x: (dragState.current.nodeX ?? 0) + dx,
-        y: (dragState.current.nodeY ?? 0) + dy,
-      },
-    }));
-  };
-
-  const onNodePointerUp = (event: React.PointerEvent<SVGGElement>) => {
-    event.currentTarget.releasePointerCapture(event.pointerId);
-    dragState.current.mode = null;
-  };
-
-  const onResetView = () => {
-    setScale(1);
-    setPan({ x: 0, y: 0 });
-  };
+  const selectedTable = schema?.tables.find((t) => t.name === selectedTableName) ?? null;
 
   if (loading) {
     return (
@@ -286,69 +230,25 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
             <span>Primary key</span>
             <span className="legend-dot foreign" />
             <span>Foreign key</span>
-            <button type="button" className="schema-reset" onClick={onResetView}>
-              Reset View
-            </button>
           </div>
         </div>
 
         <div className="schema-map">
-          <svg
-            className="schema-svg"
-            viewBox={`0 0 ${layout.width} ${layout.height}`}
-            role="img"
-            aria-label="Schema map"
-            onWheel={onWheel}
-            onPointerDown={onPointerDownCanvas}
-            onPointerMove={onPointerMoveCanvas}
-            onPointerUp={onPointerUpCanvas}
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={onNodeClick}
+            nodeTypes={nodeTypes}
+            fitView
+            minZoom={0.2}
+            maxZoom={3}
+            attributionPosition="bottom-left"
           >
-            <defs>
-              <marker id="schemaArrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                <path d="M0,0 L10,3 L0,6 Z" className="schema-edge-arrow" />
-              </marker>
-            </defs>
-
-            <g transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}>
-              {layout.edges.map((edge, idx) => {
-                const from = nodePositions[edge.from.table.name] ?? { x: edge.from.x, y: edge.from.y };
-                const to = nodePositions[edge.to.table.name] ?? { x: edge.to.x, y: edge.to.y };
-                return (
-                  <line
-                    key={`${edge.label}-${idx}`}
-                    x1={from.x}
-                    y1={from.y}
-                    x2={to.x}
-                    y2={to.y}
-                    className="schema-edge"
-                    markerEnd="url(#schemaArrow)"
-                  />
-                );
-              })}
-
-              {layout.nodes.map((node) => {
-                const pos = nodePositions[node.table.name] ?? { x: node.x, y: node.y };
-                return (
-                  <g
-                    key={node.table.name}
-                    transform={`translate(${pos.x}, ${pos.y})`}
-                    onPointerDown={(event) => onNodePointerDown(event, node.table.name)}
-                    onPointerMove={onNodePointerMove}
-                    onPointerUp={onNodePointerUp}
-                    className={`schema-node${selected === node.table.name ? ' active' : ''}`}
-                  >
-                    <rect x={-70} y={-26} width={140} height={52} rx={10} />
-                    <text x={0} y={-4} textAnchor="middle">
-                      {node.table.name}
-                    </text>
-                    <text x={0} y={14} textAnchor="middle">
-                      {node.table.columns.length} fields
-                    </text>
-                  </g>
-                );
-              })}
-            </g>
-          </svg>
+            <Background color="var(--line-strong)" gap={20} size={1} />
+            <Controls />
+          </ReactFlow>
         </div>
       </section>
 

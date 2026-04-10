@@ -122,6 +122,10 @@ const formatSqlIdentifier = (databaseType: string, identifier: string): string =
     return `\`${trimmed.replace(/`/g, '``')}\``;
   }
 
+  if (normalizedType.includes('mssql') || normalizedType.includes('sqlserver')) {
+    return `[${trimmed.replace(/]/g, ']]')}]`;
+  }
+
   return trimmed;
 };
 
@@ -207,14 +211,15 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
 
   const rawExamples = useMemo(() => {
     const name = formatSqlIdentifier(dbType, activeObjectName);
+    const isMsSql = dbType.toLowerCase().includes('mssql') || dbType.toLowerCase().includes('sqlserver');
     return [
       {
         label: 'First 50 rows',
-        sql: `SELECT * FROM ${name} LIMIT 50;`,
+        sql: isMsSql ? `SELECT TOP 50 * FROM ${name};` : `SELECT * FROM ${name} LIMIT 50;`,
       },
       {
         label: 'Recent records',
-        sql: `SELECT * FROM ${name} ORDER BY 1 DESC LIMIT 25;`,
+        sql: isMsSql ? `SELECT TOP 25 * FROM ${name} ORDER BY 1 DESC;` : `SELECT * FROM ${name} ORDER BY 1 DESC LIMIT 25;`,
       },
     ];
   }, [activeObjectName, dbType]);
@@ -579,7 +584,11 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
               value={rawQuery}
               onChange={(event) => setRawQuery(event.target.value)}
               spellCheck={false}
-              placeholder={dbType.toLowerCase().includes('mysql') ? 'SELECT * FROM users LIMIT 50;' : 'SELECT * FROM users LIMIT 50;'}
+              placeholder={
+                dbType.toLowerCase().includes('mssql') || dbType.toLowerCase().includes('sqlserver')
+                  ? 'SELECT TOP 50 * FROM users;'
+                  : 'SELECT * FROM users LIMIT 50;'
+              }
             />
           </div>
         )}

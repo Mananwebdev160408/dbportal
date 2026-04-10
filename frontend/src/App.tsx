@@ -123,6 +123,15 @@ export default function App() {
         setActiveDbId(initialId);
         
         await loadDatabaseMetadata(initialId);
+        
+        // Fetch the dashboard overview immediately on load
+        const overviewRes = await fetch('/api/overview');
+        const overviewPayload = await overviewRes.json();
+        if (overviewRes.ok) {
+          setOverview(overviewPayload);
+          showStatus('Connected');
+        }
+        
         setLoading(false);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -358,6 +367,7 @@ export default function App() {
         tables={tables}
         activeTable={currentTable}
         appMode={appMode}
+        capabilities={capabilities}
         onOverviewClick={loadOverview}
         onTableClick={loadTable}
         onQueryClick={openQueryWorkspace}

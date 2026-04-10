@@ -1,6 +1,9 @@
 import { MongoDriver } from './drivers/mongodb-driver.js';
 import { MySqlDriver } from './drivers/mysql-driver.js';
 import { PostgresDriver } from './drivers/postgres-driver.js';
+import { SqliteDriver } from './drivers/sqlite-driver.js';
+import { MsSqlDriver } from './drivers/mssql-driver.js';
+import { RedisDriver } from './drivers/redis-driver.js';
 import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, DatabaseSchema } from './drivers/types.js';
 
 export type SupportedDatabase = string;
@@ -49,6 +52,24 @@ const registerBuiltInDrivers = (): void => {
     kind: 'mysql',
     protocols: ['mysql:', 'mariadb:'],
     create: (databaseUrl) => new MySqlDriver(databaseUrl),
+  });
+
+  registerDatabaseDriver({
+    kind: 'sqlite',
+    protocols: ['sqlite:', 'sqlite3:'],
+    create: (databaseUrl) => new SqliteDriver(databaseUrl),
+  });
+
+  registerDatabaseDriver({
+    kind: 'sqlserver',
+    protocols: ['mssql:', 'sqlserver:'],
+    create: (databaseUrl) => new MsSqlDriver(databaseUrl),
+  });
+
+  registerDatabaseDriver({
+    kind: 'redis',
+    protocols: ['redis:', 'rediss:'],
+    create: (databaseUrl) => new RedisDriver(databaseUrl),
   });
 };
 
