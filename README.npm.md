@@ -1,22 +1,6 @@
 # dbportal
 
-Universal local database explorer for PostgreSQL, MongoDB, and MySQL.
-
-`dbportal` is a CLI-first tool that detects your database from `DATABASE_URL`, starts a local server, and opens an interactive dashboard for browsing data, running queries, and viewing insights.
-
-## Features
-
-- Native driver architecture (no ORM)
-- Supported DBs:
-  - PostgreSQL (`postgres://`, `postgresql://`)
-  - MongoDB (`mongodb://`, `mongodb+srv://`)
-  - MySQL/MariaDB (`mysql://`, `mariadb://`)
-- Multiple data views: table, documents, JSON, inspector
-- Query workspace:
-  - SQL raw query mode (PostgreSQL/MySQL)
-  - Structured JSON mode (MongoDB)
-- Dashboard insights with overview metrics and charts
-- Runs on `127.0.0.1` for local safety
+`dbportal` is a local, read-only database explorer for developers. It connects to multiple databases from connection strings, serves a browser-based dashboard, and exposes read-only browsing and query tools.
 
 ## Install
 
@@ -24,55 +8,49 @@ Universal local database explorer for PostgreSQL, MongoDB, and MySQL.
 npm install dbportal
 ```
 
-## Quick Start
-
-1. Create `.env`:
+## Quick start
 
 ```bash
 DATABASE_URL=postgres://user:password@localhost:5432/my_db
-# or
-# DATABASE_URL=mongodb://localhost:27017/my_db
-# or
-# DATABASE_URL=mysql://user:password@localhost:3306/my_db
-```
-
-2. Run:
-
-```bash
 npx dbportal
 ```
 
-## API
+Optional additional connections:
 
-- `GET /api/tables`
-- `GET /api/capabilities`
-- `GET /api/overview`
-- `GET /api/data/:name?limit=100`
-- `POST /api/query`
-
-SQL query example:
-
-```json
-{ "query": "SELECT * FROM users LIMIT 50" }
+```bash
+DATABASE_URL_1=mongodb://localhost:27017/logs
+DATABASE_URL_2=sqlite:./local.db
 ```
 
-Mongo query example:
+## Supported databases
 
-```json
-{
-  "query": {
-    "collection": "users",
-    "filter": { "isActive": true },
-    "sort": { "createdAt": -1 },
-    "limit": 50
-  }
-}
-```
+- PostgreSQL
+- MongoDB
+- MySQL / MariaDB
+- SQLite
+- SQL Server
+- Redis
 
-## Notes
+## What you get
 
-- Best for development and local exploration.
-- Query execution uses your DB user's permissions.
+- Overview dashboard with counts and record distribution.
+- Data explorer with table, document, JSON, and inspector views.
+- Schema visualizer for relational databases.
+- Query workspace with SQL, Mongo structured queries, and Mongo aggregation examples.
+- Read-only backend safeguards.
+
+## Read-only safeguards
+
+- Write API routes are removed.
+- Mutating SQL statements are blocked.
+- MongoDB `$out` and `$merge` are blocked.
+- Table editing in the UI is disabled.
+
+## Package contents
+
+- `dist/` compiled backend
+- `frontend/dist/` compiled dashboard
+- `bin/` executable launcher
 
 ## License
 

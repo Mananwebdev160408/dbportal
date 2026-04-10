@@ -1,7 +1,7 @@
 {
   "name": "dbportal",
   "version": "1.0.0",
-  "description": "A universal, agnostic database GUI for any connection string.",
+  "description": "A local read-only database explorer for multiple connection strings.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -30,7 +30,7 @@
     "mongodb",
     "postgres",
     "mysql",
-    "universal"
+    "local"
   ],
   "author": "Manan Gupta",
   "license": "MIT",
