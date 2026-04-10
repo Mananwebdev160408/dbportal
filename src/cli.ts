@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Serve the built React frontend from frontend/dist
 const frontendDist = path.resolve(__dirname, "..", "frontend", "dist");
 
-const DEFAULT_PORT = Number.parseInt(process.env.PORT ?? "3000", 10);
+const DEFAULT_PORT = Number.parseInt(process.env.PORT ?? "0", 10);
 const HOST = "127.0.0.1";
 const MAX_PORT_SCAN = 25;
 
@@ -76,26 +76,61 @@ const hasMutatingMongoStages = (pipeline: unknown): boolean => {
   return false;
 };
 
+import net from "node:net";
+
+const checkPortAvailable = (port: number): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once("error", () => {
+      resolve(false);
+    });
+    server.once("listening", () => {
+      server.close(() => {
+        // Also check explicitly on 127.0.0.1 for Windows compatibility
+        const server2 = net.createServer();
+        server2.once("error", () => resolve(false));
+        server2.once("listening", () => {
+          server2.close(() => resolve(true));
+        });
+        server2.listen(port, "127.0.0.1");
+      });
+    });
+    server.listen(port, "0.0.0.0");
+  });
+};
+
 const listenOnAvailablePort = async (
   app: express.Express,
   startPort: number,
 ): Promise<{ server: ReturnType<express.Express["listen"]>; port: number }> => {
-  for (let port = startPort; port < startPort + MAX_PORT_SCAN; port += 1) {
-    try {
-      const server = await new Promise<ReturnType<express.Express["listen"]>>(
-        (resolve, reject) => {
-          const activeServer = app.listen(port, HOST, () =>
-            resolve(activeServer),
-          );
-          activeServer.once("error", reject);
-        },
-      );
+  if (startPort === 0) {
+    return new Promise((resolve, reject) => {
+      const activeServer = app.listen(0, "127.0.0.1", () => {
+        const address = activeServer.address();
+        resolve({
+          server: activeServer,
+          port: typeof address === "object" && address !== null ? address.port : 0,
+        });
+      });
+      activeServer.once("error", reject);
+    });
+  }
 
-      return { server, port };
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException)?.code;
-      if (code !== "EADDRINUSE") {
-        throw error;
+  for (let port = startPort; port < startPort + MAX_PORT_SCAN; port += 1) {
+    const isAvailable = await checkPortAvailable(port);
+    if (isAvailable) {
+      try {
+        const server = await new Promise<ReturnType<express.Express["listen"]>>(
+          (resolve, reject) => {
+            const activeServer = app.listen(port, "127.0.0.1", () =>
+              resolve(activeServer),
+            );
+            activeServer.once("error", reject);
+          },
+        );
+        return { server, port };
+      } catch (error) {
+        // Fallback to loop if starting Express still fails
       }
     }
   }
@@ -289,7 +324,7 @@ const main = async () => {
   try {
     const started = await listenOnAvailablePort(
       app,
-      Number.isFinite(DEFAULT_PORT) ? DEFAULT_PORT : 3000,
+      Number.isFinite(DEFAULT_PORT) ? DEFAULT_PORT : 0,
     );
     server = started.server;
     const uiUrl = `http://localhost:${started.port}`;

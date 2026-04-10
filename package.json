@@ -1,6 +1,6 @@
 {
   "name": "dbportal",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A local read-only database explorer for multiple connection strings.",
   "type": "module",
   "main": "./dist/index.cjs",
