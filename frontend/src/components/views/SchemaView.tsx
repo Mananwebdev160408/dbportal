@@ -148,6 +148,7 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
               animated: true,
               style: { stroke: 'var(--text-muted)', strokeWidth: 1.5, opacity: 0.6 },
               labelStyle: { fill: 'var(--text)', fontSize: 10, fontFamily: 'var(--font-mono)' },
+              labelBgStyle: { fill: 'var(--surface)', fillOpacity: 0.8 },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
                 color: 'var(--text-muted)',
