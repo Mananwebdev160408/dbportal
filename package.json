@@ -7,7 +7,7 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "dbportal": "./bin/cli.js"
+    "dbportal": "bin/cli.js"
   },
   "files": [
     "dist",
@@ -34,6 +34,14 @@
   ],
   "author": "Manan Gupta",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mananwebdev160408/dbportal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Mananwebdev160408/dbportal/issues"
+  },
+  "homepage": "https://github.com/Mananwebdev160408/dbportal#readme",
   "dependencies": {
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
