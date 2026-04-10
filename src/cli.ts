@@ -35,6 +35,47 @@ const parseLimit = (value: unknown): number => {
   return Math.min(parsed, 500);
 };
 
+const isSqlDriver = (kind: string): boolean => {
+  const value = kind.toLowerCase();
+  return value.includes('postgres') || value.includes('mysql') || value.includes('mssql') || value.includes('sqlserver') || value.includes('sqlite');
+};
+
+const isMongoDriver = (kind: string): boolean => kind.toLowerCase().includes('mongo');
+
+const isReadOnlySqlQuery = (query: string): boolean => {
+  const normalized = query.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--.*$/gm, ' ').trim().toLowerCase();
+
+  // Read-only entry points we allow in this app.
+  const startsReadOnly = /^(select|with|show|describe|desc|explain|pragma)\b/.test(normalized);
+  if (!startsReadOnly) {
+    return false;
+  }
+
+  // Block known mutating/privileged statements even if hidden in CTEs.
+  const forbidden = /\b(insert|update|delete|drop|truncate|alter|create|replace|merge|grant|revoke|commit|rollback|savepoint|attach|detach)\b/;
+  return !forbidden.test(normalized);
+};
+
+const hasMutatingMongoStages = (pipeline: unknown): boolean => {
+  if (!Array.isArray(pipeline)) {
+    return false;
+  }
+
+  const blockedStages = new Set(['$out', '$merge']);
+  for (const stage of pipeline) {
+    if (!stage || typeof stage !== 'object' || Array.isArray(stage)) {
+      continue;
+    }
+
+    const stageOperator = Object.keys(stage)[0];
+    if (stageOperator && blockedStages.has(stageOperator)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 const listenOnAvailablePort = async (
   app: express.Express,
   startPort: number,
@@ -211,31 +252,30 @@ const main = async () => {
 
     try {
       const conn = manager.getConnection(dbId);
+      const dbKind = conn.getKind();
+
+      if (typeof query === 'string') {
+        if (!isSqlDriver(dbKind)) {
+          response.status(400).json({ error: 'String queries are only supported for SQL drivers.' });
+          return;
+        }
+
+        if (!isReadOnlySqlQuery(query)) {
+          response.status(403).json({ error: 'Only read-only SQL statements are allowed in this build.' });
+          return;
+        }
+      } else if (isMongoDriver(dbKind)) {
+        const mongoQuery = query as { pipeline?: unknown };
+        if (hasMutatingMongoStages(mongoQuery.pipeline)) {
+          response.status(403).json({ error: 'MongoDB write pipeline stages are disabled. Remove $out/$merge.' });
+          return;
+        }
+      }
+
       const result = await conn.query(query);
       response.status(200).json(result);
     } catch (error) {
       response.status(400).json({ error: toMessage(error) });
-    }
-  });
-
-  app.post("/api/data/:name/update", async (request, response) => {
-    const dbId = String(request.query.dbId || "primary");
-    const name = request.params.name;
-    const { filter, update } = request.body;
-
-    if (!filter || !update) {
-      response.status(400).json({ error: "Update requires 'filter' and 'update' payload." });
-      return;
-    }
-
-    try {
-      const conn = manager.getConnection(dbId);
-      await conn.updateRecord(name, filter, update);
-      response.status(200).json({ success: true });
-    } catch (error) {
-      const msg = toMessage(error);
-      const status = msg.includes('not supported') ? 501 : 500;
-      response.status(status).json({ error: msg });
     }
   });
 

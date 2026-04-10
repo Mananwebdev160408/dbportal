@@ -64,6 +64,5 @@ export interface DatabaseDriver {
   ): Promise<Record<string, unknown>[]>;
   getSchema(): Promise<DatabaseSchema>;
   query?(query: DriverQueryInput): Promise<QueryResult>;
-  updateRecord?(collection: string, filter: Record<string, unknown>, update: Record<string, unknown>): Promise<void>;
   close?(): Promise<void>;
 }

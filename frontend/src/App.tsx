@@ -312,9 +312,6 @@ export default function App() {
           sortBy={sortBy}
           sortOrder={sortOrder}
           filters={filters}
-          dbId={activeDbId}
-          dbType={dbType}
-          tableName={currentTable}
           onSort={(field) => {
             const nextOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
             setSortBy(field);

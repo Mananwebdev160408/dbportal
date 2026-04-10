@@ -168,7 +168,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
     }
 
     if (supportsRaw && !supportsStructured) {
-      return 'SQL query engine: write a raw SQL query and run.';
+      return 'SQL query engine (read-only): run SELECT/SHOW/EXPLAIN style queries.';
     }
 
     if (supportsRaw && supportsStructured) {
@@ -190,11 +190,11 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
 
     if (supportsRaw && !supportsStructured) {
       return [
-        'Start with SELECT queries before trying writes or DDL.',
+        'Use SELECT/SHOW/EXPLAIN queries in this read-only mode.',
         'Add LIMIT early while exploring a table.',
         'Use WHERE and ORDER BY to narrow and rank results.',
         'Quote mixed-case Postgres identifiers, for example "AcademicCalendarEvent".',
-        'Be careful with UPDATE, DELETE, DROP, and TRUNCATE on shared databases.',
+        'Write statements are blocked in this build.',
       ];
     }
 
@@ -244,6 +244,82 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
           sort: { createdAt: -1 as 1 | -1 },
           limit: 25,
         },
+      },
+    ];
+  }, [activeObjectName]);
+
+  const aggregationExamples = useMemo(() => {
+    const name = activeObjectName;
+    return [
+      {
+        label: 'Status breakdown',
+        pipeline: [
+          { $match: { status: { $exists: true } } },
+          { $group: { _id: '$status', total: { $sum: 1 } } },
+          { $sort: { total: -1 as 1 | -1 } },
+        ],
+      },
+      {
+        label: 'Top users by spend',
+        pipeline: [
+          { $match: { totalSpent: { $gt: 0 } } },
+          {
+            $group: {
+              _id: '$userId',
+              orders: { $sum: 1 },
+              totalSpent: { $sum: '$totalSpent' },
+            },
+          },
+          { $sort: { totalSpent: -1 as 1 | -1 } },
+          { $limit: 10 },
+        ],
+      },
+      {
+        label: 'Recent trend (daily)',
+        pipeline: [
+          {
+            $match: {
+              createdAt: {
+                $gte: {
+                  $dateSubtract: { startDate: '$$NOW', unit: 'day', amount: 30 },
+                },
+              },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 as 1 | -1 } },
+        ],
+      },
+      {
+        label: 'Multi-metric facet',
+        pipeline: [
+          {
+            $facet: {
+              totalDocs: [{ $count: 'count' }],
+              topStatuses: [
+                { $match: { status: { $exists: true } } },
+                { $group: { _id: '$status', count: { $sum: 1 } } },
+                { $sort: { count: -1 as 1 | -1 } },
+                { $limit: 5 },
+              ],
+              newest: [
+                { $sort: { createdAt: -1 as 1 | -1 } },
+                { $limit: 5 },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        label: 'Collection sample',
+        pipeline: [{ $sample: { size: 25 } }],
       },
     ];
   }, [activeObjectName]);
@@ -425,6 +501,14 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
     onStatus('Structured query example loaded', false);
   };
 
+  const applyAggregationExample = (pipeline: Record<string, unknown>[]) => {
+    setCollection(activeObjectName || collection);
+    setQueryMode('aggregation');
+    setPipelineText(JSON.stringify(pipeline, null, 2));
+    setRunError('');
+    onStatus('Aggregation pipeline example loaded', false);
+  };
+
   return (
     <div className="query-workspace">
       <section className="query-panel">
@@ -466,6 +550,21 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
                 >
                   <span>{example.label}</span>
                   <code>{JSON.stringify(example.query)}</code>
+                </button>
+              ))}
+            </div>
+          )}
+          {supportsStructured && dbType.toLowerCase().includes('mongo') && (
+            <div className="query-example-list">
+              {aggregationExamples.map((example) => (
+                <button
+                  key={example.label}
+                  type="button"
+                  className="query-example-btn"
+                  onClick={() => applyAggregationExample(example.pipeline as Record<string, unknown>[])}
+                >
+                  <span>{example.label} (Aggregate)</span>
+                  <code>{JSON.stringify(example.pipeline)}</code>
                 </button>
               ))}
             </div>
@@ -675,12 +774,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
               <p>Run a query to see results here.</p>
             </EmptyState>
           ) : resultMode === 'table' ? (
-            <TableView 
-              rows={resultRows} 
-              dbId={dbId}
-              dbType={dbType}
-              tableName={collection}
-            />
+            <TableView rows={resultRows} />
           ) : (
             <JsonView rows={resultRows} />
           )}

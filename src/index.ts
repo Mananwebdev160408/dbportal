@@ -170,13 +170,6 @@ export class DatabaseConnection {
     return this.driver.query(raw);
   }
 
-  async updateRecord(collection: string, filter: Record<string, unknown>, update: Record<string, unknown>): Promise<void> {
-    if (!this.driver.updateRecord) {
-      throw new Error('Record mutation is not supported for this database driver.');
-    }
-    return this.driver.updateRecord(collection, filter, update);
-  }
-
   async close(): Promise<void> {
     if (this.driver.close) {
       await this.driver.close();

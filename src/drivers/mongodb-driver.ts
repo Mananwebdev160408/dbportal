@@ -146,11 +146,6 @@ export class MongoDriver implements DatabaseDriver {
     };
   }
 
-  async updateRecord(collection: string, filter: Record<string, unknown>, update: Record<string, unknown>): Promise<void> {
-    const db = await this.getDatabase();
-    await (db.collection(collection) as any).updateOne(filter, { $set: update });
-  }
-
   async close(): Promise<void> {
     if (!this.client) {
       return;

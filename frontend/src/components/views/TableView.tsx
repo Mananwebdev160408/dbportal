@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import EmptyState from '../EmptyState';
 
 interface TableViewProps {
@@ -5,9 +6,6 @@ interface TableViewProps {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   filters?: Record<string, string>;
-  dbId?: string;
-  dbType?: string;
-  tableName?: string;
   onSort?: (col: string) => void;
   onFilterChange?: (filters: Record<string, string>) => void;
 }
@@ -21,15 +19,9 @@ const escapeHtml = (value: unknown): string => {
     .replace(/'/g, '&#39;');
 };
 
-import { useState } from 'react';
-
-export default function TableView({ rows, sortBy, sortOrder, filters = {}, dbId, dbType, tableName, onSort, onFilterChange }: TableViewProps) {
-  const [editingCell, setEditingCell] = useState<{ rowIdx: number; col: string } | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [saving, setSaving] = useState(false);
+export default function TableView({ rows, sortBy, sortOrder, filters = {}, onSort, onFilterChange }: TableViewProps) {
   const [localFilters, setLocalFilters] = useState<Record<string, string>>(filters);
 
-  const isMongo = dbType?.toLowerCase().includes('mongo');
   if (!rows.length) {
     return (
       <EmptyState>
@@ -51,59 +43,6 @@ export default function TableView({ rows, sortBy, sortOrder, filters = {}, dbId,
 
   const handleLocalFilterChange = (col: string, val: string) => {
     setLocalFilters(prev => ({ ...prev, [col]: val }));
-  };
-
-  const startEdit = (rowIdx: number, col: string, val: unknown) => {
-    if (!isMongo) return;
-    setEditingCell({ rowIdx, col });
-    setEditValue(String(val ?? ''));
-  };
-
-  const handleSave = async (rowIdx: number, col: string) => {
-    if (!dbId || !tableName) return;
-    const row = rows[rowIdx];
-    const identifier = row._id || row.id;
-
-    if (!identifier) {
-      alert('Cannot update record: No unique identifier (_id or id) found.');
-      setEditingCell(null);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/data/${tableName}/update?dbId=${dbId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filter: { _id: identifier },
-          update: { [col]: editValue }
-        }),
-      });
-
-      if (!res.ok) {
-        const payload = await res.json();
-        throw new Error(payload.error || 'Update failed');
-      }
-
-      // Optimistically update local state (simplification: just close editor)
-      // In a real app, we'd trigger a reload or update the row ref
-      setEditingCell(null);
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleAddField = async () => {
-    const fieldName = prompt('Enter new field name:');
-    if (!fieldName) return;
-    
-    // In MongoDB, we can just update a record with a new field to 'create' it
-    // We'll apply this to the first record or as a generic hint.
-    // Real schema mutation in Mongo is just writing data.
-    alert(`Field "${fieldName}" ready. Edit any row to add values for this field.`);
   };
 
   return (
@@ -161,29 +100,11 @@ export default function TableView({ rows, sortBy, sortOrder, filters = {}, dbId,
                   {(rowIdx + 1).toString().padStart(3, '0')}
                 </td>
                 {columns.map((col) => {
-                  const isEditing = editingCell?.rowIdx === rowIdx && editingCell?.col === col;
                   const val = row[col];
-                  
-                  if (isEditing) {
-                    return (
-                      <td key={col} className="editing-cell" onClick={(e) => e.stopPropagation()}>
-                        <input 
-                          autoFocus
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={() => handleSave(rowIdx, col)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSave(rowIdx, col);
-                            if (e.key === 'Escape') setEditingCell(null);
-                          }}
-                        />
-                      </td>
-                    );
-                  }
 
                   if (val === null || val === undefined) {
                     return (
-                      <td key={col} onDoubleClick={() => startEdit(rowIdx, col, null)}>
+                      <td key={col}>
                         <span className="null-val">null</span>
                       </td>
                     );
@@ -191,21 +112,20 @@ export default function TableView({ rows, sortBy, sortOrder, filters = {}, dbId,
                   if (typeof val === 'object') {
                     const fullJson = JSON.stringify(val);
                     const summary = fullJson.substring(0, 50);
-                    const titleText = (isMongo ? "Double click to edit string value\n\n" : "Click to log to console\n\n") + fullJson;
+                    const titleText = `Read-only preview\n\n${fullJson}`;
                     return (
                       <td
                         key={col}
                         className="json-cell"
                         title={titleText}
-                        onClick={() => !isMongo && console.log(`[dbportal] Row ${rowIdx} — ${col}:`, val)}
-                        onDoubleClick={() => startEdit(rowIdx, col, summary)}
+                        onClick={() => console.log(`[dbportal] Row ${rowIdx} — ${col}:`, val)}
                       >
                         <code dangerouslySetInnerHTML={{ __html: `${escapeHtml(summary)}${fullJson.length >= 50 ? '...' : ''}` }} />
                       </td>
                     );
                   }
                   return (
-                    <td key={col} title={String(val)} onDoubleClick={() => startEdit(rowIdx, col, val)}>
+                    <td key={col} title={String(val)}>
                       {String(val)}
                     </td>
                   );
