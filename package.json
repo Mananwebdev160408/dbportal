@@ -63,6 +63,6 @@
     "@types/sqlite3": "^3.1.11",
     "prettier": "^3.8.1",
     "tsup": "^8.5.1",
-    "typescript": "5.4"
+    "typescript": "6.0"
   }
 }
