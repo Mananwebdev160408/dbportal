@@ -60,7 +60,7 @@
     "@types/mssql": "^9.1.11",
     "@types/node": "^25.5.2",
     "@types/pg": "^8.15.6",
-    "@types/sqlite3": "^3.1.11",
+    "@types/sqlite3": "^5.1.0",
     "prettier": "^3.8.1",
     "tsup": "^8.5.1",
     "typescript": "5.4"
