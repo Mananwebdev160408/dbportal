@@ -2,6 +2,7 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import net from "node:net";
 import dotenv from "dotenv";
 import express from "express";
 import open from "open";
@@ -14,9 +15,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Serve the built React frontend from frontend/dist
 const frontendDist = path.resolve(__dirname, "..", "frontend", "dist");
 
-const DEFAULT_PORT = Number.parseInt(process.env.PORT ?? "0", 10);
-const HOST = "127.0.0.1";
 const MAX_PORT_SCAN = 25;
+
+interface CliOptions {
+  host: string;
+  port: number;
+}
 
 const toMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -33,6 +37,77 @@ const parseLimit = (value: unknown): number => {
   }
 
   return Math.min(parsed, 500);
+};
+
+const parsePortOption = (value: string | undefined, source: string): number => {
+  if (!value) {
+    throw new Error(source + " requires a port value.");
+  }
+
+  const port = Number.parseInt(value, 10);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error(source + " must be an integer between 0 and 65535.");
+  }
+
+  return port;
+};
+
+const parseCliOptions = (argv: string[]): CliOptions => {
+  const options: CliOptions = {
+    host: process.env.HOST?.trim() || "127.0.0.1",
+    port: parsePortOption(process.env.PORT ?? "0", "PORT"),
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+
+    if (arg === "--help") {
+      console.log("Usage: dbportal [--host <host>] [--port <port>]");
+      process.exit(0);
+    }
+
+    if (arg === "--host") {
+      const host = argv[index + 1]?.trim();
+      if (!host) {
+        throw new Error("--host requires a host value.");
+      }
+      options.host = host;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--host=")) {
+      const host = arg.slice("--host=".length).trim();
+      if (!host) {
+        throw new Error("--host requires a host value.");
+      }
+      options.host = host;
+      continue;
+    }
+
+    if (arg === "--port" || arg === "-p") {
+      options.port = parsePortOption(argv[index + 1], arg);
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--port=")) {
+      options.port = parsePortOption(arg.slice("--port=".length), "--port");
+      continue;
+    }
+
+    throw new Error("Unknown option: " + arg);
+  }
+
+  return options;
+};
+
+const hostForUrl = (host: string): string => {
+  if (host === "0.0.0.0" || host === "::") {
+    return "localhost";
+  }
+
+  return host.includes(":") ? "[" + host + "]" : host;
 };
 
 const isSqlDriver = (kind: string): boolean => {
@@ -89,36 +164,27 @@ const hasMutatingMongoStages = (pipeline: unknown): boolean => {
   return false;
 };
 
-import net from "node:net";
-
-const checkPortAvailable = (port: number): Promise<boolean> => {
+const checkPortAvailable = (port: number, host: string): Promise<boolean> => {
   return new Promise((resolve) => {
     const server = net.createServer();
     server.once("error", () => {
       resolve(false);
     });
     server.once("listening", () => {
-      server.close(() => {
-        // Also check explicitly on 127.0.0.1 for Windows compatibility
-        const server2 = net.createServer();
-        server2.once("error", () => resolve(false));
-        server2.once("listening", () => {
-          server2.close(() => resolve(true));
-        });
-        server2.listen(port, "127.0.0.1");
-      });
+      server.close(() => resolve(true));
     });
-    server.listen(port, "0.0.0.0");
+    server.listen(port, host);
   });
 };
 
 const listenOnAvailablePort = async (
   app: express.Express,
   startPort: number,
+  host: string,
 ): Promise<{ server: ReturnType<express.Express["listen"]>; port: number }> => {
   if (startPort === 0) {
     return new Promise((resolve, reject) => {
-      const activeServer = app.listen(0, "127.0.0.1", () => {
+      const activeServer = app.listen(0, host, () => {
         const address = activeServer.address();
         resolve({
           server: activeServer,
@@ -131,12 +197,12 @@ const listenOnAvailablePort = async (
   }
 
   for (let port = startPort; port < startPort + MAX_PORT_SCAN; port += 1) {
-    const isAvailable = await checkPortAvailable(port);
+    const isAvailable = await checkPortAvailable(port, host);
     if (isAvailable) {
       try {
         const server = await new Promise<ReturnType<express.Express["listen"]>>(
           (resolve, reject) => {
-            const activeServer = app.listen(port, "127.0.0.1", () =>
+            const activeServer = app.listen(port, host, () =>
               resolve(activeServer),
             );
             activeServer.once("error", reject);
@@ -155,6 +221,7 @@ const listenOnAvailablePort = async (
 };
 
 const main = async () => {
+  const options = parseCliOptions(process.argv.slice(2));
   const urls: { id: string; url: string }[] = [];
   if (process.env.DATABASE_URL) {
     urls.push({ id: "primary", url: process.env.DATABASE_URL });
@@ -356,10 +423,11 @@ const main = async () => {
   try {
     const started = await listenOnAvailablePort(
       app,
-      Number.isFinite(DEFAULT_PORT) ? DEFAULT_PORT : 0,
+      options.port,
+      options.host,
     );
     server = started.server;
-    const uiUrl = `http://localhost:${started.port}`;
+    const uiUrl = "http://" + hostForUrl(options.host) + ":" + started.port;
 
     console.log(`dbportal connected (${urls.length} database(s)).`);
     console.log(`Dashboard running at ${uiUrl}`);
