@@ -159,6 +159,7 @@ export default function QueryWorkbench({
   const [resultRows, setResultRows] = useState<Record<string, unknown>[]>([]);
   const [telemetry, setTelemetry] = useState<QueryTelemetry | null>(null);
   const [running, setRunning] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [runError, setRunError] = useState("");
   const historyKey = `${HISTORY_KEY_PREFIX}:${dbType}:${dbId}`;
   const [history, setHistory] = useState<QueryHistoryEntry[]>(() => {
@@ -517,6 +518,14 @@ export default function QueryWorkbench({
     onStatus("Query editor reset", false);
   };
 
+  const copyResults = async () => {
+    if (resultRows.length === 0) return;
+    const text = JSON.stringify(resultRows, null, 2);
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const applyRawExample = (sql: string) => {
     setRawQuery(sql);
     setRunError("");
@@ -838,6 +847,16 @@ export default function QueryWorkbench({
             >
               JSON
             </button>
+            {resultRows.length > 0 && (
+    <button
+    type="button"
+    className="result-tab"
+    onClick={copyResults}
+    title="Copy results to clipboard"
+  >
+    {copied ? "✅ Copied!" : "📋 Copy"}
+  </button>
+)}
           </div>
         </div>
 
