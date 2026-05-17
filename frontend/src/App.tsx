@@ -9,6 +9,7 @@ import JsonView from './components/views/JsonView';
 import InspectorView from './components/views/InspectorView';
 import QueryWorkbench from './components/views/QueryWorkbench';
 import SchemaView from './components/views/SchemaView';
+import Pagination from './components/Pagination';
 
 export type ViewMode = 'table' | 'documents' | 'json' | 'inspector';
 export type AppMode = 'overview' | 'table' | 'query' | 'schema';
@@ -84,6 +85,8 @@ export default function App() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [schemaReloadKey, setSchemaReloadKey] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const pageSize = 50;
 
   // Apply theme & mode to <body>
   useEffect(() => {
@@ -203,13 +206,17 @@ export default function App() {
     targetDbId?: string,
     sField?: string,
     sOrder?: 'asc' | 'desc',
-    currentFilters?: Record<string, string>
+    currentFilters?: Record<string, string>,
+    targetOffset?: number,
   ) => {
     const dbToUse = targetDbId || activeDbId;
     if (targetDbId && targetDbId !== activeDbId) {
       setActiveDbId(targetDbId);
       await loadDatabaseMetadata(targetDbId);
     }
+    const isTableSwitch = name !== currentTable;
+    const resolvedOffset = targetOffset !== undefined ? targetOffset : (isTableSwitch ? 0 : offset);
+    if (isTableSwitch) setOffset(0);
     
     setAppMode('table');
     setCurrentTable(name);
@@ -307,22 +314,40 @@ export default function App() {
       if (viewMode === 'json') return <JsonView rows={filteredData} />;
       if (viewMode === 'inspector') return <InspectorView key={reloadKey} rows={filteredData} />;
       return (
-        <TableView 
-          rows={data} 
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          filters={filters}
-          onSort={(field) => {
-            const nextOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
-            setSortBy(field);
-            setSortOrder(nextOrder);
-            loadTable(currentTable, activeDbId, field, nextOrder, filters);
-          }}
-          onFilterChange={(newFilters) => {
-            setFilters(newFilters);
-            loadTable(currentTable, activeDbId, sortBy, sortOrder, newFilters);
-          }}
-        />
+        <>
+          <TableView
+            rows={data}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            filters={filters}
+            onSort={(field) => {
+              const nextOrder =
+                sortBy === field && sortOrder === "asc" ? "desc" : "asc";
+              setSortBy(field);
+              setSortOrder(nextOrder);
+              loadTable(currentTable, activeDbId, field, nextOrder, filters, offset);
+            }}
+            onFilterChange={(newFilters) => {
+              setFilters(newFilters);
+              loadTable(currentTable, activeDbId, sortBy, sortOrder, newFilters, 0);
+            }}
+          />
+          <Pagination
+            offset={offset}
+            pageSize={pageSize}
+            dataLength={data.length}
+            onPrev={() => {
+              const newOffset = Math.max(0, offset - pageSize);
+              setOffset(newOffset);
+              loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, newOffset);
+            }}
+            onNext={() => {
+              const newOffset = offset + pageSize;
+              setOffset(newOffset);
+              loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, newOffset);
+            }}
+          />
+        </>
       );
     }
 
