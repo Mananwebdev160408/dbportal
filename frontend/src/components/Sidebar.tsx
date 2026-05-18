@@ -5,10 +5,16 @@ import type {
   DriverCapabilities,
 } from "../App";
 
+interface TableWithCount {
+  name: string;
+  count: number;
+}
+
 interface SidebarProps {
   connections: DatabaseConnectionInfo[];
   activeDbId: string;
   tables: string[];
+  tableCounts?: Record<string, number>;
   activeTable: string;
   appMode: AppMode;
   capabilities: DriverCapabilities;
@@ -114,6 +120,7 @@ export default function Sidebar({
   onSchemaClick,
   onTableClick,
   onDbChange,
+  tableCounts = {},
 }: SidebarProps) {
   const [tableFilter, setTableFilter] = useState("");
 
@@ -232,6 +239,22 @@ export default function Sidebar({
               >
                 <TableIcon />
                 <span>{name}</span>
+                {tableCounts[name] !== undefined && (
+                  <span style={{
+                    marginLeft: 'auto',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    background: 'var(--accent, #6366f1)',
+                    color: '#fff',
+                    borderRadius: '999px',
+                    padding: '1px 7px',
+                    minWidth: '20px',
+                    textAlign: 'center',
+                    opacity: 0.85,
+                  }}>
+                    {tableCounts[name] > 9999 ? '9999+' : tableCounts[name]}
+                  </span>
+                )}
               </button>
             ))}
           </div>
