@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import EmptyState from "../EmptyState";
 
 const exportCSV = (rows: Record<string, unknown>[], columns: string[]) => {
@@ -43,6 +43,9 @@ const escapeHtml = (value: unknown): string => {
     .replace(/'/g, "&#39;");
 };
 
+const DEFAULT_COL_WIDTH = 150;
+const MIN_COL_WIDTH = 60;
+
 export default function TableView({
   rows,
   sortBy,
@@ -53,6 +56,12 @@ export default function TableView({
 }: TableViewProps) {
   const [localFilters, setLocalFilters] =
     useState<Record<string, string>>(filters);
+  const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  const dragState = useRef<{
+    col: string;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
 
   if (!rows.length) {
     return (
@@ -77,20 +86,58 @@ export default function TableView({
     setLocalFilters((prev) => ({ ...prev, [col]: val }));
   };
 
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent, col: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startWidth = colWidths[col] ?? DEFAULT_COL_WIDTH;
+      dragState.current = { col, startX: e.clientX, startWidth };
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!dragState.current) return;
+        const delta = moveEvent.clientX - dragState.current.startX;
+        const newWidth = Math.max(
+          MIN_COL_WIDTH,
+          dragState.current.startWidth + delta,
+        );
+        setColWidths((prev) => ({
+          ...prev,
+          [dragState.current!.col]: newWidth,
+        }));
+      };
+
+      const handleMouseUp = () => {
+        dragState.current = null;
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    },
+    [colWidths],
+  );
+
   return (
-      <div className="table-view-container">
-        <div style={{ display: "flex", justifyContent: "flex-end", padding: "0.5rem 1rem" }}>
-          <button
-            className="export-csv-btn"
-            onClick={() => exportCSV(rows, columns)}
-          >
-            Export CSV ↓
-          </button>
-        </div>
-        <div
-          className="table-responsive-wrapper"
-        style={{ minWidth: "100%", width: "max-content" }}
+    <div className="table-view-container">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          padding: "0.5rem 1rem",
+        }}
+      >
+        <button
+          className="export-csv-btn"
+          onClick={() => exportCSV(rows, columns)}
         >
+          Export CSV ↓
+        </button>
+      </div>
+      <div
+        className="table-responsive-wrapper"
+        style={{ minWidth: "100%", width: "max-content" }}
+      >
         <table className="data-table">
           <thead>
             <tr>
@@ -100,7 +147,13 @@ export default function TableView({
                   key={col}
                   className={sortBy === col ? "active-sort" : ""}
                   onClick={() => onSort?.(col)}
-                  style={{ cursor: "pointer" }}
+                  style={{
+                    cursor: "pointer",
+                    width: `${colWidths[col] ?? DEFAULT_COL_WIDTH}px`,
+                    minWidth: `${MIN_COL_WIDTH}px`,
+                    position: "relative",
+                    userSelect: "none",
+                  }}
                 >
                   <div className="th-content">
                     <span>{col.toUpperCase()}</span>
@@ -110,6 +163,21 @@ export default function TableView({
                       </span>
                     )}
                   </div>
+                  {/* Resize handle */}
+                  <span
+                    onMouseDown={(e) => handleMouseDown(e, col)}
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: 0,
+                      height: "100%",
+                      width: "6px",
+                      cursor: "col-resize",
+                      background: "transparent",
+                      zIndex: 1,
+                    }}
+                    title="Drag to resize"
+                  />
                 </th>
               ))}
             </tr>
@@ -174,7 +242,10 @@ export default function TableView({
                         className="json-cell"
                         title={titleText}
                         onClick={() =>
-                          console.log(`[dbportal] Row ${rowIdx} — ${col}:`, val)
+                          console.log(
+                            `[dbportal] Row ${rowIdx} — ${col}:`,
+                            val,
+                          )
                         }
                       >
                         <code
