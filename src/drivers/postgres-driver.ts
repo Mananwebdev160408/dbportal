@@ -1,7 +1,21 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult, DatabaseSchema, TableSchema } from './types.js';
+import type {
+  DatabaseDriver,
+  DriverCapabilities,
+  DriverQueryInput,
+  QueryResult,
+  DatabaseSchema,
+  TableSchema,
+} from "./types.js";
 
 export class PostgresDriver implements DatabaseDriver {
-  private client: { connect: () => Promise<unknown>; query: (sql: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>; end: () => Promise<void> } | null = null;
+  private client: {
+    connect: () => Promise<unknown>;
+    query: (
+      sql: string,
+      values?: unknown[],
+    ) => Promise<{ rows: Record<string, unknown>[] }>;
+    end: () => Promise<void>;
+  } | null = null;
 
   constructor(private readonly connectionString: string) {}
 
@@ -10,14 +24,27 @@ export class PostgresDriver implements DatabaseDriver {
       return;
     }
 
-    let pgModule: { Client: new (config: { connectionString: string }) => { connect: () => Promise<unknown>; query: (sql: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>; end: () => Promise<void> } };
+    let pgModule: {
+      Client: new (config: { connectionString: string }) => {
+        connect: () => Promise<unknown>;
+        query: (
+          sql: string,
+          values?: unknown[],
+        ) => Promise<{ rows: Record<string, unknown>[] }>;
+        end: () => Promise<void>;
+      };
+    };
     try {
-      pgModule = await import('pg');
+      pgModule = await import("pg");
     } catch {
-      throw new Error('PostgreSQL driver not found. Install it with: npm install pg');
+      throw new Error(
+        "PostgreSQL driver not found. Install it with: npm install pg",
+      );
     }
 
-    const client = new pgModule.Client({ connectionString: this.connectionString });
+    const client = new pgModule.Client({
+      connectionString: this.connectionString,
+    });
     await client.connect();
     this.client = client;
   }
@@ -35,7 +62,7 @@ export class PostgresDriver implements DatabaseDriver {
       `SELECT table_name
        FROM information_schema.tables
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-       ORDER BY table_name ASC`
+       ORDER BY table_name ASC`,
     );
 
     return result.rows.map((row) => String(row.table_name));
@@ -46,25 +73,29 @@ export class PostgresDriver implements DatabaseDriver {
     limit: number,
     offset: number = 0,
     sortBy?: string,
-    sortOrder: 'asc' | 'desc' = 'asc',
-    filters: Record<string, string> = {}
+    sortOrder: "asc" | "desc" = "asc",
+    filters: Record<string, string> = {},
   ): Promise<Record<string, unknown>[]> {
     const safeName = this.toSafeIdentifier(name);
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(limit, 500))
+      : 100;
     const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
 
     let sql = `SELECT * FROM "${safeName}"`;
     const params: (string | number)[] = [];
 
-    const filterEntries = Object.entries(filters).filter(([_, val]) => val.trim().length > 0);
+    const filterEntries = Object.entries(filters).filter(
+      ([_, val]) => val.trim().length > 0,
+    );
     if (filterEntries.length > 0) {
-      sql += ' WHERE ';
+      sql += " WHERE ";
       const clauses = filterEntries.map(([field, value], idx) => {
         const safeField = this.toSafeIdentifier(field);
         params.push(`%${value}%`);
         return `"${safeField}"::text ILIKE $${params.length}`;
       });
-      sql += clauses.join(' AND ');
+      sql += clauses.join(" AND ");
     }
 
     if (sortBy) {
@@ -84,9 +115,11 @@ export class PostgresDriver implements DatabaseDriver {
   async getTableCount(name: string): Promise<number> {
     const safeName = this.toSafeIdentifier(name);
     const client = await this.getClient();
-    const result = await client.query(`SELECT COUNT(*)::bigint AS count FROM "${safeName}"`);
+    const result = await client.query(
+      `SELECT COUNT(*)::bigint AS count FROM "${safeName}"`,
+    );
     const raw = result.rows[0]?.count;
-    const parsed = Number.parseInt(String(raw ?? '0'), 10);
+    const parsed = Number.parseInt(String(raw ?? "0"), 10);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
@@ -97,7 +130,7 @@ export class PostgresDriver implements DatabaseDriver {
       `SELECT table_name, column_name, data_type, is_nullable
        FROM information_schema.columns
        WHERE table_schema = 'public'
-       ORDER BY table_name, ordinal_position`
+       ORDER BY table_name, ordinal_position`,
     );
 
     const primaryKeyResult = await client.query(
@@ -107,7 +140,7 @@ export class PostgresDriver implements DatabaseDriver {
          ON tc.constraint_name = kcu.constraint_name
         AND tc.table_schema = kcu.table_schema
        WHERE tc.table_schema = 'public'
-         AND tc.constraint_type = 'PRIMARY KEY'`
+         AND tc.constraint_type = 'PRIMARY KEY'`,
     );
 
     const foreignKeyResult = await client.query(
@@ -122,7 +155,7 @@ export class PostgresDriver implements DatabaseDriver {
          ON ccu.constraint_name = tc.constraint_name
         AND ccu.table_schema = tc.table_schema
        WHERE tc.table_schema = 'public'
-         AND tc.constraint_type = 'FOREIGN KEY'`
+         AND tc.constraint_type = 'FOREIGN KEY'`,
     );
 
     const primaryMap = new Map<string, Set<string>>();
@@ -140,14 +173,16 @@ export class PostgresDriver implements DatabaseDriver {
       const table = String(row.table_name);
       const column = String(row.column_name);
       const type = String(row.data_type);
-      const isNullable = String(row.is_nullable).toLowerCase() === 'yes';
+      const isNullable = String(row.is_nullable).toLowerCase() === "yes";
       const isPrimary = primaryMap.get(table)?.has(column) ?? false;
 
       if (!tableMap.has(table)) {
         tableMap.set(table, { name: table, columns: [], foreignKeys: [] });
       }
 
-      tableMap.get(table)!.columns.push({ name: column, type, isNullable, isPrimary });
+      tableMap
+        .get(table)!
+        .columns.push({ name: column, type, isNullable, isPrimary });
     }
 
     for (const row of foreignKeyResult.rows) {
@@ -169,8 +204,10 @@ export class PostgresDriver implements DatabaseDriver {
     }
 
     return {
-      dbType: 'postgres',
-      tables: Array.from(tableMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+      dbType: "postgres",
+      tables: Array.from(tableMap.values()).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
     };
   }
 
@@ -179,13 +216,13 @@ export class PostgresDriver implements DatabaseDriver {
     const client = await this.getClient();
     const result = (await client.query(query)) as any;
     const endTime = performance.now();
-    
+
     return {
       data: result.rows,
       telemetry: {
         executionTimeMs: Math.round(endTime - startTime),
-        affectedRows: result.rowCount ?? result.rows.length
-      }
+        affectedRows: result.rowCount ?? result.rows.length,
+      },
     };
   }
 
@@ -204,7 +241,7 @@ export class PostgresDriver implements DatabaseDriver {
     }
 
     if (!this.client) {
-      throw new Error('PostgreSQL client was not initialized.');
+      throw new Error("PostgreSQL client was not initialized.");
     }
 
     return this.client;
@@ -212,7 +249,7 @@ export class PostgresDriver implements DatabaseDriver {
 
   private toSafeIdentifier(name: string): string {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-      throw new Error('Invalid PostgreSQL table name.');
+      throw new Error("Invalid PostgreSQL table name.");
     }
 
     return name;

@@ -13,6 +13,20 @@ import Pagination from './components/Pagination';
 
 export type ViewMode = 'table' | 'documents' | 'json' | 'inspector';
 export type AppMode = 'overview' | 'table' | 'query' | 'schema';
+import { useState, useEffect, useCallback, useRef } from "react";
+import Sidebar from "./components/Sidebar";
+import Toolbar from "./components/Toolbar";
+import EmptyState from "./components/EmptyState";
+import OverviewView from "./components/views/OverviewView";
+import TableView from "./components/views/TableView";
+import DocumentsView from "./components/views/DocumentsView";
+import JsonView from "./components/views/JsonView";
+import InspectorView from "./components/views/InspectorView";
+import QueryWorkbench from "./components/views/QueryWorkbench";
+import SchemaView from "./components/views/SchemaView";
+
+export type ViewMode = "table" | "documents" | "json" | "inspector";
+export type AppMode = "overview" | "table" | "query" | "schema";
 
 export interface DriverCapabilities {
   rawQuery: boolean;
@@ -44,65 +58,66 @@ export interface MultiDatabaseOverview {
   databases: (DatabaseOverview & { id: string; name: string })[];
 }
 
-export type Theme = 'midnight' | 'solar' | 'cobalt' | 'matrix';
-export type AppearanceMode = 'light' | 'dark';
+export type Theme = "midnight" | "solar" | "cobalt" | "matrix";
+export type AppearanceMode = "light" | "dark";
 
 const getPreferredTheme = (): Theme => {
-  const stored = localStorage.getItem('dbportal-theme') as Theme;
-  if (['midnight', 'solar', 'cobalt', 'matrix'].includes(stored)) return stored;
-  return 'midnight';
+  const stored = localStorage.getItem("dbportal-theme") as Theme;
+  if (["midnight", "solar", "cobalt", "matrix"].includes(stored)) return stored;
+  return "midnight";
 };
 
 const getPreferredMode = (): AppearanceMode => {
-  const stored = localStorage.getItem('dbportal-mode') as AppearanceMode;
-  if (['light', 'dark'].includes(stored)) return stored;
-  return 'dark';
+  const stored = localStorage.getItem("dbportal-mode") as AppearanceMode;
+  if (["light", "dark"].includes(stored)) return stored;
+  return "dark";
 };
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>(getPreferredTheme);
   const [mode, setMode] = useState<AppearanceMode>(getPreferredMode);
   const [connections, setConnections] = useState<DatabaseConnectionInfo[]>([]);
-  const [activeDbId, setActiveDbId] = useState<string>('primary');
+  const [activeDbId, setActiveDbId] = useState<string>("primary");
   const [tables, setTables] = useState<string[]>([]);
-  const [dbType, setDbType] = useState('');
+  const [dbType, setDbType] = useState("");
   const [capabilities, setCapabilities] = useState<DriverCapabilities>({
     rawQuery: false,
     structuredQuery: false,
   });
-  const [appMode, setAppMode] = useState<AppMode>('overview');
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [currentTable, setCurrentTable] = useState('');
+  const [appMode, setAppMode] = useState<AppMode>("overview");
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [currentTable, setCurrentTable] = useState("");
   const [data, setData] = useState<Record<string, unknown>[]>([]);
   const [overview, setOverview] = useState<MultiDatabaseOverview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [status, setStatus] = useState('Connecting...');
+  const [error, setError] = useState("");
+  const [status, setStatus] = useState("Connecting...");
   const [statusError, setStatusError] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [schemaReloadKey, setSchemaReloadKey] = useState(0);
   const [offset, setOffset] = useState(0);
   const pageSize = 50;
+  const [maskSensitive, setMaskSensitive] = useState(false);
 
   // Apply theme & mode to <body>
   useEffect(() => {
-    document.body.setAttribute('data-theme', theme);
-    document.body.setAttribute('data-mode', mode);
+    document.body.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-mode", mode);
   }, [theme, mode]);
 
   const toggleTheme = (newTheme: Theme) => {
     setTheme(newTheme);
-    localStorage.setItem('dbportal-theme', newTheme);
+    localStorage.setItem("dbportal-theme", newTheme);
   };
 
   const toggleMode = () => {
-    const next = mode === 'dark' ? 'light' : 'dark';
+    const next = mode === "dark" ? "light" : "dark";
     setMode(next);
-    localStorage.setItem('dbportal-mode', next);
+    localStorage.setItem("dbportal-mode", next);
   };
 
   const showStatus = (msg: string, isError = false) => {
@@ -114,30 +129,34 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       try {
-        const connRes = await fetch('/api/connections');
+        const connRes = await fetch("/api/connections");
         const connPayload = await connRes.json();
-        if (!connRes.ok) throw new Error(connPayload.error || 'Failed to list connections.');
-        
+        if (!connRes.ok)
+          throw new Error(connPayload.error || "Failed to list connections.");
+
         const list = connPayload.connections || [];
         setConnections(list);
-        
+
         // Use primary or first available
-        const initialId = list.find((c: DatabaseConnectionInfo) => c.id === 'primary')?.id || list[0]?.id || 'primary';
+        const initialId =
+          list.find((c: DatabaseConnectionInfo) => c.id === "primary")?.id ||
+          list[0]?.id ||
+          "primary";
         setActiveDbId(initialId);
-        
+
         await loadDatabaseMetadata(initialId);
-        
+
         // Fetch the dashboard overview immediately on load
-        const overviewRes = await fetch('/api/overview');
+        const overviewRes = await fetch("/api/overview");
         const overviewPayload = await overviewRes.json();
         if (overviewRes.ok) {
           setOverview(overviewPayload);
-          showStatus('Connected');
+          showStatus("Connected");
         }
-        
+
         setLoading(false);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Unknown error';
+        const msg = err instanceof Error ? err.message : "Unknown error";
         showStatus(msg, true);
         setError(msg);
         setLoading(false);
@@ -157,27 +176,34 @@ export default function App() {
       const tablesPayload = await tablesRes.json();
       const capabilitiesPayload = await capabilitiesRes.json();
 
-      if (!tablesRes.ok) throw new Error(tablesPayload.error || 'Failed to load tables.');
+      if (!tablesRes.ok)
+        throw new Error(tablesPayload.error || "Failed to load tables.");
       setTables(tablesPayload.tables || []);
-      setDbType(tablesPayload.dbType || 'Connected');
-      setCapabilities(capabilitiesPayload.capabilities || { rawQuery: false, structuredQuery: false });
+      setDbType(tablesPayload.dbType || "Connected");
+      setCapabilities(
+        capabilitiesPayload.capabilities || {
+          rawQuery: false,
+          structuredQuery: false,
+        },
+      );
     } catch (err: unknown) {
       throw err;
     }
   };
 
   const loadOverview = useCallback(async () => {
-    setAppMode('overview');
+    setAppMode("overview");
     setLoading(true);
-    setError('');
+    setError("");
     try {
-      const res = await fetch('/api/overview');
+      const res = await fetch("/api/overview");
       const payload = await res.json();
-      if (!res.ok) throw new Error(payload.error || 'Failed to load multi-overview.');
+      if (!res.ok)
+        throw new Error(payload.error || "Failed to load multi-overview.");
       setOverview(payload);
-      showStatus('Connected');
+      showStatus("Connected");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : "Unknown error";
       showStatus(msg, true);
       setError(msg);
     } finally {
@@ -190,10 +216,10 @@ export default function App() {
     setLoading(true);
     try {
       await loadDatabaseMetadata(dbId);
-      setAppMode('overview'); // Or keep current? Usually switch DB implies seeing what's in it
+      setAppMode("overview"); // Or keep current? Usually switch DB implies seeing what's in it
       showStatus(`Switched to ${dbId}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : "Unknown error";
       showStatus(msg, true);
       setError(msg);
     } finally {
@@ -231,55 +257,87 @@ export default function App() {
       }
       if (currentFilters && Object.keys(currentFilters).length > 0) {
         url += `&filters=${encodeURIComponent(JSON.stringify(currentFilters))}`;
+  const loadTable = useCallback(
+    async (
+      name: string,
+      targetDbId?: string,
+      sField?: string,
+      sOrder?: "asc" | "desc",
+      currentFilters?: Record<string, string>,
+    ) => {
+      const dbToUse = targetDbId || activeDbId;
+      if (targetDbId && targetDbId !== activeDbId) {
+        setActiveDbId(targetDbId);
+        await loadDatabaseMetadata(targetDbId);
       }
 
-      const res = await fetch(url);
-      const payload = await res.json();
-      if (!res.ok) throw new Error(payload.error || 'Failed to load table data.');
-      setData(payload.data || []);
-      showStatus(`Loaded ${(payload.data || []).length} records`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      showStatus(msg, true);
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeDbId]);
+      setAppMode("table");
+      setCurrentTable(name);
+      setData([]);
+      setLoading(true);
+      setError("");
+
+      try {
+        let url = `/api/data/${encodeURIComponent(name)}?dbId=${dbToUse}&limit=200`;
+        if (sField) {
+          url += `&sortBy=${encodeURIComponent(sField)}&sortOrder=${sOrder || "asc"}`;
+        }
+        if (currentFilters && Object.keys(currentFilters).length > 0) {
+          url += `&filters=${encodeURIComponent(JSON.stringify(currentFilters))}`;
+        }
+
+        const res = await fetch(url);
+        const payload = await res.json();
+        if (!res.ok)
+          throw new Error(payload.error || "Failed to load table data.");
+        setData(payload.data || []);
+        showStatus(`Loaded ${(payload.data || []).length} records`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        showStatus(msg, true);
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [activeDbId],
+  );
 
   const openQueryWorkspace = useCallback(() => {
-    setAppMode('query');
-    setCurrentTable('');
-    setSearch('');
-    setError('');
+    setAppMode("query");
+    setCurrentTable("");
+    setSearch("");
+    setError("");
     setLoading(false);
-    showStatus('Query workspace ready');
+    showStatus("Query workspace ready");
   }, []);
 
   const openSchemaVisualizer = useCallback(() => {
-    setAppMode('schema');
-    setCurrentTable('');
-    setSearch('');
-    setError('');
+    setAppMode("schema");
+    setCurrentTable("");
+    setSearch("");
+    setError("");
     setLoading(false);
-    showStatus('Schema visualizer ready');
+    showStatus("Schema visualizer ready");
   }, []);
 
   const handleReload = () => {
     setReloadKey((k) => k + 1);
-    if (appMode === 'overview') {
+    if (appMode === "overview") {
       loadOverview();
     } else if (currentTable) {
       loadTable(currentTable);
-    } else if (appMode === 'schema') {
+    } else if (appMode === "schema") {
       setSchemaReloadKey((k) => k + 1);
     }
   };
 
   const filteredData =
-    appMode === 'table' && search.trim()
+    appMode === "table" && search.trim()
       ? data.filter((row) =>
-          Object.values(row).some((val) => String(val).toLowerCase().includes(search.toLowerCase()))
+          Object.values(row).some((val) =>
+            String(val).toLowerCase().includes(search.toLowerCase()),
+          ),
         )
       : data;
 
@@ -288,31 +346,49 @@ export default function App() {
       return (
         <EmptyState>
           <div className="loading-pulse" />
-          <p>{appMode === 'overview' ? 'Loading overview...' : 'Fetching records...'}</p>
+          <p>
+            {appMode === "overview"
+              ? "Loading overview..."
+              : "Fetching records..."}
+          </p>
         </EmptyState>
       );
     }
 
     if (error) {
       return (
-        <EmptyState>
-          <p className="error-msg">{error}</p>
+        <EmptyState onRetry={handleReload}>
+          <p style={{ fontSize: "2rem" }}>⚠️</p>
+          <p className="error-msg">
+            Failed to connect to the backend.
+          </p>
+          <p style={{ opacity: 0.6, fontSize: "0.85rem" }}>
+            {error}
+          </p>
         </EmptyState>
       );
     }
 
-    if (appMode === 'overview' && overview) {
-      const activeDbData = overview.databases.find(db => db.id === activeDbId) || overview.databases[0];
-      return <OverviewView 
-        overview={activeDbData ? { ...overview, databases: [activeDbData] } : overview} 
-        onTableClick={loadTable} 
-      />;
+    if (appMode === "overview" && overview) {
+      const activeDbData =
+        overview.databases.find((db) => db.id === activeDbId) ||
+        overview.databases[0];
+      return (
+        <OverviewView
+          overview={
+            activeDbData ? { ...overview, databases: [activeDbData] } : overview
+          }
+          onTableClick={loadTable}
+        />
+      );
     }
 
-    if (appMode === 'table') {
-      if (viewMode === 'documents') return <DocumentsView rows={filteredData} />;
-      if (viewMode === 'json') return <JsonView rows={filteredData} />;
-      if (viewMode === 'inspector') return <InspectorView key={reloadKey} rows={filteredData} />;
+    if (appMode === "table") {
+      if (viewMode === "documents")
+        return <DocumentsView rows={filteredData} />;
+      if (viewMode === "json") return <JsonView rows={filteredData} />;
+      if (viewMode === "inspector")
+        return <InspectorView key={reloadKey} rows={filteredData} />;
       return (
         <>
           <TableView
@@ -348,10 +424,28 @@ export default function App() {
             }}
           />
         </>
+        <TableView
+          rows={data}
+          maskSensitive={maskSensitive}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          filters={filters}
+          onSort={(field) => {
+            const nextOrder =
+              sortBy === field && sortOrder === "asc" ? "desc" : "asc";
+            setSortBy(field);
+            setSortOrder(nextOrder);
+            loadTable(currentTable, activeDbId, field, nextOrder, filters);
+          }}
+          onFilterChange={(newFilters) => {
+            setFilters(newFilters);
+            loadTable(currentTable, activeDbId, sortBy, sortOrder, newFilters);
+          }}
+        />
       );
     }
 
-    if (appMode === 'query') {
+    if (appMode === "query") {
       return (
         <QueryWorkbench
           dbId={activeDbId}
@@ -363,7 +457,7 @@ export default function App() {
       );
     }
 
-    if (appMode === 'schema') {
+    if (appMode === "schema") {
       return (
         <SchemaView
           dbId={activeDbId}
@@ -399,22 +493,26 @@ export default function App() {
       <main className="main-area">
         <Toolbar
           title={
-            appMode === 'overview'
-              ? 'Overview'
-              : appMode === 'query'
-              ? 'Query Console'
-              : appMode === 'schema'
-              ? 'Schema'
-              : currentTable || 'Select a Table'
+            appMode === "overview"
+              ? "Overview"
+              : appMode === "query"
+                ? "Query Console"
+                : appMode === "schema"
+                  ? "Schema"
+                  : currentTable || "Select a Table"
           }
-          dbType={appMode === 'overview' && (overview?.databases?.length ?? 0) > 1 ? 'Overview' : dbType}
+          dbType={
+            appMode === "overview" && (overview?.databases?.length ?? 0) > 1
+              ? "Overview"
+              : dbType
+          }
           theme={theme}
           mode={mode}
           viewMode={viewMode}
           search={search}
-          searchDisabled={appMode !== 'table'}
-          reloadDisabled={loading || appMode === 'query'}
-          viewDisabled={appMode !== 'table'}
+          searchDisabled={appMode !== "table"}
+          reloadDisabled={loading || appMode === "query"}
+          viewDisabled={appMode !== "table"}
           status={status}
           statusError={statusError}
           onThemeChange={toggleTheme}
@@ -422,6 +520,8 @@ export default function App() {
           onViewChange={setViewMode}
           onSearchChange={setSearch}
           onReload={handleReload}
+          maskSensitive={maskSensitive}
+          onMaskToggle={() => setMaskSensitive((v) => !v)}
         />
         <div className="data-container">{renderContent()}</div>
       </main>

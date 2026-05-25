@@ -1,4 +1,11 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, StructuredQuery, QueryResult, DatabaseSchema } from './types.js';
+import type {
+  DatabaseDriver,
+  DriverCapabilities,
+  DriverQueryInput,
+  StructuredQuery,
+  QueryResult,
+  DatabaseSchema,
+} from "./types.js";
 
 type MongoDatabase = {
   listCollections: () => { toArray: () => Promise<Array<{ name: string }>> };
@@ -31,9 +38,11 @@ export class MongoDriver implements DatabaseDriver {
 
     let mongodbModule: { MongoClient: new (uri: string) => MongoClientLike };
     try {
-      mongodbModule = await import('mongodb');
+      mongodbModule = await import("mongodb");
     } catch {
-      throw new Error('MongoDB driver not found. Install it with: npm install mongodb');
+      throw new Error(
+        "MongoDB driver not found. Install it with: npm install mongodb",
+      );
     }
 
     const client = new mongodbModule.MongoClient(this.connectionString);
@@ -54,7 +63,9 @@ export class MongoDriver implements DatabaseDriver {
   async getTables(): Promise<string[]> {
     const db = await this.getDatabase();
     const collections = await db.listCollections().toArray();
-    return collections.map((collection) => collection.name).sort((a, b) => a.localeCompare(b));
+    return collections
+      .map((collection) => collection.name)
+      .sort((a, b) => a.localeCompare(b));
   }
 
   async getTableData(
@@ -62,24 +73,26 @@ export class MongoDriver implements DatabaseDriver {
     limit: number,
     offset: number = 0,
     sortBy?: string,
-    sortOrder: 'asc' | 'desc' = 'asc',
-    filters: Record<string, string> = {}
+    sortOrder: "asc" | "desc" = "asc",
+    filters: Record<string, string> = {},
   ): Promise<Record<string, unknown>[]> {
     const db = await this.getDatabase();
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(limit, 500))
+      : 100;
     const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
 
     const mongoFilter: Record<string, any> = {};
     for (const [field, value] of Object.entries(filters)) {
       if (value.trim().length > 0) {
-        mongoFilter[field] = { $regex: value, $options: 'i' };
+        mongoFilter[field] = { $regex: value, $options: "i" };
       }
     }
 
     let cursor: any = db.collection(name).find(mongoFilter);
 
     if (sortBy) {
-      cursor = cursor.sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 });
+      cursor = cursor.sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 });
     }
 
     return cursor.skip(safeOffset).limit(safeLimit).toArray();
@@ -96,13 +109,18 @@ export class MongoDriver implements DatabaseDriver {
 
     const tables = [];
     for (const collection of collections) {
-      const sample = await db.collection(collection.name).find({}).limit(1).toArray();
+      const sample = await db
+        .collection(collection.name)
+        .find({})
+        .limit(1)
+        .toArray();
       const doc = sample[0] ?? {};
       const columns = Object.keys(doc).map((key) => ({
         name: key,
         type: this.inferType((doc as any)[key]),
-        isNullable: (doc as any)[key] === null || (doc as any)[key] === undefined,
-        isPrimary: key === '_id',
+        isNullable:
+          (doc as any)[key] === null || (doc as any)[key] === undefined,
+        isPrimary: key === "_id",
       }));
 
       tables.push({
@@ -113,7 +131,7 @@ export class MongoDriver implements DatabaseDriver {
     }
 
     return {
-      dbType: 'mongodb',
+      dbType: "mongodb",
       tables: tables.sort((a, b) => a.name.localeCompare(b.name)),
     };
   }
@@ -122,13 +140,13 @@ export class MongoDriver implements DatabaseDriver {
     const startTime = performance.now();
     let data: Record<string, unknown>[];
 
-    if (typeof input === 'string') {
+    if (typeof input === "string") {
       let parsed: any;
       try {
         parsed = JSON.parse(input);
       } catch {
         throw new Error(
-          'MongoDB query expects structured JSON. Example: {"collection":"users","filter":{},"limit":50}'
+          'MongoDB query expects structured JSON. Example: {"collection":"users","filter":{},"limit":50}',
         );
       }
       data = await this.executeStructuredQuery(parsed);
@@ -141,8 +159,8 @@ export class MongoDriver implements DatabaseDriver {
       data,
       telemetry: {
         executionTimeMs: Math.round(endTime - startTime),
-        affectedRows: data.length
-      }
+        affectedRows: data.length,
+      },
     };
   }
 
@@ -158,10 +176,10 @@ export class MongoDriver implements DatabaseDriver {
 
   private resolveDatabaseName(urlString: string): string {
     const parsed = new URL(urlString);
-    const pathname = parsed.pathname.replace(/^\//, '');
+    const pathname = parsed.pathname.replace(/^\//, "");
 
     if (!pathname) {
-      return 'test';
+      return "test";
     }
 
     return decodeURIComponent(pathname);
@@ -173,34 +191,43 @@ export class MongoDriver implements DatabaseDriver {
     }
 
     if (!this.database) {
-      throw new Error('MongoDB database was not initialized.');
+      throw new Error("MongoDB database was not initialized.");
     }
 
     return this.database;
   }
 
-  private async executeStructuredQuery(input: StructuredQuery): Promise<Record<string, unknown>[]> {
-    const collectionName = typeof input.collection === 'string' ? input.collection.trim() : '';
+  private async executeStructuredQuery(
+    input: StructuredQuery,
+  ): Promise<Record<string, unknown>[]> {
+    const collectionName =
+      typeof input.collection === "string" ? input.collection.trim() : "";
     if (!collectionName) {
       throw new Error('MongoDB structured query requires "collection".');
     }
 
     const db = await this.getDatabase();
-    
+
     // Check for aggregation pipeline
     if (input.pipeline && Array.isArray(input.pipeline)) {
-      return (db.collection(collectionName) as any).aggregate(input.pipeline).toArray();
+      return (db.collection(collectionName) as any)
+        .aggregate(input.pipeline)
+        .toArray();
     }
 
     const filter = this.toPlainObject(input.filter);
     const projection = this.toOptionalPlainObject(input.projection);
     const sort = this.toOptionalSort(input.sort);
-    const limit = Number.isFinite(input.limit) ? Math.max(1, Math.min(Number(input.limit), 500)) : 100;
+    const limit = Number.isFinite(input.limit)
+      ? Math.max(1, Math.min(Number(input.limit), 500))
+      : 100;
 
     let cursor: {
       project: (spec: Record<string, unknown>) => typeof cursor;
       sort: (spec: Record<string, 1 | -1>) => typeof cursor;
-      limit: (count: number) => { toArray: () => Promise<Record<string, unknown>[]> };
+      limit: (count: number) => {
+        toArray: () => Promise<Record<string, unknown>[]>;
+      };
       toArray: () => Promise<Record<string, unknown>[]>;
     } = db.collection(collectionName).find(filter) as any;
 
@@ -220,20 +247,24 @@ export class MongoDriver implements DatabaseDriver {
       return {};
     }
 
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      throw new Error('MongoDB filter must be a JSON object.');
+    if (typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("MongoDB filter must be a JSON object.");
     }
 
     return value as Record<string, unknown>;
   }
 
-  private toOptionalPlainObject(value: unknown): Record<string, unknown> | null {
+  private toOptionalPlainObject(
+    value: unknown,
+  ): Record<string, unknown> | null {
     if (value === undefined || value === null) {
       return null;
     }
 
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      throw new Error('MongoDB projection must be a JSON object when provided.');
+    if (typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(
+        "MongoDB projection must be a JSON object when provided.",
+      );
     }
 
     return value as Record<string, unknown>;
@@ -244,8 +275,8 @@ export class MongoDriver implements DatabaseDriver {
       return null;
     }
 
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      throw new Error('MongoDB sort must be a JSON object when provided.');
+    if (typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("MongoDB sort must be a JSON object when provided.");
     }
 
     const normalized: Record<string, 1 | -1> = {};
@@ -255,17 +286,17 @@ export class MongoDriver implements DatabaseDriver {
         continue;
       }
 
-      throw new Error('MongoDB sort values must be 1 or -1.');
+      throw new Error("MongoDB sort values must be 1 or -1.");
     }
 
     return normalized;
   }
 
   private inferType(value: unknown): string {
-    if (value === null) return 'null';
-    if (Array.isArray(value)) return 'array';
+    if (value === null) return "null";
+    if (Array.isArray(value)) return "array";
     const t = typeof value;
-    if (t === 'object') return 'object';
+    if (t === "object") return "object";
     return t;
   }
 }

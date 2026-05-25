@@ -104,6 +104,12 @@ Only `DATABASE_URL` is required. Additional numbered URLs are optional.
 npx dbportal
 ```
 
+Use CLI flags when you need a specific bind address or port:
+
+```bash
+npx dbportal --host 127.0.0.1 --port 4000
+```
+
 ### Install globally
 
 ```bash

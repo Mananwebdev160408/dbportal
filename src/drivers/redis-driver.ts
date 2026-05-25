@@ -1,10 +1,18 @@
-import type { DatabaseDriver, DriverCapabilities, DatabaseSchema, QueryResult } from './types.js';
+import type {
+  DatabaseDriver,
+  DriverCapabilities,
+  DatabaseSchema,
+  QueryResult,
+} from "./types.js";
 
 type RedisClient = {
   connect: () => Promise<void>;
   quit: () => Promise<void>;
   dbSize: () => Promise<number>;
-  scan: (cursor: number, options: { MATCH?: string; COUNT?: number }) => Promise<{ cursor: number; keys: string[] }>;
+  scan: (
+    cursor: number,
+    options: { MATCH?: string; COUNT?: number },
+  ) => Promise<{ cursor: number; keys: string[] }>;
   type: (key: string) => Promise<string>;
   get: (key: string) => Promise<string | null>;
   hLen: (key: string) => Promise<number>;
@@ -25,9 +33,11 @@ export class RedisDriver implements DatabaseDriver {
 
     let redisModule: any;
     try {
-      redisModule = await import('redis');
+      redisModule = await import("redis");
     } catch {
-      throw new Error('Redis driver not found. Install it with: npm install redis');
+      throw new Error(
+        "Redis driver not found. Install it with: npm install redis",
+      );
     }
 
     const client = redisModule.createClient({ url: this.connectionString });
@@ -43,7 +53,7 @@ export class RedisDriver implements DatabaseDriver {
   }
 
   async getTables(): Promise<string[]> {
-    return ['keys'];
+    return ["keys"];
   }
 
   async getTableCount(): Promise<number> {
@@ -54,10 +64,12 @@ export class RedisDriver implements DatabaseDriver {
   async getTableData(
     _name: string,
     limit: number,
-    offset: number = 0
+    offset: number = 0,
   ): Promise<Record<string, unknown>[]> {
     const client = await this.getClient();
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 200)) : 100;
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(limit, 200))
+      : 100;
     const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
     const target = safeOffset + safeLimit;
 
@@ -77,27 +89,37 @@ export class RedisDriver implements DatabaseDriver {
         const ttl = await client.ttl(key);
         const value = await this.getValueSummary(client, key, type);
         return { key, type, ttl, value };
-      })
+      }),
     );
 
     return rows;
   }
 
   async query(): Promise<QueryResult> {
-    throw new Error('Redis does not support raw SQL queries in this UI.');
+    throw new Error("Redis does not support raw SQL queries in this UI.");
   }
 
   async getSchema(): Promise<DatabaseSchema> {
     return {
-      dbType: 'redis',
+      dbType: "redis",
       tables: [
         {
-          name: 'keys',
+          name: "keys",
           columns: [
-            { name: 'key', type: 'string', isNullable: false, isPrimary: true },
-            { name: 'type', type: 'string', isNullable: false, isPrimary: false },
-            { name: 'ttl', type: 'number', isNullable: true, isPrimary: false },
-            { name: 'value', type: 'string', isNullable: true, isPrimary: false },
+            { name: "key", type: "string", isNullable: false, isPrimary: true },
+            {
+              name: "type",
+              type: "string",
+              isNullable: false,
+              isPrimary: false,
+            },
+            { name: "ttl", type: "number", isNullable: true, isPrimary: false },
+            {
+              name: "value",
+              type: "string",
+              isNullable: true,
+              isPrimary: false,
+            },
           ],
           foreignKeys: [],
         },
@@ -116,34 +138,38 @@ export class RedisDriver implements DatabaseDriver {
       await this.connect();
     }
     if (!this.client) {
-      throw new Error('Redis client was not initialized.');
+      throw new Error("Redis client was not initialized.");
     }
     return this.client;
   }
 
-  private async getValueSummary(client: RedisClient, key: string, type: string): Promise<string> {
-    if (type === 'string') {
+  private async getValueSummary(
+    client: RedisClient,
+    key: string,
+    type: string,
+  ): Promise<string> {
+    if (type === "string") {
       const value = await client.get(key);
-      if (value === null) return '';
+      if (value === null) return "";
       return value.length > 180 ? `${value.slice(0, 180)}…` : value;
     }
-    if (type === 'hash') {
+    if (type === "hash") {
       const count = await client.hLen(key);
       return `${count} fields`;
     }
-    if (type === 'list') {
+    if (type === "list") {
       const count = await client.lLen(key);
       return `${count} items`;
     }
-    if (type === 'set') {
+    if (type === "set") {
       const count = await client.sCard(key);
       return `${count} members`;
     }
-    if (type === 'zset') {
+    if (type === "zset") {
       const count = await client.zCard(key);
       return `${count} members`;
     }
-    if (type === 'stream') {
+    if (type === "stream") {
       const count = await client.xLen(key);
       return `${count} entries`;
     }

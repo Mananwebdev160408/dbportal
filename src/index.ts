@@ -1,10 +1,15 @@
-import { MongoDriver } from './drivers/mongodb-driver.js';
-import { MySqlDriver } from './drivers/mysql-driver.js';
-import { PostgresDriver } from './drivers/postgres-driver.js';
-import { SqliteDriver } from './drivers/sqlite-driver.js';
-import { MsSqlDriver } from './drivers/mssql-driver.js';
-import { RedisDriver } from './drivers/redis-driver.js';
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, DatabaseSchema } from './drivers/types.js';
+import { MongoDriver } from "./drivers/mongodb-driver.js";
+import { MySqlDriver } from "./drivers/mysql-driver.js";
+import { PostgresDriver } from "./drivers/postgres-driver.js";
+import { SqliteDriver } from "./drivers/sqlite-driver.js";
+import { MsSqlDriver } from "./drivers/mssql-driver.js";
+import { RedisDriver } from "./drivers/redis-driver.js";
+import type {
+  DatabaseDriver,
+  DriverCapabilities,
+  DriverQueryInput,
+  DatabaseSchema,
+} from "./drivers/types.js";
 
 export type SupportedDatabase = string;
 
@@ -18,10 +23,12 @@ const driverRegistry = new Map<string, DriverRegistration>();
 
 const normalizeProtocol = (protocol: string): string => {
   const value = protocol.toLowerCase();
-  return value.endsWith(':') ? value : `${value}:`;
+  return value.endsWith(":") ? value : `${value}:`;
 };
 
-export const registerDatabaseDriver = (registration: DriverRegistration): void => {
+export const registerDatabaseDriver = (
+  registration: DriverRegistration,
+): void => {
   for (const protocol of registration.protocols) {
     driverRegistry.set(normalizeProtocol(protocol), registration);
   }
@@ -37,38 +44,38 @@ const registerBuiltInDrivers = (): void => {
   }
 
   registerDatabaseDriver({
-    kind: 'postgres',
-    protocols: ['postgres:', 'postgresql:'],
+    kind: "postgres",
+    protocols: ["postgres:", "postgresql:"],
     create: (databaseUrl) => new PostgresDriver(databaseUrl),
   });
 
   registerDatabaseDriver({
-    kind: 'mongodb',
-    protocols: ['mongodb:', 'mongodb+srv:'],
+    kind: "mongodb",
+    protocols: ["mongodb:", "mongodb+srv:"],
     create: (databaseUrl) => new MongoDriver(databaseUrl),
   });
 
   registerDatabaseDriver({
-    kind: 'mysql',
-    protocols: ['mysql:', 'mariadb:'],
+    kind: "mysql",
+    protocols: ["mysql:", "mariadb:"],
     create: (databaseUrl) => new MySqlDriver(databaseUrl),
   });
 
   registerDatabaseDriver({
-    kind: 'sqlite',
-    protocols: ['sqlite:', 'sqlite3:'],
+    kind: "sqlite",
+    protocols: ["sqlite:", "sqlite3:"],
     create: (databaseUrl) => new SqliteDriver(databaseUrl),
   });
 
   registerDatabaseDriver({
-    kind: 'sqlserver',
-    protocols: ['mssql:', 'sqlserver:'],
+    kind: "sqlserver",
+    protocols: ["mssql:", "sqlserver:"],
     create: (databaseUrl) => new MsSqlDriver(databaseUrl),
   });
 
   registerDatabaseDriver({
-    kind: 'redis',
-    protocols: ['redis:', 'rediss:'],
+    kind: "redis",
+    protocols: ["redis:", "rediss:"],
     create: (databaseUrl) => new RedisDriver(databaseUrl),
   });
 };
@@ -96,7 +103,7 @@ export class DatabaseConnection {
 
   constructor(id: string, databaseUrl: string) {
     if (!databaseUrl) {
-      throw new Error('DATABASE_URL is missing.');
+      throw new Error("DATABASE_URL is missing.");
     }
 
     this.id = id;
@@ -108,17 +115,25 @@ export class DatabaseConnection {
     // Extract a friendly name from URL
     try {
       const url = new URL(databaseUrl);
-      const dbName = url.pathname.replace(/^\//, '') || url.hostname;
+      const dbName = url.pathname.replace(/^\//, "") || url.hostname;
       this.name = `${this.databaseKind.charAt(0).toUpperCase() + this.databaseKind.slice(1)} (${dbName})`;
     } catch {
       this.name = `${this.databaseKind} (${id})`;
     }
   }
 
-  getId(): string { return this.id; }
-  getName(): string { return this.name; }
-  getKind(): SupportedDatabase { return this.databaseKind; }
-  getCapabilities(): DriverCapabilities { return this.driver.getCapabilities(); }
+  getId(): string {
+    return this.id;
+  }
+  getName(): string {
+    return this.name;
+  }
+  getKind(): SupportedDatabase {
+    return this.databaseKind;
+  }
+  getCapabilities(): DriverCapabilities {
+    return this.driver.getCapabilities();
+  }
 
   async connect(): Promise<void> {
     await this.driver.connect();
@@ -133,10 +148,17 @@ export class DatabaseConnection {
     limit: number,
     offset: number = 0,
     sortBy?: string,
-    sortOrder: 'asc' | 'desc' = 'asc',
-    filters: Record<string, string> = {}
+    sortOrder: "asc" | "desc" = "asc",
+    filters: Record<string, string> = {},
   ): Promise<Record<string, unknown>[]> {
-    return this.driver.getTableData(name, limit, offset, sortBy, sortOrder, filters);
+    return this.driver.getTableData(
+      name,
+      limit,
+      offset,
+      sortBy,
+      sortOrder,
+      filters,
+    );
   }
 
   async getOverview(): Promise<DatabaseOverview> {
@@ -145,11 +167,13 @@ export class DatabaseConnection {
       tableNames.map(async (name) => ({
         name,
         count: await this.driver.getTableCount(name),
-      }))
+      })),
     );
 
     const totalRecords = counts.reduce((sum, item) => sum + item.count, 0);
-    const tables = counts.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    const tables = counts.sort(
+      (a, b) => b.count - a.count || a.name.localeCompare(b.name),
+    );
 
     return {
       dbType: this.databaseKind,
@@ -165,7 +189,9 @@ export class DatabaseConnection {
 
   async query(raw: DriverQueryInput): Promise<any> {
     if (!this.driver.query) {
-      throw new Error('Raw query execution is not supported for this database driver.');
+      throw new Error(
+        "Raw query execution is not supported for this database driver.",
+      );
     }
     return this.driver.query(raw);
   }
@@ -176,17 +202,23 @@ export class DatabaseConnection {
     }
   }
 
-  private createDriver(urlString: string): { driver: DatabaseDriver; kind: SupportedDatabase } {
+  private createDriver(urlString: string): {
+    driver: DatabaseDriver;
+    kind: SupportedDatabase;
+  } {
     const parsed = new URL(urlString);
     const protocol = normalizeProtocol(parsed.protocol);
     const registration = driverRegistry.get(protocol);
 
     if (registration) {
-      return { driver: registration.create(urlString), kind: registration.kind };
+      return {
+        driver: registration.create(urlString),
+        kind: registration.kind,
+      };
     }
 
     throw new Error(
-      `Unsupported DATABASE_URL protocol "${protocol}". Supported protocols: ${listSupportedProtocols().join(', ')}`
+      `Unsupported DATABASE_URL protocol "${protocol}". Supported protocols: ${listSupportedProtocols().join(", ")}`,
     );
   }
 }
@@ -218,11 +250,11 @@ export class DatabaseManager {
   }
 
   async connectAll(): Promise<void> {
-    await Promise.all(this.listConnections().map(c => c.connect()));
+    await Promise.all(this.listConnections().map((c) => c.connect()));
   }
 
   async closeAll(): Promise<void> {
-    await Promise.all(this.listConnections().map(c => c.close()));
+    await Promise.all(this.listConnections().map((c) => c.close()));
   }
 
   async getMultiOverview(): Promise<MultiDatabaseOverview> {
@@ -230,7 +262,7 @@ export class DatabaseManager {
       this.listConnections().map(async (conn) => {
         const ov = await conn.getOverview();
         return { ...ov, id: conn.getId(), name: conn.getName() };
-      })
+      }),
     );
 
     return {

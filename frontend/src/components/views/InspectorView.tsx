@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import EmptyState from '../EmptyState';
+import { useState } from "react";
+import EmptyState from "../EmptyState";
 
 interface InspectorViewProps {
   rows: Record<string, unknown>[];
 }
 
 const getRowLabel = (row: Record<string, unknown>, index: number): string => {
-  const preferredKeys = ['id', '_id', 'name', 'title', 'email'];
+  const preferredKeys = ["id", "_id", "name", "title", "email"];
   for (const key of preferredKeys) {
     const val = row[key];
     if (val !== undefined && val !== null && String(val).trim()) {
@@ -19,8 +19,8 @@ const getRowLabel = (row: Record<string, unknown>, index: number): string => {
 };
 
 const formatFieldValue = (value: unknown): string => {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  if (value === null || value === undefined) return "null";
+  if (typeof value === "object") return JSON.stringify(value, null, 2);
   return String(value);
 };
 
@@ -40,19 +40,21 @@ export default function InspectorView({ rows }: InspectorViewProps) {
 
   return (
     <div className="inspector-layout">
-       <section className="inspector-list">
-         {rows.map((row, index) => (
-           <button
-             key={index}
-             className={`inspector-row-btn${index === safeIndex ? ' active' : ''}`}
-             onClick={() => setSelectedIndex(index)}
-             type="button"
-           >
-             <div className="inspector-row-title">{getRowLabel(row, index)}</div>
-             <div className="inspector-row-meta">FIELDS: {Object.keys(row).length.toString().padStart(2, '0')}</div>
-           </button>
-         ))}
-       </section>
+      <section className="inspector-list">
+        {rows.map((row, index) => (
+          <button
+            key={index}
+            className={`inspector-row-btn${index === safeIndex ? " active" : ""}`}
+            onClick={() => setSelectedIndex(index)}
+            type="button"
+          >
+            <div className="inspector-row-title">{getRowLabel(row, index)}</div>
+            <div className="inspector-row-meta">
+              FIELDS: {Object.keys(row).length.toString().padStart(2, "0")}
+            </div>
+          </button>
+        ))}
+      </section>
 
       <section className="inspector-detail">
         {Object.keys(selectedRow).length > 0 ? (

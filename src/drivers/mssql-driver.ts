@@ -1,4 +1,11 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult, DatabaseSchema, TableSchema } from './types.js';
+import type {
+  DatabaseDriver,
+  DriverCapabilities,
+  DriverQueryInput,
+  QueryResult,
+  DatabaseSchema,
+  TableSchema,
+} from "./types.js";
 
 type SqlConnection = {
   connect: () => Promise<void>;
@@ -19,9 +26,11 @@ export class MsSqlDriver implements DatabaseDriver {
 
     let mssqlModule: any;
     try {
-      mssqlModule = await import('mssql');
+      mssqlModule = await import("mssql");
     } catch {
-      throw new Error('SQL Server driver not found. Install it with: npm install mssql');
+      throw new Error(
+        "SQL Server driver not found. Install it with: npm install mssql",
+      );
     }
 
     const pool = new mssqlModule.ConnectionPool(this.connectionString);
@@ -42,18 +51,22 @@ export class MsSqlDriver implements DatabaseDriver {
       `SELECT TABLE_SCHEMA, TABLE_NAME
        FROM INFORMATION_SCHEMA.TABLES
        WHERE TABLE_TYPE = 'BASE TABLE'
-       ORDER BY TABLE_SCHEMA, TABLE_NAME`
+       ORDER BY TABLE_SCHEMA, TABLE_NAME`,
     );
 
-    return result.recordset.map((row) => this.formatTableName(String(row.TABLE_SCHEMA), String(row.TABLE_NAME)));
+    return result.recordset.map((row) =>
+      this.formatTableName(String(row.TABLE_SCHEMA), String(row.TABLE_NAME)),
+    );
   }
 
   async getTableCount(name: string): Promise<number> {
     const safeName = this.toSafeIdentifier(name);
     const pool = await this.getPool();
-    const result = await pool.request().query(`SELECT COUNT(*) AS count FROM ${safeName}`);
+    const result = await pool
+      .request()
+      .query(`SELECT COUNT(*) AS count FROM ${safeName}`);
     const raw = result.recordset[0]?.count;
-    const parsed = Number.parseInt(String(raw ?? '0'), 10);
+    const parsed = Number.parseInt(String(raw ?? "0"), 10);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
@@ -62,27 +75,31 @@ export class MsSqlDriver implements DatabaseDriver {
     limit: number,
     offset: number = 0,
     sortBy?: string,
-    sortOrder: 'asc' | 'desc' = 'asc',
-    filters: Record<string, string> = {}
+    sortOrder: "asc" | "desc" = "asc",
+    filters: Record<string, string> = {},
   ): Promise<Record<string, unknown>[]> {
     const safeName = this.toSafeIdentifier(name);
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(limit, 500))
+      : 100;
     const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
 
     let sql = `SELECT * FROM ${safeName}`;
     const request = (await this.getPool()).request();
     let paramIndex = 0;
 
-    const filterEntries = Object.entries(filters).filter(([_, val]) => val.trim().length > 0);
+    const filterEntries = Object.entries(filters).filter(
+      ([_, val]) => val.trim().length > 0,
+    );
     if (filterEntries.length > 0) {
-      sql += ' WHERE ';
+      sql += " WHERE ";
       const clauses = filterEntries.map(([field, value]) => {
         const safeField = this.toSafeIdentifier(field, false);
         const paramName = `p${paramIndex++}`;
         request.input(paramName, `%${value}%`);
         return `CAST(${safeField} AS NVARCHAR(MAX)) LIKE @${paramName}`;
       });
-      sql += clauses.join(' AND ');
+      sql += clauses.join(" AND ");
     }
 
     if (sortBy) {
@@ -97,8 +114,8 @@ export class MsSqlDriver implements DatabaseDriver {
   }
 
   async query(rawQuery: DriverQueryInput): Promise<QueryResult> {
-    if (typeof rawQuery !== 'string') {
-      throw new Error('SQL Server query endpoint expects a SQL string.');
+    if (typeof rawQuery !== "string") {
+      throw new Error("SQL Server query endpoint expects a SQL string.");
     }
 
     const startTime = performance.now();
@@ -110,7 +127,9 @@ export class MsSqlDriver implements DatabaseDriver {
       data: result.recordset ?? [],
       telemetry: {
         executionTimeMs: Math.round(endTime - startTime),
-        affectedRows: Array.isArray(result.recordset) ? result.recordset.length : 0,
+        affectedRows: Array.isArray(result.recordset)
+          ? result.recordset.length
+          : 0,
       },
     };
   }
@@ -120,7 +139,7 @@ export class MsSqlDriver implements DatabaseDriver {
     const columnsResult = await pool.request().query(
       `SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE
        FROM INFORMATION_SCHEMA.COLUMNS
-       ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION`
+       ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION`,
     );
 
     const primaryResult = await pool.request().query(
@@ -129,7 +148,7 @@ export class MsSqlDriver implements DatabaseDriver {
        JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
          ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
         AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
-       WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'`
+       WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'`,
     );
 
     const foreignResult = await pool.request().query(
@@ -144,12 +163,15 @@ export class MsSqlDriver implements DatabaseDriver {
          SELECT CONSTRAINT_NAME
          FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
          WHERE CONSTRAINT_TYPE = 'FOREIGN KEY'
-       )`
+       )`,
     );
 
     const primaryMap = new Map<string, Set<string>>();
     for (const row of primaryResult.recordset) {
-      const key = this.formatTableName(String(row.TABLE_SCHEMA), String(row.TABLE_NAME));
+      const key = this.formatTableName(
+        String(row.TABLE_SCHEMA),
+        String(row.TABLE_NAME),
+      );
       if (!primaryMap.has(key)) {
         primaryMap.set(key, new Set());
       }
@@ -158,24 +180,37 @@ export class MsSqlDriver implements DatabaseDriver {
 
     const tableMap = new Map<string, TableSchema>();
     for (const row of columnsResult.recordset) {
-      const key = this.formatTableName(String(row.TABLE_SCHEMA), String(row.TABLE_NAME));
+      const key = this.formatTableName(
+        String(row.TABLE_SCHEMA),
+        String(row.TABLE_NAME),
+      );
       if (!tableMap.has(key)) {
         tableMap.set(key, { name: key, columns: [], foreignKeys: [] });
       }
       tableMap.get(key)!.columns.push({
         name: String(row.COLUMN_NAME),
         type: String(row.DATA_TYPE),
-        isNullable: String(row.IS_NULLABLE).toLowerCase() === 'yes',
+        isNullable: String(row.IS_NULLABLE).toLowerCase() === "yes",
         isPrimary: primaryMap.get(key)?.has(String(row.COLUMN_NAME)) ?? false,
       });
     }
 
     for (const row of foreignResult.recordset) {
-      const tableKey = this.formatTableName(String(row.TABLE_SCHEMA), String(row.TABLE_NAME));
+      const tableKey = this.formatTableName(
+        String(row.TABLE_SCHEMA),
+        String(row.TABLE_NAME),
+      );
       if (!tableMap.has(tableKey)) {
-        tableMap.set(tableKey, { name: tableKey, columns: [], foreignKeys: [] });
+        tableMap.set(tableKey, {
+          name: tableKey,
+          columns: [],
+          foreignKeys: [],
+        });
       }
-      const refKey = this.formatTableName(String(row.FOREIGN_TABLE_SCHEMA), String(row.FOREIGN_TABLE_NAME));
+      const refKey = this.formatTableName(
+        String(row.FOREIGN_TABLE_SCHEMA),
+        String(row.FOREIGN_TABLE_NAME),
+      );
       tableMap.get(tableKey)!.foreignKeys.push({
         table: tableKey,
         column: String(row.COLUMN_NAME),
@@ -185,8 +220,10 @@ export class MsSqlDriver implements DatabaseDriver {
     }
 
     return {
-      dbType: 'sqlserver',
-      tables: Array.from(tableMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+      dbType: "sqlserver",
+      tables: Array.from(tableMap.values()).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
     };
   }
 
@@ -201,23 +238,23 @@ export class MsSqlDriver implements DatabaseDriver {
       await this.connect();
     }
     if (!this.pool) {
-      throw new Error('SQL Server connection was not initialized.');
+      throw new Error("SQL Server connection was not initialized.");
     }
     return this.pool;
   }
 
   private formatTableName(schema: string, name: string): string {
-    if (schema && schema.toLowerCase() !== 'dbo') {
+    if (schema && schema.toLowerCase() !== "dbo") {
       return `${schema}.${name}`;
     }
     return name;
   }
 
   private toSafeIdentifier(name: string, allowSchema: boolean = true): string {
-    const parts = allowSchema ? name.split('.') : [name];
+    const parts = allowSchema ? name.split(".") : [name];
     if (parts.some((p) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(p))) {
-      throw new Error('Invalid SQL Server identifier.');
+      throw new Error("Invalid SQL Server identifier.");
     }
-    return parts.map((p) => `[${p}]`).join('.');
+    return parts.map((p) => `[${p}]`).join(".");
   }
 }

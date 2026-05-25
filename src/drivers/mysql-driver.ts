@@ -1,4 +1,11 @@
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult, DatabaseSchema, TableSchema } from './types.js';
+import type {
+  DatabaseDriver,
+  DriverCapabilities,
+  DriverQueryInput,
+  QueryResult,
+  DatabaseSchema,
+  TableSchema,
+} from "./types.js";
 
 type MySqlConnection = {
   execute: <T = unknown>(sql: string, values?: any) => Promise<[T, unknown]>;
@@ -17,9 +24,11 @@ export class MySqlDriver implements DatabaseDriver {
 
     let mysqlModule: { createConnection: (uri: string) => Promise<any> };
     try {
-      mysqlModule = await import('mysql2/promise');
+      mysqlModule = await import("mysql2/promise");
     } catch {
-      throw new Error('MySQL driver not found. Install it with: npm install mysql2');
+      throw new Error(
+        "MySQL driver not found. Install it with: npm install mysql2",
+      );
     }
 
     this.connection = await mysqlModule.createConnection(this.connectionUri);
@@ -38,7 +47,7 @@ export class MySqlDriver implements DatabaseDriver {
       `SELECT table_name
        FROM information_schema.tables
        WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
-       ORDER BY table_name ASC`
+       ORDER BY table_name ASC`,
     );
 
     return rows.map((row) => row.table_name);
@@ -48,11 +57,11 @@ export class MySqlDriver implements DatabaseDriver {
     const safeName = this.toSafeIdentifier(name);
     const connection = await this.getConnection();
     const [rows] = await connection.execute<Array<{ count: number | string }>>(
-      `SELECT COUNT(*) AS count FROM \`${safeName}\``
+      `SELECT COUNT(*) AS count FROM \`${safeName}\``,
     );
 
     const raw = rows[0]?.count;
-    const parsed = Number.parseInt(String(raw ?? '0'), 10);
+    const parsed = Number.parseInt(String(raw ?? "0"), 10);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
@@ -61,25 +70,29 @@ export class MySqlDriver implements DatabaseDriver {
     limit: number,
     offset: number = 0,
     sortBy?: string,
-    sortOrder: 'asc' | 'desc' = 'asc',
-    filters: Record<string, string> = {}
+    sortOrder: "asc" | "desc" = "asc",
+    filters: Record<string, string> = {},
   ): Promise<Record<string, unknown>[]> {
     const safeName = this.toSafeIdentifier(name);
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(limit, 500))
+      : 100;
     const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
 
     let sql = `SELECT * FROM \`${safeName}\``;
     const params: any[] = [];
 
-    const filterEntries = Object.entries(filters).filter(([_, val]) => val.trim().length > 0);
+    const filterEntries = Object.entries(filters).filter(
+      ([_, val]) => val.trim().length > 0,
+    );
     if (filterEntries.length > 0) {
-      sql += ' WHERE ';
+      sql += " WHERE ";
       const clauses = filterEntries.map(([field, value]) => {
         const safeField = this.toSafeIdentifier(field);
         params.push(`%${value}%`);
         return `\`${safeField}\` LIKE ?`;
       });
-      sql += clauses.join(' AND ');
+      sql += clauses.join(" AND ");
     }
 
     if (sortBy) {
@@ -91,7 +104,10 @@ export class MySqlDriver implements DatabaseDriver {
     params.push(safeLimit, safeOffset);
 
     const connection = await this.getConnection();
-    const [rows] = await connection.execute<Record<string, unknown>[]>(sql, params);
+    const [rows] = await connection.execute<Record<string, unknown>[]>(
+      sql,
+      params,
+    );
 
     return rows;
   }
@@ -99,29 +115,33 @@ export class MySqlDriver implements DatabaseDriver {
   async getSchema(): Promise<DatabaseSchema> {
     const connection = await this.getConnection();
 
-    const [columnRows] = await connection.execute<Array<{
-      table_name: string;
-      column_name: string;
-      data_type: string;
-      is_nullable: 'YES' | 'NO';
-      column_key: string | null;
-    }>>(
+    const [columnRows] = await connection.execute<
+      Array<{
+        table_name: string;
+        column_name: string;
+        data_type: string;
+        is_nullable: "YES" | "NO";
+        column_key: string | null;
+      }>
+    >(
       `SELECT table_name, column_name, data_type, is_nullable, column_key
        FROM information_schema.columns
        WHERE table_schema = DATABASE()
-       ORDER BY table_name, ordinal_position`
+       ORDER BY table_name, ordinal_position`,
     );
 
-    const [foreignRows] = await connection.execute<Array<{
-      table_name: string;
-      column_name: string;
-      referenced_table_name: string;
-      referenced_column_name: string;
-    }>>(
+    const [foreignRows] = await connection.execute<
+      Array<{
+        table_name: string;
+        column_name: string;
+        referenced_table_name: string;
+        referenced_column_name: string;
+      }>
+    >(
       `SELECT table_name, column_name, referenced_table_name, referenced_column_name
        FROM information_schema.key_column_usage
        WHERE table_schema = DATABASE()
-         AND referenced_table_name IS NOT NULL`
+         AND referenced_table_name IS NOT NULL`,
     );
 
     const tableMap = new Map<string, TableSchema>();
@@ -134,8 +154,8 @@ export class MySqlDriver implements DatabaseDriver {
       tableMap.get(table)!.columns.push({
         name: row.column_name,
         type: row.data_type,
-        isNullable: row.is_nullable === 'YES',
-        isPrimary: row.column_key === 'PRI',
+        isNullable: row.is_nullable === "YES",
+        isPrimary: row.column_key === "PRI",
       });
     }
 
@@ -154,28 +174,31 @@ export class MySqlDriver implements DatabaseDriver {
     }
 
     return {
-      dbType: 'mysql',
-      tables: Array.from(tableMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+      dbType: "mysql",
+      tables: Array.from(tableMap.values()).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
     };
   }
 
-
   async query(rawQuery: DriverQueryInput): Promise<QueryResult> {
-    if (typeof rawQuery !== 'string') {
-      throw new Error('MySQL query endpoint expects a SQL string.');
+    if (typeof rawQuery !== "string") {
+      throw new Error("MySQL query endpoint expects a SQL string.");
     }
 
     const startTime = performance.now();
     const connection = await this.getConnection();
     const [rows]: [any, any] = await connection.execute(rawQuery);
     const endTime = performance.now();
-    
+
     return {
       data: Array.isArray(rows) ? rows : [rows],
       telemetry: {
         executionTimeMs: Math.round(endTime - startTime),
-        affectedRows: Array.isArray(rows) ? rows.length : (rows as any).affectedRows || 0
-      }
+        affectedRows: Array.isArray(rows)
+          ? rows.length
+          : (rows as any).affectedRows || 0,
+      },
     };
   }
 
@@ -194,7 +217,7 @@ export class MySqlDriver implements DatabaseDriver {
     }
 
     if (!this.connection) {
-      throw new Error('MySQL connection was not initialized.');
+      throw new Error("MySQL connection was not initialized.");
     }
 
     return this.connection;
@@ -202,7 +225,7 @@ export class MySqlDriver implements DatabaseDriver {
 
   private toSafeIdentifier(name: string): string {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-      throw new Error('Invalid MySQL table name.');
+      throw new Error("Invalid MySQL table name.");
     }
 
     return name;

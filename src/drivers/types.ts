@@ -59,8 +59,8 @@ export interface DatabaseDriver {
     limit: number,
     offset?: number,
     sortBy?: string,
-    sortOrder?: 'asc' | 'desc',
-    filters?: Record<string, string>
+    sortOrder?: "asc" | "desc",
+    filters?: Record<string, string>,
   ): Promise<Record<string, unknown>[]>;
   getSchema(): Promise<DatabaseSchema>;
   query?(query: DriverQueryInput): Promise<QueryResult>;

@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import EmptyState from '../EmptyState';
-import TableView from './TableView';
-import JsonView from './JsonView';
-import type { DriverCapabilities } from '../../App';
+import { useEffect, useMemo, useState } from "react";
+import EmptyState from "../EmptyState";
+import TableView from "./TableView";
+import JsonView from "./JsonView";
+import type { DriverCapabilities } from "../../App";
 
-type ResultMode = 'table' | 'json';
+type ResultMode = "table" | "json";
 
 interface QueryWorkbenchProps {
   dbId: string;
@@ -30,14 +30,17 @@ interface QueryTelemetry {
 
 interface QueryHistoryEntry {
   id: string;
-  mode: 'raw' | 'structured';
+  mode: "raw" | "structured";
   payload: string;
   createdAt: number;
 }
 
-const HISTORY_KEY_PREFIX = 'dbportal-query-history';
+const HISTORY_KEY_PREFIX = "dbportal-query-history";
 
-const parseJsonObject = (label: string, value: string): Record<string, unknown> | undefined => {
+const parseJsonObject = (
+  label: string,
+  value: string,
+): Record<string, unknown> | undefined => {
   const trimmed = value.trim();
   if (!trimmed) {
     return undefined;
@@ -50,7 +53,7 @@ const parseJsonObject = (label: string, value: string): Record<string, unknown> 
     throw new Error(`${label} must be valid JSON.`);
   }
 
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new Error(`${label} must be a JSON object.`);
   }
 
@@ -62,16 +65,16 @@ const buildMongoPayload = (
   filterText: string,
   projectionText: string,
   sortText: string,
-  limitText: string
+  limitText: string,
 ): StructuredQueryPayload => {
   const trimmedCollection = collection.trim();
   if (!trimmedCollection) {
-    throw new Error('Collection is required.');
+    throw new Error("Collection is required.");
   }
 
-  const limitNum = Number.parseInt(limitText || '100', 10);
+  const limitNum = Number.parseInt(limitText || "100", 10);
   if (!Number.isFinite(limitNum) || limitNum <= 0) {
-    throw new Error('Limit must be a positive integer.');
+    throw new Error("Limit must be a positive integer.");
   }
 
   const payload: StructuredQueryPayload = {
@@ -79,9 +82,9 @@ const buildMongoPayload = (
     limit: Math.min(limitNum, 500),
   };
 
-  const filter = parseJsonObject('Filter', filterText);
-  const projection = parseJsonObject('Projection', projectionText);
-  const sort = parseJsonObject('Sort', sortText);
+  const filter = parseJsonObject("Filter", filterText);
+  const projection = parseJsonObject("Projection", projectionText);
+  const sort = parseJsonObject("Sort", sortText);
 
   if (filter) {
     payload.filter = filter;
@@ -95,7 +98,7 @@ const buildMongoPayload = (
     const normalizedSort: Record<string, 1 | -1> = {};
     for (const [key, value] of Object.entries(sort)) {
       if (value !== 1 && value !== -1) {
-        throw new Error('Sort values must be 1 or -1.');
+        throw new Error("Sort values must be 1 or -1.");
       }
 
       normalizedSort[key] = value;
@@ -107,42 +110,57 @@ const buildMongoPayload = (
   return payload;
 };
 
-const formatSqlIdentifier = (databaseType: string, identifier: string): string => {
+const formatSqlIdentifier = (
+  databaseType: string,
+  identifier: string,
+): string => {
   const trimmed = identifier.trim();
   if (!trimmed) {
     return trimmed;
   }
 
   const normalizedType = databaseType.toLowerCase();
-  if (normalizedType.includes('postgres')) {
+  if (normalizedType.includes("postgres")) {
     return `"${trimmed.replace(/"/g, '""')}"`;
   }
 
-  if (normalizedType.includes('mysql') || normalizedType.includes('mariadb')) {
-    return `\`${trimmed.replace(/`/g, '``')}\``;
+  if (normalizedType.includes("mysql") || normalizedType.includes("mariadb")) {
+    return `\`${trimmed.replace(/`/g, "``")}\``;
   }
 
-  if (normalizedType.includes('mssql') || normalizedType.includes('sqlserver')) {
-    return `[${trimmed.replace(/]/g, ']]')}]`;
+  if (
+    normalizedType.includes("mssql") ||
+    normalizedType.includes("sqlserver")
+  ) {
+    return `[${trimmed.replace(/]/g, "]]")}]`;
   }
 
   return trimmed;
 };
 
-export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onStatus }: QueryWorkbenchProps) {
-  const [rawQuery, setRawQuery] = useState('');
-  const [collection, setCollection] = useState(tables[0] || '');
-  const [filterText, setFilterText] = useState('{}');
-  const [projectionText, setProjectionText] = useState('');
-  const [sortText, setSortText] = useState('');
-  const [limitText, setLimitText] = useState('100');
+export default function QueryWorkbench({
+  dbId,
+  dbType,
+  tables,
+  capabilities,
+  onStatus,
+}: QueryWorkbenchProps) {
+  const [rawQuery, setRawQuery] = useState("");
+  const [collection, setCollection] = useState(tables[0] || "");
+  const [filterText, setFilterText] = useState("{}");
+  const [projectionText, setProjectionText] = useState("");
+  const [sortText, setSortText] = useState("");
+  const [limitText, setLimitText] = useState("100");
   const [pipelineText, setPipelineText] = useState('[\n  { "$match": { } }\n]');
-  const [queryMode, setQueryMode] = useState<'structured' | 'aggregation'>('structured');
-  const [resultMode, setResultMode] = useState<ResultMode>('table');
+  const [queryMode, setQueryMode] = useState<"structured" | "aggregation">(
+    "structured",
+  );
+  const [resultMode, setResultMode] = useState<ResultMode>("table");
   const [resultRows, setResultRows] = useState<Record<string, unknown>[]>([]);
   const [telemetry, setTelemetry] = useState<QueryTelemetry | null>(null);
   const [running, setRunning] = useState(false);
-  const [runError, setRunError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [runError, setRunError] = useState("");
   const historyKey = `${HISTORY_KEY_PREFIX}:${dbType}:${dbId}`;
   const [history, setHistory] = useState<QueryHistoryEntry[]>(() => {
     try {
@@ -153,73 +171,81 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
       return [];
     }
   });
-  const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<QueryHistoryEntry | null>(null);
+  const [selectedHistoryEntry, setSelectedHistoryEntry] =
+    useState<QueryHistoryEntry | null>(null);
 
   const supportsStructured = capabilities.structuredQuery;
   const supportsRaw = capabilities.rawQuery;
   const activeObjectName = useMemo(
-    () => collection || tables[0] || (supportsStructured ? 'collection' : 'table'),
-    [collection, supportsStructured, tables]
+    () =>
+      collection || tables[0] || (supportsStructured ? "collection" : "table"),
+    [collection, supportsStructured, tables],
   );
 
   const helperText = useMemo(() => {
     if (supportsStructured && !supportsRaw) {
-      return 'Mongo-style query engine: fill filter/projection/sort JSON and run.';
+      return "Mongo-style query engine: fill filter/projection/sort JSON and run.";
     }
 
     if (supportsRaw && !supportsStructured) {
-      return 'SQL query engine (read-only): run SELECT/SHOW/EXPLAIN style queries.';
+      return "SQL query engine (read-only): run SELECT/SHOW/EXPLAIN style queries.";
     }
 
     if (supportsRaw && supportsStructured) {
-      return 'This driver supports both raw and structured query modes.';
+      return "This driver supports both raw and structured query modes.";
     }
 
-    return 'This driver does not currently expose query execution.';
+    return "This driver does not currently expose query execution.";
   }, [supportsRaw, supportsStructured]);
 
   const queryRecommendations = useMemo(() => {
     if (supportsStructured && !supportsRaw) {
       return [
         'Start with a small filter like {} or {"status":"active"}.',
-        'Use projection to keep only the fields you need.',
-        'Sort uses 1 for ascending and -1 for descending.',
-        'Limit is capped at 500 records to keep the UI responsive.',
+        "Use projection to keep only the fields you need.",
+        "Sort uses 1 for ascending and -1 for descending.",
+        "Limit is capped at 500 records to keep the UI responsive.",
       ];
     }
 
     if (supportsRaw && !supportsStructured) {
       return [
-        'Use SELECT/SHOW/EXPLAIN queries in this read-only mode.',
-        'Add LIMIT early while exploring a table.',
-        'Use WHERE and ORDER BY to narrow and rank results.',
+        "Use SELECT/SHOW/EXPLAIN queries in this read-only mode.",
+        "Add LIMIT early while exploring a table.",
+        "Use WHERE and ORDER BY to narrow and rank results.",
         'Quote mixed-case Postgres identifiers, for example "AcademicCalendarEvent".',
-        'Write statements are blocked in this build.',
+        "Write statements are blocked in this build.",
       ];
     }
 
     if (supportsRaw && supportsStructured) {
       return [
-        'Pick the mode that matches the driver: SQL for relational, structured JSON for MongoDB.',
-        'Keep query payloads tight and add filters before expanding result sets.',
-        'Use history to iterate quickly on the same query shape.',
+        "Pick the mode that matches the driver: SQL for relational, structured JSON for MongoDB.",
+        "Keep query payloads tight and add filters before expanding result sets.",
+        "Use history to iterate quickly on the same query shape.",
       ];
     }
 
-    return ['This database driver does not currently expose query execution.'];
+    return ["This database driver does not currently expose query execution."];
   }, [supportsRaw, supportsStructured]);
 
   const rawExamples = useMemo(() => {
     const name = formatSqlIdentifier(dbType, activeObjectName);
-    const isMsSql = dbType.toLowerCase().includes('mssql') || dbType.toLowerCase().includes('sqlserver');
+    const isMsSql =
+      dbType.toLowerCase().includes("mssql") ||
+      dbType.toLowerCase().includes("sqlserver");
     return [
       {
-        label: 'First 50 rows',
-        sql: isMsSql ? `SELECT TOP 50 * FROM ${name};` : `SELECT * FROM ${name} LIMIT 50;`,
+        label: "First 50 rows",
+        sql: isMsSql
+          ? `SELECT TOP 50 * FROM ${name};`
+          : `SELECT * FROM ${name} LIMIT 50;`,
       },
       {
-        label: 'Recent records',
-        sql: isMsSql ? `SELECT TOP 25 * FROM ${name} ORDER BY 1 DESC;` : `SELECT * FROM ${name} ORDER BY 1 DESC LIMIT 25;`,
+        label: "Recent records",
+        sql: isMsSql
+          ? `SELECT TOP 25 * FROM ${name} ORDER BY 1 DESC;`
+          : `SELECT * FROM ${name} ORDER BY 1 DESC LIMIT 25;`,
       },
     ];
   }, [activeObjectName, dbType]);
@@ -228,7 +254,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
     const name = activeObjectName;
     return [
       {
-        label: 'Basic filter',
+        label: "Basic filter",
         query: {
           collection: name,
           filter: {},
@@ -236,10 +262,10 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
         },
       },
       {
-        label: 'Projected fields',
+        label: "Projected fields",
         query: {
           collection: name,
-          filter: { status: 'active' },
+          filter: { status: "active" },
           projection: { _id: 0, name: 1, email: 1 },
           sort: { createdAt: -1 as 1 | -1 },
           limit: 25,
@@ -252,22 +278,22 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
     const name = activeObjectName;
     return [
       {
-        label: 'Status breakdown',
+        label: "Status breakdown",
         pipeline: [
           { $match: { status: { $exists: true } } },
-          { $group: { _id: '$status', total: { $sum: 1 } } },
+          { $group: { _id: "$status", total: { $sum: 1 } } },
           { $sort: { total: -1 as 1 | -1 } },
         ],
       },
       {
-        label: 'Top users by spend',
+        label: "Top users by spend",
         pipeline: [
           { $match: { totalSpent: { $gt: 0 } } },
           {
             $group: {
-              _id: '$userId',
+              _id: "$userId",
               orders: { $sum: 1 },
-              totalSpent: { $sum: '$totalSpent' },
+              totalSpent: { $sum: "$totalSpent" },
             },
           },
           { $sort: { totalSpent: -1 as 1 | -1 } },
@@ -275,13 +301,17 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
         ],
       },
       {
-        label: 'Recent trend (daily)',
+        label: "Recent trend (daily)",
         pipeline: [
           {
             $match: {
               createdAt: {
                 $gte: {
-                  $dateSubtract: { startDate: '$$NOW', unit: 'day', amount: 30 },
+                  $dateSubtract: {
+                    startDate: "$$NOW",
+                    unit: "day",
+                    amount: 30,
+                  },
                 },
               },
             },
@@ -289,7 +319,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
           {
             $group: {
               _id: {
-                $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
               },
               count: { $sum: 1 },
             },
@@ -298,27 +328,24 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
         ],
       },
       {
-        label: 'Multi-metric facet',
+        label: "Multi-metric facet",
         pipeline: [
           {
             $facet: {
-              totalDocs: [{ $count: 'count' }],
+              totalDocs: [{ $count: "count" }],
               topStatuses: [
                 { $match: { status: { $exists: true } } },
-                { $group: { _id: '$status', count: { $sum: 1 } } },
+                { $group: { _id: "$status", count: { $sum: 1 } } },
                 { $sort: { count: -1 as 1 | -1 } },
                 { $limit: 5 },
               ],
-              newest: [
-                { $sort: { createdAt: -1 as 1 | -1 } },
-                { $limit: 5 },
-              ],
+              newest: [{ $sort: { createdAt: -1 as 1 | -1 } }, { $limit: 5 }],
             },
           },
         ],
       },
       {
-        label: 'Collection sample',
+        label: "Collection sample",
         pipeline: [{ $sample: { size: 25 } }],
       },
     ];
@@ -354,7 +381,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
     localStorage.setItem(historyKey, JSON.stringify(next));
   };
 
-  const addHistory = (mode: QueryHistoryEntry['mode'], payload: string) => {
+  const addHistory = (mode: QueryHistoryEntry["mode"], payload: string) => {
     const item: QueryHistoryEntry = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       mode,
@@ -366,59 +393,69 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
     persistHistory(next);
   };
 
-  const runRawQuery = async () => {
+ const runRawQuery = async () => {
     if (!supportsRaw) {
-      throw new Error('Raw query is not supported by this driver.');
+      throw new Error("Raw query is not supported by this driver.");
     }
 
     const query = rawQuery.trim();
     if (!query) {
-      throw new Error('Query cannot be empty.');
+      throw new Error("Query cannot be empty.");
     }
 
+    const startTime = performance.now();
     const res = await fetch(`/api/query?dbId=${dbId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query }),
     });
 
     const payload = await res.json();
     if (!res.ok) {
-      throw new Error(payload.error || 'Query execution failed.');
+      throw new Error(payload.error || "Query execution failed.");
     }
 
-    addHistory('raw', query);
+   addHistory("raw", query);
+    const executionTimeMs = Math.round(performance.now() - startTime);
+    setTelemetry({ executionTimeMs, affectedRows: payload.data?.length ?? 0 });
     return payload.data as Record<string, unknown>[];
   };
 
   const runStructuredQuery = async () => {
     if (!supportsStructured) {
-      throw new Error('Structured query is not supported by this driver.');
+      throw new Error("Structured query is not supported by this driver.");
     }
 
-    const query = queryMode === 'aggregation' 
-      ? { collection, pipeline: JSON.parse(pipelineText) }
-      : buildMongoPayload(collection, filterText, projectionText, sortText, limitText);
+    const query =
+      queryMode === "aggregation"
+        ? { collection, pipeline: JSON.parse(pipelineText) }
+        : buildMongoPayload(
+            collection,
+            filterText,
+            projectionText,
+            sortText,
+            limitText,
+          );
 
     const res = await fetch(`/api/query?dbId=${dbId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query }),
     });
 
     const payload = await res.json();
     if (!res.ok) {
-      throw new Error(payload.error || 'Query execution failed.');
+      throw new Error(payload.error || "Query execution failed.");
     }
 
-    addHistory('structured', JSON.stringify(query, null, 2));
+    addHistory("structured", JSON.stringify(query, null, 2));
     setTelemetry(payload.telemetry);
     return payload.data as Record<string, unknown>[];
   };
 
   const runQuery = async () => {
     setRunning(true);
-    setRunError('');
+    setRunError("");
     setTelemetry(null);
 
     try {
@@ -427,22 +464,25 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
         rows = await runStructuredQuery();
       } else {
         const query = rawQuery.trim();
+        const startTime = performance.now();
         const res = await fetch(`/api/query?dbId=${dbId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
         });
         const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || 'Query failed');
-        setTelemetry(payload.telemetry);
+      if (!res.ok) throw new Error(payload.error || "Query failed");
+        const executionTimeMs = Math.round(performance.now() - startTime);
+        setTelemetry(payload.telemetry ?? { executionTimeMs, affectedRows: payload.data?.length ?? 0 });
         rows = payload.data;
-        addHistory('raw', query);
+        addHistory("raw", query);
       }
-      
+
       setResultRows(Array.isArray(rows) ? rows : []);
       onStatus(`Query executed successfully`, false);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown query error';
+      const message =
+        error instanceof Error ? error.message : "Unknown query error";
       setRunError(message);
       onStatus(message, true);
     } finally {
@@ -451,7 +491,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
   };
 
   const applyHistory = (entry: QueryHistoryEntry) => {
-    if (entry.mode === 'raw') {
+    if (entry.mode === "raw") {
       setRawQuery(entry.payload);
       return;
     }
@@ -459,30 +499,42 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
     try {
       const parsed = JSON.parse(entry.payload) as StructuredQueryPayload;
       setCollection(parsed.collection || collection);
-      setFilterText(parsed.filter ? JSON.stringify(parsed.filter, null, 2) : '{}');
-      setProjectionText(parsed.projection ? JSON.stringify(parsed.projection, null, 2) : '');
-      setSortText(parsed.sort ? JSON.stringify(parsed.sort, null, 2) : '');
+      setFilterText(
+        parsed.filter ? JSON.stringify(parsed.filter, null, 2) : "{}",
+      );
+      setProjectionText(
+        parsed.projection ? JSON.stringify(parsed.projection, null, 2) : "",
+      );
+      setSortText(parsed.sort ? JSON.stringify(parsed.sort, null, 2) : "");
       setLimitText(String(parsed.limit ?? 100));
     } catch {
-      setRunError('Selected history entry cannot be parsed.');
+      setRunError("Selected history entry cannot be parsed.");
     }
   };
 
   const resetQueryEditor = () => {
-    setRawQuery('');
-    setCollection(tables[0] || '');
-    setFilterText('{}');
-    setProjectionText('');
-    setSortText('');
-    setLimitText('100');
-    setRunError('');
-    onStatus('Query editor reset', false);
+    setRawQuery("");
+    setCollection(tables[0] || "");
+    setFilterText("{}");
+    setProjectionText("");
+    setSortText("");
+    setLimitText("100");
+    setRunError("");
+    onStatus("Query editor reset", false);
+  };
+
+  const copyResults = async () => {
+    if (resultRows.length === 0) return;
+    const text = JSON.stringify(resultRows, null, 2);
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const applyRawExample = (sql: string) => {
     setRawQuery(sql);
-    setRunError('');
-    onStatus('Raw query example loaded', false);
+    setRunError("");
+    onStatus("Raw query example loaded", false);
   };
 
   const applyStructuredExample = (query: {
@@ -494,19 +546,21 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
   }) => {
     setCollection(query.collection);
     setFilterText(JSON.stringify(query.filter ?? {}, null, 2));
-    setProjectionText(query.projection ? JSON.stringify(query.projection, null, 2) : '');
-    setSortText(query.sort ? JSON.stringify(query.sort, null, 2) : '');
+    setProjectionText(
+      query.projection ? JSON.stringify(query.projection, null, 2) : "",
+    );
+    setSortText(query.sort ? JSON.stringify(query.sort, null, 2) : "");
     setLimitText(String(query.limit ?? 100));
-    setRunError('');
-    onStatus('Structured query example loaded', false);
+    setRunError("");
+    onStatus("Structured query example loaded", false);
   };
 
   const applyAggregationExample = (pipeline: Record<string, unknown>[]) => {
     setCollection(activeObjectName || collection);
-    setQueryMode('aggregation');
+    setQueryMode("aggregation");
     setPipelineText(JSON.stringify(pipeline, null, 2));
-    setRunError('');
-    onStatus('Aggregation pipeline example loaded', false);
+    setRunError("");
+    onStatus("Aggregation pipeline example loaded", false);
   };
 
   return (
@@ -515,7 +569,9 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
         <div className="query-header">
           <h3>Query Engine</h3>
           <span className="query-helper">{helperText}</span>
-          <span className="query-helper">Connection: {dbId} ({dbType || 'Unknown'})</span>
+          <span className="query-helper">
+            Connection: {dbId} ({dbType || "Unknown"})
+          </span>
         </div>
 
         <div className="query-help-card">
@@ -532,7 +588,12 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
           {supportsRaw && (
             <div className="query-example-list">
               {rawExamples.map((example) => (
-                <button key={example.label} type="button" className="query-example-btn" onClick={() => applyRawExample(example.sql)}>
+                <button
+                  key={example.label}
+                  type="button"
+                  className="query-example-btn"
+                  onClick={() => applyRawExample(example.sql)}
+                >
                   <span>{example.label}</span>
                   <code>{example.sql}</code>
                 </button>
@@ -554,14 +615,18 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
               ))}
             </div>
           )}
-          {supportsStructured && dbType.toLowerCase().includes('mongo') && (
+          {supportsStructured && dbType.toLowerCase().includes("mongo") && (
             <div className="query-example-list">
               {aggregationExamples.map((example) => (
                 <button
                   key={example.label}
                   type="button"
                   className="query-example-btn"
-                  onClick={() => applyAggregationExample(example.pipeline as Record<string, unknown>[])}
+                  onClick={() =>
+                    applyAggregationExample(
+                      example.pipeline as Record<string, unknown>[],
+                    )
+                  }
                 >
                   <span>{example.label} (Aggregate)</span>
                   <code>{JSON.stringify(example.pipeline)}</code>
@@ -574,7 +639,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
         {supportsStructured && (
           <div className="query-group">
             <label htmlFor="query-collection">Collection/Table</label>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: "flex", gap: "10px" }}>
               <select
                 id="query-collection"
                 className="query-input"
@@ -588,17 +653,17 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
                   </option>
                 ))}
               </select>
-              {dbType.toLowerCase().includes('mongo') && (
+              {dbType.toLowerCase().includes("mongo") && (
                 <div className="query-mode-toggle">
-                  <button 
-                    className={`mode-btn ${queryMode === 'structured' ? 'active' : ''}`}
-                    onClick={() => setQueryMode('structured')}
+                  <button
+                    className={`mode-btn ${queryMode === "structured" ? "active" : ""}`}
+                    onClick={() => setQueryMode("structured")}
                   >
                     FIND
                   </button>
-                  <button 
-                    className={`mode-btn ${queryMode === 'aggregation' ? 'active' : ''}`}
-                    onClick={() => setQueryMode('aggregation')}
+                  <button
+                    className={`mode-btn ${queryMode === "aggregation" ? "active" : ""}`}
+                    onClick={() => setQueryMode("aggregation")}
                   >
                     AGGREGATE
                   </button>
@@ -616,12 +681,18 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
                 className="query-textarea query-textarea-lg"
                 value={pipelineText}
                 onChange={(event) => setPipelineText(event.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    runQuery();
+                  }
+                }}
                 spellCheck={false}
               />
            </div>
         )}
 
-        {supportsStructured && queryMode === 'structured' && (
+        {supportsStructured && queryMode === "structured" && (
           <>
             <div className="query-grid-two">
               <div className="query-group">
@@ -682,32 +753,48 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
               className="query-textarea query-textarea-lg"
               value={rawQuery}
               onChange={(event) => setRawQuery(event.target.value)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  runQuery();
+                }
+              }}
               spellCheck={false}
               placeholder={
-                dbType.toLowerCase().includes('mssql') || dbType.toLowerCase().includes('sqlserver')
-                  ? 'SELECT TOP 50 * FROM users;'
-                  : 'SELECT * FROM users LIMIT 50;'
+                dbType.toLowerCase().includes("mssql") ||
+                dbType.toLowerCase().includes("sqlserver")
+                  ? "SELECT TOP 50 * FROM users;"
+                  : "SELECT * FROM users LIMIT 50;"
               }
             />
           </div>
         )}
 
         <div className="query-actions">
-          <button type="button" className="query-run-btn" onClick={runQuery} disabled={running || (!supportsRaw && !supportsStructured)}>
-            {running ? 'Running...' : 'Run Query'}
+          <button
+            type="button"
+            className="query-run-btn"
+            onClick={runQuery}
+            disabled={running || (!supportsRaw && !supportsStructured)}
+          >
+            {running ? "Running..." : "Run Query"}
           </button>
           <button
             type="button"
             className="query-clear-btn"
             onClick={() => {
               setResultRows([]);
-              setRunError('');
-              onStatus('Query results cleared', false);
+              setRunError("");
+              onStatus("Query results cleared", false);
             }}
           >
             Clear Results
           </button>
-          <button type="button" className="query-clear-btn secondary" onClick={resetQueryEditor}>
+          <button
+            type="button"
+            className="query-clear-btn secondary"
+            onClick={resetQueryEditor}
+          >
             Reset Editor
           </button>
         </div>
@@ -715,8 +802,9 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
         <div className="query-help-card subtle">
           <div className="query-help-title">Tips</div>
           <p className="query-help-copy">
-            Use history to revisit a query, switch between table and JSON results for debugging, and keep raw SQL or structured
-            JSON focused on the selected database object: {activeObjectName}.
+            Use history to revisit a query, switch between table and JSON
+            results for debugging, and keep raw SQL or structured JSON focused
+            on the selected database object: {activeObjectName}.
           </p>
         </div>
 
@@ -729,8 +817,15 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
           ) : (
             <div className="query-history-list">
               {history.map((entry) => (
-                <button key={entry.id} type="button" className="query-history-item" onClick={() => setSelectedHistoryEntry(entry)}>
-                  <span className="query-history-mode">{entry.mode === 'raw' ? 'SQL' : 'Structured'}</span>
+                <button
+                  key={entry.id}
+                  type="button"
+                  className="query-history-item"
+                  onClick={() => setSelectedHistoryEntry(entry)}
+                >
+                  <span className="query-history-mode">
+                    {entry.mode === "raw" ? "SQL" : "Structured"}
+                  </span>
                   <code>{entry.payload.slice(0, 120)}</code>
                 </button>
               ))}
@@ -743,12 +838,30 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
         <div className="query-result-header">
           <h3>Results</h3>
           <div className="query-result-tabs">
-            <button type="button" className={`result-tab${resultMode === 'table' ? ' active' : ''}`} onClick={() => setResultMode('table')}>
+            <button
+              type="button"
+              className={`result-tab${resultMode === "table" ? " active" : ""}`}
+              onClick={() => setResultMode("table")}
+            >
               Table
             </button>
-            <button type="button" className={`result-tab${resultMode === 'json' ? ' active' : ''}`} onClick={() => setResultMode('json')}>
+            <button
+              type="button"
+              className={`result-tab${resultMode === "json" ? " active" : ""}`}
+              onClick={() => setResultMode("json")}
+            >
               JSON
             </button>
+            {resultRows.length > 0 && (
+    <button
+    type="button"
+    className="result-tab"
+    onClick={copyResults}
+    title="Copy results to clipboard"
+  >
+    {copied ? "✅ Copied!" : "📋 Copy"}
+  </button>
+)}
           </div>
         </div>
 
@@ -757,11 +870,15 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
             <div className="telemetry-strip">
               <div className="telemetry-item">
                 <span className="telemetry-label">Latency</span>
-                <span className="telemetry-value">{telemetry.executionTimeMs}ms</span>
+                <span className="telemetry-value">
+                  {telemetry.executionTimeMs}ms
+                </span>
               </div>
               <div className="telemetry-item">
                 <span className="telemetry-label">Rows</span>
-                <span className="telemetry-value">{telemetry.affectedRows ?? resultRows.length}</span>
+                <span className="telemetry-value">
+                  {telemetry.affectedRows ?? resultRows.length}
+                </span>
               </div>
               <div className="telemetry-item">
                 <span className="telemetry-label">Status</span>
@@ -773,7 +890,7 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
             <EmptyState>
               <p>Run a query to see results here.</p>
             </EmptyState>
-          ) : resultMode === 'table' ? (
+          ) : resultMode === "table" ? (
             <TableView rows={resultRows} />
           ) : (
             <JsonView rows={resultRows} />
@@ -782,35 +899,52 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
       </section>
 
       {selectedHistoryEntry && (
-        <div className="modal-overlay" onClick={() => setSelectedHistoryEntry(null)}>
-          <div className="technical-modal" onClick={e => e.stopPropagation()}>
+        <div
+          className="modal-overlay"
+          onClick={() => setSelectedHistoryEntry(null)}
+        >
+          <div className="technical-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-group">
                 <span className="modal-badge">History Entry</span>
                 <h4 className="modal-title">{selectedHistoryEntry.id}</h4>
               </div>
-              <button className="modal-close" onClick={() => setSelectedHistoryEntry(null)}>×</button>
+              <button
+                className="modal-close"
+                onClick={() => setSelectedHistoryEntry(null)}
+              >
+                ×
+              </button>
             </div>
             <div className="modal-body">
               <div className="modal-meta-grid">
                 <div className="meta-item">
                   <span className="meta-label">Time</span>
-                  <span className="meta-value">{new Date(selectedHistoryEntry.createdAt).toLocaleString()}</span>
+                  <span className="meta-value">
+                    {new Date(selectedHistoryEntry.createdAt).toLocaleString()}
+                  </span>
                 </div>
                 <div className="meta-item">
                   <span className="meta-label">Mode</span>
-                  <span className="meta-value">{selectedHistoryEntry.mode.toUpperCase()}</span>
+                  <span className="meta-value">
+                    {selectedHistoryEntry.mode.toUpperCase()}
+                  </span>
                 </div>
               </div>
               <div className="modal-content-area">
                 <span className="meta-label">Query</span>
-                <pre className="modal-code-block">{selectedHistoryEntry.payload}</pre>
+                <pre className="modal-code-block">
+                  {selectedHistoryEntry.payload}
+                </pre>
               </div>
             </div>
-            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  className="query-run-btn" 
+            <div
+              className="modal-footer"
+              style={{ justifyContent: "space-between" }}
+            >
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  className="query-run-btn"
                   onClick={async () => {
                     applyHistory(selectedHistoryEntry);
                     setSelectedHistoryEntry(null);
@@ -820,8 +954,8 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
                 >
                   Run
                 </button>
-                <button 
-                  className="query-run-btn secondary" 
+                <button
+                  className="query-run-btn secondary"
                   onClick={() => {
                     applyHistory(selectedHistoryEntry);
                     setSelectedHistoryEntry(null);
@@ -830,7 +964,10 @@ export default function QueryWorkbench({ dbId, dbType, tables, capabilities, onS
                   Load into Editor
                 </button>
               </div>
-              <button className="query-clear-btn" onClick={() => setSelectedHistoryEntry(null)}>
+              <button
+                className="query-clear-btn"
+                onClick={() => setSelectedHistoryEntry(null)}
+              >
                 Close
               </button>
             </div>

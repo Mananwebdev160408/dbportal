@@ -2,6 +2,7 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import net from "node:net";
 import dotenv from "dotenv";
 import express from "express";
 import open from "open";
@@ -14,9 +15,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Serve the built React frontend from frontend/dist
 const frontendDist = path.resolve(__dirname, "..", "frontend", "dist");
 
-const DEFAULT_PORT = Number.parseInt(process.env.PORT ?? "0", 10);
-const HOST = "127.0.0.1";
 const MAX_PORT_SCAN = 25;
+
+interface CliOptions {
+  host: string;
+  port: number;
+}
 
 const toMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -35,24 +39,108 @@ const parseLimit = (value: unknown): number => {
   return Math.min(parsed, 500);
 };
 
-const isSqlDriver = (kind: string): boolean => {
-  const value = kind.toLowerCase();
-  return value.includes('postgres') || value.includes('mysql') || value.includes('mssql') || value.includes('sqlserver') || value.includes('sqlite');
+const parsePortOption = (value: string | undefined, source: string): number => {
+  if (!value) {
+    throw new Error(source + " requires a port value.");
+  }
+
+  const port = Number.parseInt(value, 10);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error(source + " must be an integer between 0 and 65535.");
+  }
+
+  return port;
 };
 
-const isMongoDriver = (kind: string): boolean => kind.toLowerCase().includes('mongo');
+const parseCliOptions = (argv: string[]): CliOptions => {
+  const options: CliOptions = {
+    host: process.env.HOST?.trim() || "127.0.0.1",
+    port: parsePortOption(process.env.PORT ?? "0", "PORT"),
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+
+    if (arg === "--help") {
+      console.log("Usage: dbportal [--host <host>] [--port <port>]");
+      process.exit(0);
+    }
+
+    if (arg === "--host") {
+      const host = argv[index + 1]?.trim();
+      if (!host) {
+        throw new Error("--host requires a host value.");
+      }
+      options.host = host;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--host=")) {
+      const host = arg.slice("--host=".length).trim();
+      if (!host) {
+        throw new Error("--host requires a host value.");
+      }
+      options.host = host;
+      continue;
+    }
+
+    if (arg === "--port" || arg === "-p") {
+      options.port = parsePortOption(argv[index + 1], arg);
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--port=")) {
+      options.port = parsePortOption(arg.slice("--port=".length), "--port");
+      continue;
+    }
+
+    throw new Error("Unknown option: " + arg);
+  }
+
+  return options;
+};
+
+const hostForUrl = (host: string): string => {
+  if (host === "0.0.0.0" || host === "::") {
+    return "localhost";
+  }
+
+  return host.includes(":") ? "[" + host + "]" : host;
+};
+
+const isSqlDriver = (kind: string): boolean => {
+  const value = kind.toLowerCase();
+  return (
+    value.includes("postgres") ||
+    value.includes("mysql") ||
+    value.includes("mssql") ||
+    value.includes("sqlserver") ||
+    value.includes("sqlite")
+  );
+};
+
+const isMongoDriver = (kind: string): boolean =>
+  kind.toLowerCase().includes("mongo");
 
 const isReadOnlySqlQuery = (query: string): boolean => {
-  const normalized = query.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--.*$/gm, ' ').trim().toLowerCase();
+  const normalized = query
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/--.*$/gm, " ")
+    .trim()
+    .toLowerCase();
 
   // Read-only entry points we allow in this app.
-  const startsReadOnly = /^(select|with|show|describe|desc|explain|pragma)\b/.test(normalized);
+  const startsReadOnly =
+    /^(select|with|show|describe|desc|explain|pragma)\b/.test(normalized);
   if (!startsReadOnly) {
     return false;
   }
 
   // Block known mutating/privileged statements even if hidden in CTEs.
-  const forbidden = /\b(insert|update|delete|drop|truncate|alter|create|replace|merge|grant|revoke|commit|rollback|savepoint|attach|detach)\b/;
+  const forbidden =
+    /\b(insert|update|delete|drop|truncate|alter|create|replace|merge|grant|revoke|commit|rollback|savepoint|attach|detach)\b/;
   return !forbidden.test(normalized);
 };
 
@@ -61,9 +149,9 @@ const hasMutatingMongoStages = (pipeline: unknown): boolean => {
     return false;
   }
 
-  const blockedStages = new Set(['$out', '$merge']);
+  const blockedStages = new Set(["$out", "$merge"]);
   for (const stage of pipeline) {
-    if (!stage || typeof stage !== 'object' || Array.isArray(stage)) {
+    if (!stage || typeof stage !== "object" || Array.isArray(stage)) {
       continue;
     }
 
@@ -76,40 +164,32 @@ const hasMutatingMongoStages = (pipeline: unknown): boolean => {
   return false;
 };
 
-import net from "node:net";
-
-const checkPortAvailable = (port: number): Promise<boolean> => {
+const checkPortAvailable = (port: number, host: string): Promise<boolean> => {
   return new Promise((resolve) => {
     const server = net.createServer();
     server.once("error", () => {
       resolve(false);
     });
     server.once("listening", () => {
-      server.close(() => {
-        // Also check explicitly on 127.0.0.1 for Windows compatibility
-        const server2 = net.createServer();
-        server2.once("error", () => resolve(false));
-        server2.once("listening", () => {
-          server2.close(() => resolve(true));
-        });
-        server2.listen(port, "127.0.0.1");
-      });
+      server.close(() => resolve(true));
     });
-    server.listen(port, "0.0.0.0");
+    server.listen(port, host);
   });
 };
 
 const listenOnAvailablePort = async (
   app: express.Express,
   startPort: number,
+  host: string,
 ): Promise<{ server: ReturnType<express.Express["listen"]>; port: number }> => {
   if (startPort === 0) {
     return new Promise((resolve, reject) => {
-      const activeServer = app.listen(0, "127.0.0.1", () => {
+      const activeServer = app.listen(0, host, () => {
         const address = activeServer.address();
         resolve({
           server: activeServer,
-          port: typeof address === "object" && address !== null ? address.port : 0,
+          port:
+            typeof address === "object" && address !== null ? address.port : 0,
         });
       });
       activeServer.once("error", reject);
@@ -117,12 +197,12 @@ const listenOnAvailablePort = async (
   }
 
   for (let port = startPort; port < startPort + MAX_PORT_SCAN; port += 1) {
-    const isAvailable = await checkPortAvailable(port);
+    const isAvailable = await checkPortAvailable(port, host);
     if (isAvailable) {
       try {
         const server = await new Promise<ReturnType<express.Express["listen"]>>(
           (resolve, reject) => {
-            const activeServer = app.listen(port, "127.0.0.1", () =>
+            const activeServer = app.listen(port, host, () =>
               resolve(activeServer),
             );
             activeServer.once("error", reject);
@@ -141,6 +221,7 @@ const listenOnAvailablePort = async (
 };
 
 const main = async () => {
+  const options = parseCliOptions(process.argv.slice(2));
   const urls: { id: string; url: string }[] = [];
   if (process.env.DATABASE_URL) {
     urls.push({ id: "primary", url: process.env.DATABASE_URL });
@@ -241,14 +322,18 @@ const main = async () => {
     }
   });
 
-  app.get('/api/data/:name', async (request, response) => {
-    const dbId = String(request.query.dbId || 'primary');
+  app.get("/api/data/:name", async (request, response) => {
+    const dbId = String(request.query.dbId || "primary");
     const { name } = request.params;
     const limit = parseLimit(request.query.limit);
-    const offset = Number.parseInt(String(request.query.offset || '0'), 10);
-    const sortBy = request.query.sortBy ? String(request.query.sortBy) : undefined;
-    const sortOrder = (request.query.sortOrder === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc';
-    
+    const offset = Number.parseInt(String(request.query.offset || "0"), 10);
+    const sortBy = request.query.sortBy
+      ? String(request.query.sortBy)
+      : undefined;
+    const sortOrder = (request.query.sortOrder === "desc" ? "desc" : "asc") as
+      | "asc"
+      | "desc";
+
     let filters: Record<string, string> = {};
     if (request.query.filters) {
       try {
@@ -260,15 +345,22 @@ const main = async () => {
 
     try {
       const conn = manager.getConnection(dbId);
-      const data = await conn.getTableData(name, limit, offset, sortBy, sortOrder, filters);
-      response.status(200).json({ 
-        name, 
-        limit, 
+      const data = await conn.getTableData(
+        name,
+        limit,
         offset,
         sortBy,
         sortOrder,
         filters,
-        data 
+      );
+      response.status(200).json({
+        name,
+        limit,
+        offset,
+        sortBy,
+        sortOrder,
+        filters,
+        data,
       });
     } catch (error) {
       response.status(500).json({ error: toMessage(error) });
@@ -289,20 +381,27 @@ const main = async () => {
       const conn = manager.getConnection(dbId);
       const dbKind = conn.getKind();
 
-      if (typeof query === 'string') {
+      if (typeof query === "string") {
         if (!isSqlDriver(dbKind)) {
-          response.status(400).json({ error: 'String queries are only supported for SQL drivers.' });
+          response.status(400).json({
+            error: "String queries are only supported for SQL drivers.",
+          });
           return;
         }
 
         if (!isReadOnlySqlQuery(query)) {
-          response.status(403).json({ error: 'Only read-only SQL statements are allowed in this build.' });
+          response.status(403).json({
+            error: "Only read-only SQL statements are allowed in this build.",
+          });
           return;
         }
       } else if (isMongoDriver(dbKind)) {
         const mongoQuery = query as { pipeline?: unknown };
         if (hasMutatingMongoStages(mongoQuery.pipeline)) {
-          response.status(403).json({ error: 'MongoDB write pipeline stages are disabled. Remove $out/$merge.' });
+          response.status(403).json({
+            error:
+              "MongoDB write pipeline stages are disabled. Remove $out/$merge.",
+          });
           return;
         }
       }
@@ -324,10 +423,11 @@ const main = async () => {
   try {
     const started = await listenOnAvailablePort(
       app,
-      Number.isFinite(DEFAULT_PORT) ? DEFAULT_PORT : 0,
+      options.port,
+      options.host,
     );
     server = started.server;
-    const uiUrl = `http://localhost:${started.port}`;
+    const uiUrl = "http://" + hostForUrl(options.host) + ":" + started.port;
 
     console.log(`dbportal connected (${urls.length} database(s)).`);
     console.log(`Dashboard running at ${uiUrl}`);

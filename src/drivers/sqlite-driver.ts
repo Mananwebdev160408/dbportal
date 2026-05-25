@@ -1,5 +1,12 @@
-import path from 'node:path';
-import type { DatabaseDriver, DriverCapabilities, DriverQueryInput, QueryResult, DatabaseSchema, TableSchema } from './types.js';
+import path from "node:path";
+import type {
+  DatabaseDriver,
+  DriverCapabilities,
+  DriverQueryInput,
+  QueryResult,
+  DatabaseSchema,
+  TableSchema,
+} from "./types.js";
 
 type SqliteDatabase = {
   all: (sql: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;
@@ -19,10 +26,12 @@ export class SqliteDriver implements DatabaseDriver {
     let sqlite3Module: any;
     let sqliteModule: any;
     try {
-      sqlite3Module = await import('sqlite3');
-      sqliteModule = await import('sqlite');
+      sqlite3Module = await import("sqlite3");
+      sqliteModule = await import("sqlite");
     } catch {
-      throw new Error('SQLite driver not found. Install it with: npm install sqlite sqlite3');
+      throw new Error(
+        "SQLite driver not found. Install it with: npm install sqlite sqlite3",
+      );
     }
 
     const filename = this.resolveFilename(this.connectionString);
@@ -44,7 +53,7 @@ export class SqliteDriver implements DatabaseDriver {
   async getTables(): Promise<string[]> {
     const db = await this.getDb();
     const rows = await db.all(
-      `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC`
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC`,
     );
     return rows.map((row) => String(row.name));
   }
@@ -53,7 +62,7 @@ export class SqliteDriver implements DatabaseDriver {
     const safeName = this.toSafeIdentifier(name);
     const db = await this.getDb();
     const row = await db.get(`SELECT COUNT(*) as count FROM "${safeName}"`);
-    const parsed = Number.parseInt(String(row?.count ?? '0'), 10);
+    const parsed = Number.parseInt(String(row?.count ?? "0"), 10);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
@@ -62,25 +71,29 @@ export class SqliteDriver implements DatabaseDriver {
     limit: number,
     offset: number = 0,
     sortBy?: string,
-    sortOrder: 'asc' | 'desc' = 'asc',
-    filters: Record<string, string> = {}
+    sortOrder: "asc" | "desc" = "asc",
+    filters: Record<string, string> = {},
   ): Promise<Record<string, unknown>[]> {
     const safeName = this.toSafeIdentifier(name);
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(limit, 500))
+      : 100;
     const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
 
     let sql = `SELECT * FROM "${safeName}"`;
     const params: unknown[] = [];
 
-    const filterEntries = Object.entries(filters).filter(([_, val]) => val.trim().length > 0);
+    const filterEntries = Object.entries(filters).filter(
+      ([_, val]) => val.trim().length > 0,
+    );
     if (filterEntries.length > 0) {
-      sql += ' WHERE ';
+      sql += " WHERE ";
       const clauses = filterEntries.map(([field, value]) => {
         const safeField = this.toSafeIdentifier(field);
         params.push(`%${value}%`);
         return `"${safeField}" LIKE ?`;
       });
-      sql += clauses.join(' AND ');
+      sql += clauses.join(" AND ");
     }
 
     if (sortBy) {
@@ -96,8 +109,8 @@ export class SqliteDriver implements DatabaseDriver {
   }
 
   async query(rawQuery: DriverQueryInput): Promise<QueryResult> {
-    if (typeof rawQuery !== 'string') {
-      throw new Error('SQLite query endpoint expects a SQL string.');
+    if (typeof rawQuery !== "string") {
+      throw new Error("SQLite query endpoint expects a SQL string.");
     }
 
     const db = await this.getDb();
@@ -107,7 +120,11 @@ export class SqliteDriver implements DatabaseDriver {
     let data: Record<string, unknown>[] = [];
     let affectedRows = 0;
 
-    if (trimmed.startsWith('select') || trimmed.startsWith('with') || trimmed.startsWith('pragma')) {
+    if (
+      trimmed.startsWith("select") ||
+      trimmed.startsWith("with") ||
+      trimmed.startsWith("pragma")
+    ) {
       data = await db.all(rawQuery);
       affectedRows = data.length;
     } else {
@@ -128,7 +145,7 @@ export class SqliteDriver implements DatabaseDriver {
   async getSchema(): Promise<DatabaseSchema> {
     const db = await this.getDb();
     const tableRows = await db.all(
-      `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC`
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC`,
     );
 
     const tables: TableSchema[] = [];
@@ -139,7 +156,7 @@ export class SqliteDriver implements DatabaseDriver {
 
       const columns = columnsInfo.map((col) => ({
         name: String(col.name),
-        type: String(col.type ?? 'text'),
+        type: String(col.type ?? "text"),
         isNullable: col.notnull === 0,
         isPrimary: col.pk === 1,
       }));
@@ -155,7 +172,7 @@ export class SqliteDriver implements DatabaseDriver {
     }
 
     return {
-      dbType: 'sqlite',
+      dbType: "sqlite",
       tables,
     };
   }
@@ -171,24 +188,24 @@ export class SqliteDriver implements DatabaseDriver {
       await this.connect();
     }
     if (!this.db) {
-      throw new Error('SQLite database was not initialized.');
+      throw new Error("SQLite database was not initialized.");
     }
     return this.db;
   }
 
   private resolveFilename(urlString: string): string {
-    if (!urlString.startsWith('sqlite:')) {
+    if (!urlString.startsWith("sqlite:")) {
       return urlString;
     }
 
     const parsed = new URL(urlString);
-    const rawPath = decodeURIComponent(parsed.pathname || '');
-    if (!rawPath || rawPath === '/') {
-      return ':memory:';
+    const rawPath = decodeURIComponent(parsed.pathname || "");
+    if (!rawPath || rawPath === "/") {
+      return ":memory:";
     }
 
     let filePath = rawPath;
-    if (filePath.startsWith('/') && /^[A-Za-z]:/.test(filePath.slice(1))) {
+    if (filePath.startsWith("/") && /^[A-Za-z]:/.test(filePath.slice(1))) {
       filePath = filePath.slice(1);
     }
 
@@ -197,7 +214,7 @@ export class SqliteDriver implements DatabaseDriver {
 
   private toSafeIdentifier(name: string): string {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-      throw new Error('Invalid SQLite identifier.');
+      throw new Error("Invalid SQLite identifier.");
     }
     return name;
   }

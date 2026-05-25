@@ -1,19 +1,19 @@
-import { useEffect, useState, useCallback } from 'react';
-import EmptyState from '../EmptyState';
-import { 
-  ReactFlow, 
-  Controls, 
-  Background, 
-  MarkerType, 
-  useNodesState, 
+import { useEffect, useState, useCallback } from "react";
+import EmptyState from "../EmptyState";
+import {
+  ReactFlow,
+  Controls,
+  Background,
+  MarkerType,
+  useNodesState,
   useEdgesState,
   Handle,
   Position,
   NodeProps,
   Edge,
-  Node
-} from '@xyflow/react';
-import dagre from 'dagre';
+  Node,
+} from "@xyflow/react";
+import dagre from "dagre";
 
 interface ColumnSchema {
   name: string;
@@ -49,25 +49,32 @@ interface SchemaViewProps {
 
 const TableNode = ({ data, selected }: NodeProps) => {
   return (
-    <div className={`schema-node${selected ? ' active' : ''}`} style={{
-      width: 140,
-      height: 52,
-      borderRadius: 10,
-      background: selected ? 'var(--accent-soft)' : 'var(--surface-raised)',
-      border: `1px solid ${selected ? 'var(--accent)' : 'var(--line-strong)'}`,
-      color: selected ? 'var(--accent)' : 'var(--text)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '12px',
-      fontFamily: 'var(--font-mono)',
-      boxShadow: selected ? 'var(--glow-accent)' : 'var(--shadow-subtle)',
-      cursor: 'pointer'
-    }}>
+    <div
+      className={`schema-node${selected ? " active" : ""}`}
+      style={{
+        width: 140,
+        height: 52,
+        borderRadius: 10,
+        background: selected ? "var(--accent-soft)" : "var(--surface-raised)",
+        border: `1px solid ${selected ? "var(--accent)" : "var(--line-strong)"}`,
+        color: selected ? "var(--accent)" : "var(--text)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "12px",
+        fontFamily: "var(--font-mono)",
+        boxShadow: selected ? "var(--glow-accent)" : "var(--shadow-subtle)",
+        cursor: "pointer",
+      }}
+    >
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <div style={{ fontWeight: 600 }}>{data.label as string}</div>
-      <div style={{ color: 'var(--text-muted)', fontSize: '10px', marginTop: 4 }}>{data.fieldCount as number} fields</div>
+      <div
+        style={{ color: "var(--text-muted)", fontSize: "10px", marginTop: 4 }}
+      >
+        {data.fieldCount as number} fields
+      </div>
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
   );
@@ -77,7 +84,11 @@ const nodeTypes = {
   tableMode: TableNode,
 };
 
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
+const getLayoutedElements = (
+  nodes: Node[],
+  edges: Edge[],
+  direction = "TB",
+) => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 100 });
@@ -108,11 +119,18 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   return { nodes: layoutedNodes, edges };
 };
 
-export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: SchemaViewProps) {
+export default function SchemaView({
+  dbId,
+  dbType,
+  refreshKey,
+  onStatus,
+}: SchemaViewProps) {
   const [schema, setSchema] = useState<DatabaseSchema | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [selectedTableName, setSelectedTableName] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [selectedTableName, setSelectedTableName] = useState<string | null>(
+    null,
+  );
 
   const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
@@ -121,18 +139,18 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
     let alive = true;
     const load = async () => {
       setLoading(true);
-      setError('');
+      setError("");
       try {
         const res = await fetch(`/api/schema?dbId=${dbId}`);
         const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || 'Failed to load schema.');
+        if (!res.ok) throw new Error(payload.error || "Failed to load schema.");
         if (!alive) return;
         setSchema(payload);
-        
+
         // Transform schema to raw nodes and edges
         const initialNodes: Node[] = payload.tables.map((t: TableSchema) => ({
           id: t.name,
-          type: 'tableMode',
+          type: "tableMode",
           position: { x: 0, y: 0 },
           data: { label: t.name, fieldCount: t.columns.length, table: t },
         }));
@@ -146,20 +164,29 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
               target: fk.refTable,
               label: fk.column,
               animated: true,
-              style: { stroke: 'var(--text-muted)', strokeWidth: 1.5, opacity: 0.6 },
-              labelStyle: { fill: 'var(--text)', fontSize: 10, fontFamily: 'var(--font-mono)' },
-              labelBgStyle: { fill: 'var(--surface)', fillOpacity: 0.8 },
+              style: {
+                stroke: "var(--text-muted)",
+                strokeWidth: 1.5,
+                opacity: 0.6,
+              },
+              labelStyle: {
+                fill: "var(--text)",
+                fontSize: 10,
+                fontFamily: "var(--font-mono)",
+              },
+              labelBgStyle: { fill: "var(--surface)", fillOpacity: 0.8 },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                color: 'var(--text-muted)',
+                color: "var(--text-muted)",
               },
             });
           });
         });
 
         // Run dagre layout computation
-        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(initialNodes, initialEdges, 'TB');
-        
+        const { nodes: layoutedNodes, edges: layoutedEdges } =
+          getLayoutedElements(initialNodes, initialEdges, "TB");
+
         setNodes(layoutedNodes);
         setEdges(layoutedEdges);
 
@@ -168,12 +195,14 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
 
         // Visually select the first node
         if (defaultSelected) {
-          setNodes((nds) => nds.map(n => ({ ...n, selected: n.id === defaultSelected })));
+          setNodes((nds) =>
+            nds.map((n) => ({ ...n, selected: n.id === defaultSelected })),
+          );
         }
 
         onStatus(`Schema ready for ${dbId}`);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Unknown error';
+        const msg = err instanceof Error ? err.message : "Unknown error";
         if (!alive) return;
         setError(msg);
         onStatus(msg, true);
@@ -191,7 +220,8 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
     setSelectedTableName(node.id);
   }, []);
 
-  const selectedTable = schema?.tables.find((t) => t.name === selectedTableName) ?? null;
+  const selectedTable =
+    schema?.tables.find((t) => t.name === selectedTableName) ?? null;
 
   if (loading) {
     return (
@@ -224,7 +254,9 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
         <div className="schema-canvas-head">
           <div>
             <h3>Schema Visualizer</h3>
-            <p>{dbType.toUpperCase()} · {schema.tables.length} tables</p>
+            <p>
+              {dbType.toUpperCase()} · {schema.tables.length} tables
+            </p>
           </div>
           <div className="schema-legend">
             <span className="legend-dot primary" />
@@ -256,7 +288,7 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
       <aside className="schema-panel">
         <div className="schema-panel-head">
           <span className="schema-panel-title">Table Inspector</span>
-          <span className="schema-panel-sub">{selectedTable?.name ?? '—'}</span>
+          <span className="schema-panel-sub">{selectedTable?.name ?? "—"}</span>
         </div>
 
         {selectedTable ? (
@@ -267,12 +299,14 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
                 {selectedTable.columns.map((col) => (
                   <div key={col.name} className="schema-column-row">
                     <div className="schema-column-name">
-                      <span className={`schema-key ${col.isPrimary ? 'primary' : col.name.endsWith('_id') ? 'foreign' : ''}`} />
+                      <span
+                        className={`schema-key ${col.isPrimary ? "primary" : col.name.endsWith("_id") ? "foreign" : ""}`}
+                      />
                       {col.name}
                     </div>
                     <div className="schema-column-meta">
                       <span>{col.type}</span>
-                      <span>{col.isNullable ? 'NULL' : 'NOT NULL'}</span>
+                      <span>{col.isNullable ? "NULL" : "NOT NULL"}</span>
                     </div>
                   </div>
                 ))}
@@ -286,10 +320,15 @@ export default function SchemaView({ dbId, dbType, refreshKey, onStatus }: Schem
               ) : (
                 <div className="schema-relations">
                   {selectedTable.foreignKeys.map((fk, idx) => (
-                    <div key={`${fk.column}-${idx}`} className="schema-relation-row">
+                    <div
+                      key={`${fk.column}-${idx}`}
+                      className="schema-relation-row"
+                    >
                       <span>{fk.column}</span>
                       <span>→</span>
-                      <span>{fk.refTable}.{fk.refColumn}</span>
+                      <span>
+                        {fk.refTable}.{fk.refColumn}
+                      </span>
                     </div>
                   ))}
                 </div>
