@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Sidebar from "./components/Sidebar";
 import Toolbar from "./components/Toolbar";
 import EmptyState from "./components/EmptyState";
+import SkeletonTableLoader from "./components/SkeletonTableLoader";
 import OverviewView from "./components/views/OverviewView";
 import TableView from "./components/views/TableView";
 import DocumentsView from "./components/views/DocumentsView";
@@ -294,7 +295,10 @@ export default function App() {
       : data;
 
   const renderContent = () => {
-    if (loading) {
+   if (loading) {
+      if (appMode === "table") {
+        return <SkeletonTableLoader rows={8} columns={5} />
+      }
       return (
         <EmptyState>
           <div className="loading-pulse" />
