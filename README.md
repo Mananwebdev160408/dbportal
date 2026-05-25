@@ -96,6 +96,46 @@ PORT=3000
 
 Only `DATABASE_URL` is required. Additional numbered URLs are optional.
 
+## 📸 Application Screenshots
+
+<div align="center">
+
+### Overview Dashboard — Summary Analytics
+
+![Overview Dashboard](assets/overview_1.png)
+
+---
+
+### Overview Dashboard — Database Insights
+
+![Overview Insights](assets/overview_2.png)
+
+---
+
+### Schema Visualiser
+
+![Schema Visualiser](assets/schema-visualiser.png)
+
+---
+
+### Table View
+
+![Table View](assets/table_view.png)
+
+---
+
+### Card View
+
+![Card View](assets/card_view.png)
+
+---
+
+### Inspector View
+
+![Inspector View](assets/inspector_view.png)
+
+</div>
+
 ## Installation
 
 ### Run with npx
