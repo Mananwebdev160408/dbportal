@@ -36,6 +36,15 @@ interface QueryHistoryEntry {
 }
 
 const HISTORY_KEY_PREFIX = "dbportal-query-history";
+const BOOKMARK_KEY_PREFIX = "dbportal-query-bookmarks";
+
+interface BookmarkEntry {
+  id: string;
+  name: string;
+  mode: "raw" | "structured";
+  payload: string;
+  createdAt: number;
+}
 
 const parseJsonObject = (
   label: string,
@@ -172,6 +181,17 @@ export default function QueryWorkbench({
   });
   const [selectedHistoryEntry, setSelectedHistoryEntry] =
     useState<QueryHistoryEntry | null>(null);
+    const bookmarkKey = `${BOOKMARK_KEY_PREFIX}:${dbType}:${dbId}`;
+const [bookmarks, setBookmarks] = useState<BookmarkEntry[]>(() => {
+  try {
+    const raw = localStorage.getItem(bookmarkKey);
+    const parsed = raw ? (JSON.parse(raw) as BookmarkEntry[]) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+});
+const [bookmarkName, setBookmarkName] = useState("");
 
   const supportsStructured = capabilities.structuredQuery;
   const supportsRaw = capabilities.rawQuery;
@@ -505,7 +525,65 @@ export default function QueryWorkbench({
       setRunError("Selected history entry cannot be parsed.");
     }
   };
+const saveBookmark = () => {
+  const name = bookmarkName.trim();
+  if (!name) {
+    onStatus("Please enter a name for the bookmark.", true);
+    return;
+  }
+  const payload =
+    supportsStructured && !supportsRaw
+      ? JSON.stringify(
+          buildMongoPayload(collection, filterText, projectionText, sortText, limitText),
+          null,
+          2,
+        )
+      : rawQuery.trim();
 
+  if (!payload) {
+    onStatus("Nothing to bookmark — query is empty.", true);
+    return;
+  }
+
+  const item: BookmarkEntry = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name,
+    mode: supportsStructured && !supportsRaw ? "structured" : "raw",
+    payload,
+    createdAt: Date.now(),
+  };
+
+  const next = [item, ...bookmarks];
+  setBookmarks(next);
+  localStorage.setItem(bookmarkKey, JSON.stringify(next));
+  setBookmarkName("");
+  onStatus(`Bookmark "${name}" saved!`, false);
+};
+
+const deleteBookmark = (id: string) => {
+  const next = bookmarks.filter((b) => b.id !== id);
+  setBookmarks(next);
+  localStorage.setItem(bookmarkKey, JSON.stringify(next));
+  onStatus("Bookmark deleted.", false);
+};
+
+const loadBookmark = (entry: BookmarkEntry) => {
+  if (entry.mode === "raw") {
+    setRawQuery(entry.payload);
+  } else {
+    try {
+      const parsed = JSON.parse(entry.payload) as StructuredQueryPayload;
+      setCollection(parsed.collection || collection);
+      setFilterText(parsed.filter ? JSON.stringify(parsed.filter, null, 2) : "{}");
+      setProjectionText(parsed.projection ? JSON.stringify(parsed.projection, null, 2) : "");
+      setSortText(parsed.sort ? JSON.stringify(parsed.sort, null, 2) : "");
+      setLimitText(String(parsed.limit ?? 100));
+    } catch {
+      setRunError("Bookmark cannot be parsed.");
+    }
+  }
+  onStatus(`Bookmark "${entry.name}" loaded!`, false);
+};
   const resetQueryEditor = () => {
     setRawQuery("");
     setCollection(tables[0] || "");
@@ -795,7 +873,60 @@ export default function QueryWorkbench({
         </div>
 
         {runError && <p className="query-error">{runError}</p>}
-
+      {/* Bookmarks */}
+        <div className="query-history">
+          <div className="query-history-title">Bookmarks</div>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+            <input
+              type="text"
+              className="query-input"
+              placeholder="Bookmark name..."
+              value={bookmarkName}
+              onChange={(e) => setBookmarkName(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button
+              type="button"
+              className="query-run-btn"
+              onClick={saveBookmark}
+            >
+              Save
+            </button>
+          </div>
+          {bookmarks.length === 0 ? (
+            <p className="query-history-empty">No bookmarks yet.</p>
+          ) : (
+            <div className="query-history-list">
+              {bookmarks.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="query-history-item"
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <button
+                    type="button"
+                    style={{ flex: 1, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                    onClick={() => loadBookmark(entry)}
+                  >
+                    <span className="query-history-mode">
+                      {entry.mode === "raw" ? "SQL" : "Structured"}
+                    </span>
+                    <strong style={{ marginLeft: "6px" }}>{entry.name}</strong>
+                    <code style={{ display: "block" }}>{entry.payload.slice(0, 80)}...</code>
+                  </button>
+                  <button
+                    type="button"
+                    className="query-clear-btn"
+                    style={{ flexShrink: 0 }}
+                    onClick={() => deleteBookmark(entry.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="query-history">
           <div className="query-history-title">Recent Queries</div>
           {history.length === 0 ? (
