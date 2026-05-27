@@ -34,8 +34,11 @@ interface TableViewProps {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   filters?: Record<string, string>;
+  page?: number;
+  pageSize?: number;
   onSort?: (col: string) => void;
   onFilterChange?: (filters: Record<string, string>) => void;
+  onPageChange?: (page: number) => void;
   maskSensitive?: boolean;
 }
 
@@ -56,8 +59,11 @@ export default function TableView({
   sortBy,
   sortOrder,
   filters = {},
+  page = 0,
+  pageSize = 200,
   onSort,
   onFilterChange,
+  onPageChange,
   maskSensitive = false,
 }: TableViewProps) {
   const [localFilters, setLocalFilters] =
@@ -130,16 +136,24 @@ export default function TableView({
       (sum, col) => sum + (colWidths[col] ?? DEFAULT_COL_WIDTH),
       0,
     );
+  const firstRow = page * pageSize + 1;
+  const lastRow = page * pageSize + rows.length;
+  const hasNextPage = rows.length === pageSize;
 
   return (
     <div className="table-view-container">
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "1rem",
           padding: "0.5rem 1rem",
         }}
       >
+        <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
+          Page {page + 1} · Rows {firstRow}-{lastRow}
+        </span>
         <button
           className="export-csv-btn"
           onClick={() => exportCSV(rows, columns)}
@@ -294,6 +308,33 @@ export default function TableView({
             ))}
           </tbody>
         </table>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: "0.75rem",
+          padding: "0.75rem 1rem",
+        }}
+      >
+        <button
+          className="export-csv-btn"
+          disabled={page === 0}
+          onClick={() => onPageChange?.(page - 1)}
+        >
+          Previous
+        </button>
+        <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
+          Page {page + 1}
+        </span>
+        <button
+          className="export-csv-btn"
+          disabled={!hasNextPage}
+          onClick={() => onPageChange?.(page + 1)}
+        >
+          Next
+        </button>
       </div>
     </div>
   );

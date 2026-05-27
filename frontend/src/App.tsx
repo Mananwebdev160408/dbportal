@@ -86,6 +86,8 @@ export default function App() {
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [schemaReloadKey, setSchemaReloadKey] = useState(0);
   const [maskSensitive, setMaskSensitive] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(200);
 
   // Apply theme & mode to <body>
   useEffect(() => {
@@ -218,6 +220,7 @@ export default function App() {
       sField?: string,
       sOrder?: "asc" | "desc",
       currentFilters?: Record<string, string>,
+      requestedPage = 0,
     ) => {
       const dbToUse = targetDbId || activeDbId;
       if (targetDbId && targetDbId !== activeDbId) {
@@ -227,12 +230,14 @@ export default function App() {
 
       setAppMode("table");
       setCurrentTable(name);
+      setPage(requestedPage);
       setData([]);
       setLoading(true);
       setError("");
 
       try {
-        let url = `/api/data/${encodeURIComponent(name)}?dbId=${dbToUse}&limit=200`;
+        const offset = requestedPage * pageSize;
+        let url = `/api/data/${encodeURIComponent(name)}?dbId=${dbToUse}&limit=${pageSize}&offset=${offset}`;
         if (sField) {
           url += `&sortBy=${encodeURIComponent(sField)}&sortOrder=${sOrder || "asc"}`;
         }
@@ -254,7 +259,7 @@ export default function App() {
         setLoading(false);
       }
     },
-    [activeDbId],
+    [activeDbId, pageSize],
   );
 
   const openQueryWorkspace = useCallback(() => {
@@ -280,7 +285,7 @@ export default function App() {
     if (appMode === "overview") {
       loadOverview();
     } else if (currentTable) {
-      loadTable(currentTable);
+      loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, page);
     } else if (appMode === "schema") {
       setSchemaReloadKey((k) => k + 1);
     }
@@ -345,6 +350,8 @@ export default function App() {
       return (
         <TableView
           rows={data}
+          page={page}
+          pageSize={pageSize}
           maskSensitive={maskSensitive}
           sortBy={sortBy}
           sortOrder={sortOrder}
@@ -354,11 +361,14 @@ export default function App() {
               sortBy === field && sortOrder === "asc" ? "desc" : "asc";
             setSortBy(field);
             setSortOrder(nextOrder);
-            loadTable(currentTable, activeDbId, field, nextOrder, filters);
+            loadTable(currentTable, activeDbId, field, nextOrder, filters, 0);
           }}
           onFilterChange={(newFilters) => {
             setFilters(newFilters);
-            loadTable(currentTable, activeDbId, sortBy, sortOrder, newFilters);
+            loadTable(currentTable, activeDbId, sortBy, sortOrder, newFilters, 0);
+          }}
+          onPageChange={(nextPage) => {
+            loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, nextPage);
           }}
         />
       );
