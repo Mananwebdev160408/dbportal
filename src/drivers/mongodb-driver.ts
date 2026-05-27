@@ -5,6 +5,8 @@ import type {
   StructuredQuery,
   QueryResult,
   DatabaseSchema,
+  TableSchema,
+  ForeignKeySchema,
 } from "./types.js";
 
 type MongoDatabase = {
@@ -126,13 +128,15 @@ export class MongoDriver implements DatabaseDriver {
       tables.push({
         name: collection.name,
         columns,
-        foreignKeys: [],
+        foreignKeys: [] as ForeignKeySchema[],
       });
     }
 
+    const tablesWithKeys = inferVirtualForeignKeys(tables);
+
     return {
       dbType: "mongodb",
-      tables: tables.sort((a, b) => a.name.localeCompare(b.name)),
+      tables: tablesWithKeys.sort((a, b) => a.name.localeCompare(b.name)),
     };
   }
 
@@ -299,4 +303,114 @@ export class MongoDriver implements DatabaseDriver {
     if (t === "object") return "object";
     return t;
   }
+}
+
+export function inferVirtualForeignKeys(tables: TableSchema[]): TableSchema[] {
+  const normalize = (name: string): string => {
+    let n = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (n.endsWith("ies")) {
+      n = n.slice(0, -3) + "y";
+    } else if (n.endsWith("s") && !n.endsWith("ss")) {
+      n = n.slice(0, -1);
+    }
+    return n;
+  };
+
+  const tableNames = tables.map((t) => t.name);
+  const normalizedToTableName = new Map<string, string>();
+  for (const table of tables) {
+    normalizedToTableName.set(normalize(table.name), table.name);
+  }
+
+  // Common aliases for references (singular forms)
+  const aliases: Record<string, string> = {
+    author: "users",
+    owner: "users",
+    creator: "users",
+    member: "users",
+    commentedby: "users",
+    sharedby: "users",
+    userfollowed: "users",
+    userfollowing: "users",
+    follower: "users",
+    to: "users",
+    from: "users",
+  };
+
+  for (const table of tables) {
+    const mappedColumns = new Set<string>();
+
+    for (const col of table.columns) {
+      if (col.isPrimary) continue;
+
+      const colNameLower = col.name.toLowerCase();
+      let targetTable: string | null = null;
+
+      // Check if column name ends with ids/id/Id/_id/_ids (case-insensitive)
+      let prefix = "";
+      if (colNameLower.endsWith("_ids")) {
+        prefix = col.name.slice(0, -4);
+      } else if (colNameLower.endsWith("ids")) {
+        prefix = col.name.slice(0, -3);
+      } else if (colNameLower.endsWith("_id") && colNameLower !== "_id") {
+        prefix = col.name.slice(0, -3);
+      } else if (colNameLower.endsWith("id") && colNameLower !== "id") {
+        prefix = col.name.slice(0, -2);
+      }
+
+      if (prefix) {
+        const normPrefix = normalize(prefix);
+        if (normPrefix === "parent" || normPrefix === "child") {
+          targetTable = table.name;
+        } else if (normalizedToTableName.has(normPrefix)) {
+          targetTable = normalizedToTableName.get(normPrefix)!;
+        } else {
+          const aliasTarget = aliases[normPrefix];
+          if (aliasTarget && tableNames.includes(aliasTarget)) {
+            targetTable = aliasTarget;
+          }
+        }
+      } else {
+        const normCol = normalize(col.name);
+        if (normalizedToTableName.has(normCol)) {
+          if (col.type === "object" || col.type === "array") {
+            targetTable = normalizedToTableName.get(normCol)!;
+          }
+        } else if (aliases[normCol] && tableNames.includes(aliases[normCol])) {
+          if (col.type === "object" || col.type === "array") {
+            targetTable = aliases[normCol];
+          }
+        } else {
+          // Check if column ends with normalized table name (e.g. 'viewedstory' ends with 'story')
+          for (const [normT, origT] of normalizedToTableName.entries()) {
+            if (
+              normCol.endsWith(normT) &&
+              (col.type === "object" || col.type === "array")
+            ) {
+              targetTable = origT;
+              break;
+            }
+          }
+        }
+      }
+
+      if (targetTable) {
+        const targetTableSchema = tables.find((t) => t.name === targetTable);
+        const hasIdColumn = targetTableSchema?.columns.some(
+          (c) => c.name === "_id",
+        );
+        if (hasIdColumn && !mappedColumns.has(col.name)) {
+          table.foreignKeys.push({
+            table: table.name,
+            column: col.name,
+            refTable: targetTable,
+            refColumn: "_id",
+          });
+          mappedColumns.add(col.name);
+        }
+      }
+    }
+  }
+
+  return tables;
 }

@@ -1,0 +1,22 @@
+# GitGuardian Configuration
+# Reference: https://docs.gitguardian.com/
+version: 2
+
+# Set to true if the desired exit code for the CLI is always 0
+exit_zero: false
+
+# Enable verbose output
+verbose: false
+
+secret:
+  # Exclude files and paths by globbing
+  ignored_paths:
+    - '**/node_modules/**'
+    - '**/dist/**'
+    - '**/build/**'
+    - '**/package-lock.json'
+    - '**/README.md'
+    - 'LICENSE'
+
+  # Whether to show the actual secret in the output (default: false)
+  show_secrets: false

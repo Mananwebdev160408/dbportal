@@ -5,6 +5,7 @@
 [![Last Commit](https://img.shields.io/github/last-commit/Mananwebdev160408/dbportal?style=flat-square)](https://github.com/Mananwebdev160408/dbportal/commits/main)
 [![License](https://img.shields.io/github/license/Mananwebdev160408/dbportal?style=flat-square)](https://github.com/Mananwebdev160408/dbportal/blob/main/LICENSE)
 [![GSSoC 2026](https://img.shields.io/badge/GSSoC-2026-pink?style=flat-square)](https://gssoc.girlscript.tech/)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289DA?style=flat-square&logo=discord)](https://discord.gg/YnRq6df2RY)
 
 `dbportal` is a local database explorer for developers who want one tool to inspect multiple databases, browse records, understand schema shape, and run read-only queries from a browser UI.
 
@@ -225,6 +226,12 @@ npm run build
 - `frontend/` React UI source and build output
 - `bin/cli.js` executable launcher
 - `dist/` compiled package artifacts
+
+## 💬 Community
+
+Want to discuss features, get help, or connect with other contributors? Join our Discord server to chat with the maintainers and community:
+
+👉 **[Join the dbportal Discord Server](https://discord.gg/YnRq6df2RY)**
 
 ## Contributors
 

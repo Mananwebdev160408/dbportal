@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "conditions": [
+    {
+      "metric": "NEW_SECRETS_PUSHED",
+      "operator": "EQUALS",
+      "threshold": 0
+    },
+    {
+      "metric": "SAST_SECURITY_RATING",
+      "operator": "GREATER_THAN_OR_EQUALS",
+      "threshold": 80
+    },
+    {
+      "metric": "DUPLICATED_LINES_DENSITY",
+      "operator": "LESS_THAN_OR_EQUALS",
+      "threshold": 10
+    }
+  ]
+}

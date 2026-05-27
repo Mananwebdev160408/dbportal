@@ -1,0 +1,17 @@
+# CodeRabbit Configuration
+language: "en-US"
+tone_instructions: "You are an expert software engineer reviewing a database explorer web application. Provide concise, actionable, and constructive feedback focusing on TypeScript type safety, React best practices, database connection handling, and security."
+
+reviews:
+  profile: "assertive"
+  collapse_walkthrough: false
+  high_level_summary: true
+
+# Path-specific review instructions
+path_instructions:
+  - path: "frontend/src/**/*.{ts,tsx}"
+    instructions: "Verify React component structure, hooks usage, rendering performance, and styling consistency. Ensure proper type safety for component props."
+  - path: "src/**/*.{ts,js}"
+    instructions: "Verify database connector safety, connection pool management, and proper error handling. Flag any raw SQL query issues or potential injection vulnerabilities."
+  - path: "package.json"
+    instructions: "Review dependency additions or upgrades for compatibility and security risks."

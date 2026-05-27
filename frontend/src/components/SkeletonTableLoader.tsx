@@ -4,8 +4,8 @@
  */
 
 interface SkeletonTableLoaderProps {
-  rows?: number
-  columns?: number
+  rows?: number;
+  columns?: number;
 }
 
 export default function SkeletonTableLoader({
@@ -14,16 +14,22 @@ export default function SkeletonTableLoader({
 }: SkeletonTableLoaderProps) {
   return (
     <div className="table-view-container">
-      <div className="table-responsive-wrapper" style={{ minWidth: '100%', width: 'max-content' }}>
+      <div
+        className="table-responsive-wrapper"
+        style={{ width: "100%", overflowX: "auto" }}
+      >
         <table className="data-table">
           <thead>
             <tr>
-              <th style={{ width: '60px' }}>
-                <div className="skeleton-cell" style={{ width: '30px' }} />
+              <th style={{ width: "60px" }}>
+                <div className="skeleton-cell" style={{ width: "30px" }} />
               </th>
               {Array.from({ length: columns }).map((_, i) => (
                 <th key={i}>
-                  <div className="skeleton-cell" style={{ width: `${60 + (i % 3) * 20}px` }} />
+                  <div
+                    className="skeleton-cell"
+                    style={{ width: `${60 + (i % 3) * 20}px` }}
+                  />
                 </th>
               ))}
             </tr>
@@ -32,13 +38,15 @@ export default function SkeletonTableLoader({
             {Array.from({ length: rows }).map((_, rowIdx) => (
               <tr key={rowIdx}>
                 <td>
-                  <div className="skeleton-cell" style={{ width: '30px' }} />
+                  <div className="skeleton-cell" style={{ width: "30px" }} />
                 </td>
                 {Array.from({ length: columns }).map((_, colIdx) => (
                   <td key={colIdx}>
                     <div
                       className="skeleton-cell"
-                      style={{ width: `${50 + ((rowIdx + colIdx) % 4) * 25}px` }}
+                      style={{
+                        width: `${50 + ((rowIdx + colIdx) % 4) * 25}px`,
+                      }}
                     />
                   </td>
                 ))}
@@ -48,5 +56,5 @@ export default function SkeletonTableLoader({
         </table>
       </div>
     </div>
-  )
+  );
 }

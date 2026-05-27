@@ -592,6 +592,7 @@ select {
   text-align: left;
   padding: 12px 20px;
   border-bottom: 1px solid var(--line-strong);
+  border-right: 1px solid var(--line);
   z-index: 10;
   white-space: nowrap;
 }
@@ -601,6 +602,7 @@ select {
   font-family: var(--font-mono);
   font-size: 12px;
   border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
   color: var(--text);
   max-width: 400px;
   overflow: hidden;
@@ -609,9 +611,30 @@ select {
   transition: all 0.1s;
 }
 
+.data-table th:last-child,
+.data-table td:last-child {
+  border-right: none;
+}
+
 .data-table tr:hover td {
   background: var(--surface-raised);
   color: var(--accent);
+}
+
+.col-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 1;
+  transition: background-color 0.2s;
+}
+
+.col-resize-handle:hover {
+  background-color: var(--accent);
 }
 
 .null-val {
