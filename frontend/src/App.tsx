@@ -86,6 +86,7 @@ export default function App() {
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [schemaReloadKey, setSchemaReloadKey] = useState(0);
   const [maskSensitive, setMaskSensitive] = useState(false);
+  const [rowLimit, setRowLimit] = useState<number>(200);
 
   // Apply theme & mode to <body>
   useEffect(() => {
@@ -218,8 +219,10 @@ export default function App() {
       sField?: string,
       sOrder?: "asc" | "desc",
       currentFilters?: Record<string, string>,
+      overrideLimit?: number,
     ) => {
       const dbToUse = targetDbId || activeDbId;
+      const limitToUse = overrideLimit || rowLimit;
       if (targetDbId && targetDbId !== activeDbId) {
         setActiveDbId(targetDbId);
         await loadDatabaseMetadata(targetDbId);
@@ -232,7 +235,7 @@ export default function App() {
       setError("");
 
       try {
-        let url = `/api/data/${encodeURIComponent(name)}?dbId=${dbToUse}&limit=200`;
+        let url = `/api/data/${encodeURIComponent(name)}?dbId=${dbToUse}&limit=${limitToUse}`;
         if (sField) {
           url += `&sortBy=${encodeURIComponent(sField)}&sortOrder=${sOrder || "asc"}`;
         }
@@ -254,7 +257,7 @@ export default function App() {
         setLoading(false);
       }
     },
-    [activeDbId],
+    [activeDbId, rowLimit],
   );
 
   const openQueryWorkspace = useCallback(() => {
@@ -280,9 +283,16 @@ export default function App() {
     if (appMode === "overview") {
       loadOverview();
     } else if (currentTable) {
-      loadTable(currentTable);
+      loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, rowLimit);
     } else if (appMode === "schema") {
       setSchemaReloadKey((k) => k + 1);
+    }
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setRowLimit(newLimit);
+    if (appMode === "table" && currentTable) {
+      loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, newLimit);
     }
   };
 
@@ -450,6 +460,8 @@ export default function App() {
           onReload={handleReload}
           maskSensitive={maskSensitive}
           onMaskToggle={() => setMaskSensitive((v) => !v)}
+          rowLimit={rowLimit}
+          onLimitChange={handleLimitChange}
         />
         <div className="data-container">{renderContent()}</div>
       </main>
