@@ -70,6 +70,10 @@ export default function TableView({
 }: TableViewProps) {
   const [localFilters, setLocalFilters] =
     useState<Record<string, string>>(filters);
+
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   const dragState = useRef<{
     col: string;
@@ -295,9 +299,6 @@ export default function TableView({
                         key={col}
                         className="json-cell"
                         title={titleText}
-                        onClick={() =>
-                          console.log(`[dbportal] Row ${rowIdx} — ${col}:`, val)
-                        }
                       >
                         <code
                           dangerouslySetInnerHTML={{

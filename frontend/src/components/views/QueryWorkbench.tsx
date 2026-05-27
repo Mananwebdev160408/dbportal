@@ -631,9 +631,13 @@ export default function QueryWorkbench({
   const copyResults = async () => {
     if (resultRows.length === 0) return;
     const text = JSON.stringify(resultRows, null, 2);
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard write denied
+    }
   };
 
   const applyRawExample = (sql: string) => {

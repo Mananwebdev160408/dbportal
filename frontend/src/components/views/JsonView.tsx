@@ -40,7 +40,7 @@ export default function JsonView({ rows }: JsonViewProps) {
   const jsonString = JSON.stringify(rows, null, 2);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(jsonString);
+    navigator.clipboard.writeText(jsonString).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
