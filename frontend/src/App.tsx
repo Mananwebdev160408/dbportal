@@ -200,7 +200,7 @@ export default function App() {
     setLoading(true);
     try {
       await loadDatabaseMetadata(dbId);
-      setAppMode("overview"); // Or keep current? Usually switch DB implies seeing what's in it
+      setAppMode((prev) => (prev === "table" ? "overview" : prev));
       showStatus(`Switched to ${dbId}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
