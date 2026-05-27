@@ -37,6 +37,10 @@ interface TableViewProps {
   onSort?: (col: string) => void;
   onFilterChange?: (filters: Record<string, string>) => void;
   maskSensitive?: boolean;
+  page?: number;
+  pageSize?: number;
+  hasNextPage?: boolean;
+  onPageChange?: (page: number) => void;
 }
 
 const escapeHtml = (value: unknown): string => {
@@ -59,6 +63,10 @@ export default function TableView({
   onSort,
   onFilterChange,
   maskSensitive = false,
+  page = 0,
+  pageSize = 200,
+  hasNextPage = false,
+  onPageChange,
 }: TableViewProps) {
   const [localFilters, setLocalFilters] =
     useState<Record<string, string>>(filters);
@@ -294,6 +302,73 @@ export default function TableView({
             ))}
           </tbody>
         </table>
+      </div>
+      {/* Pagination footer */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0.6rem 1rem",
+          borderTop: "1px solid var(--border)",
+          background: "var(--surface)",
+          fontSize: "0.8rem",
+          color: "var(--text-dim)",
+          userSelect: "none",
+          flexShrink: 0,
+        }}
+      >
+        <button
+          className="icon-btn"
+          onClick={() => onPageChange?.(page - 1)}
+          disabled={page === 0}
+          type="button"
+          aria-label="Previous page"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 12px",
+            fontSize: "0.8rem",
+            opacity: page === 0 ? 0.35 : 1,
+            cursor: page === 0 ? "not-allowed" : "pointer",
+          }}
+        >
+          ← Previous
+        </button>
+
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem" }}>
+          {rows.length > 0 ? (
+            <>
+              Page <strong style={{ color: "var(--text)" }}>{page + 1}</strong>
+              &nbsp;·&nbsp; Rows{" "}
+              <strong style={{ color: "var(--text)" }}>
+                {page * pageSize + 1}–{page * pageSize + rows.length}
+              </strong>
+            </>
+          ) : (
+            "No records"
+          )}
+        </span>
+
+        <button
+          className="icon-btn"
+          onClick={() => onPageChange?.(page + 1)}
+          disabled={!hasNextPage}
+          type="button"
+          aria-label="Next page"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 12px",
+            fontSize: "0.8rem",
+            opacity: !hasNextPage ? 0.35 : 1,
+            cursor: !hasNextPage ? "not-allowed" : "pointer",
+          }}
+        >
+          Next →
+        </button>
       </div>
     </div>
   );
