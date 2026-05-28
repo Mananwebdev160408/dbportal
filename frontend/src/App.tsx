@@ -13,6 +13,10 @@ import QueryWorkbench from "./components/views/QueryWorkbench";
 import SchemaView from "./components/views/SchemaView";
 import DockerSidebar, { DockerContainerInfo } from "./components/DockerSidebar";
 import DockerDashboardView from "./components/views/DockerDashboardView";
+import DockerRunnerView from "./components/views/DockerRunnerView";
+import DockerImagesView from "./components/views/DockerImagesView";
+import DockerVolumesView from "./components/views/DockerVolumesView";
+import { AlertTriangleIcon } from "./components/Icons";
 
 export type ViewMode = "table" | "documents" | "json" | "inspector";
 export type AppMode =
@@ -156,6 +160,24 @@ export default function App() {
     setStatus(msg);
     setStatusError(isError);
   }, []);
+
+  const refreshContainers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/docker/containers");
+      const data = await res.json();
+      if (res.ok) {
+        setContainersList(data.containers || []);
+        showStatus("Container list refreshed");
+      } else {
+        showStatus(data.error || "Failed to refresh containers", true);
+      }
+    } catch (err: unknown) {
+      showStatus(
+        (err as Error).message || "Failed to refresh containers",
+        true,
+      );
+    }
+  }, [showStatus]);
 
   // Load connections and initial state
   useEffect(() => {
@@ -490,7 +512,10 @@ export default function App() {
     if (error) {
       return (
         <EmptyState onRetry={handleReload}>
-          <p style={{ fontSize: "2rem" }}>⚠️</p>
+          <AlertTriangleIcon
+            size={40}
+            style={{ color: "var(--warning)", marginBottom: "8px" }}
+          />
           <p className="error-msg">Failed to connect to the backend.</p>
           <p style={{ opacity: 0.6, fontSize: "0.85rem" }}>{error}</p>
         </EmptyState>
@@ -621,17 +646,29 @@ export default function App() {
         <DockerSidebar
           containers={containers}
           selectedContainerId={selectedContainerId}
+          onStatusChange={showStatus}
+          onRefreshContainers={refreshContainers}
           onSelectContainer={(id) => {
             setSelectedContainerId(id);
-            showStatus("Loaded container details");
+            if (id === "__runner__") {
+              showStatus("Docker container wizard active");
+            } else {
+              showStatus("Loaded container details");
+            }
           }}
         />
         <div className="sidebar-resizer" onMouseDown={handleSidebarMouseDown} />
         <main className="main-area">
           <Toolbar
             title={
-              containers.find((c) => c.id === selectedContainerId)?.name ||
-              "Docker Container"
+              selectedContainerId === "__runner__"
+                ? "Launch Containers"
+                : selectedContainerId === "__images__"
+                  ? "Local Docker Images"
+                  : selectedContainerId === "__volumes__"
+                    ? "Local Docker Volumes"
+                    : containers.find((c) => c.id === selectedContainerId)
+                        ?.name || "Docker Container"
             }
             dbType="Docker"
             theme={theme}
@@ -660,6 +697,21 @@ export default function App() {
                 <div className="loading-pulse" />
                 <p>Connecting to Docker...</p>
               </EmptyState>
+            ) : selectedContainerId === "__runner__" ? (
+              <DockerRunnerView
+                onRefreshSidebar={() => {
+                  fetch("/api/docker/containers")
+                    .then((res) => res.json())
+                    .then((data) => {
+                      setContainersList(data.containers || []);
+                    });
+                }}
+                onStatusChange={showStatus}
+              />
+            ) : selectedContainerId === "__images__" ? (
+              <DockerImagesView onStatusChange={showStatus} />
+            ) : selectedContainerId === "__volumes__" ? (
+              <DockerVolumesView onStatusChange={showStatus} />
             ) : (
               <DockerDashboardView
                 key={dockerRefreshKey}
@@ -671,6 +723,19 @@ export default function App() {
                     .then((res) => res.json())
                     .then((data) => {
                       setContainersList(data.containers || []);
+                    });
+                }}
+                onDeleted={() => {
+                  fetch("/api/docker/containers")
+                    .then((res) => res.json())
+                    .then((data) => {
+                      const list = data.containers || [];
+                      setContainersList(list);
+                      if (list.length > 0) {
+                        setSelectedContainerId(list[0].id);
+                      } else {
+                        setSelectedContainerId("");
+                      }
                     });
                 }}
               />

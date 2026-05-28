@@ -1,5 +1,6 @@
 import type { ViewMode, Theme, AppearanceMode } from "../App";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { LockIcon, UnlockIcon } from "./Icons";
 interface ToolbarProps {
   title: string;
   dbType: string;
@@ -445,7 +446,17 @@ export default function Toolbar({
               fontWeight: 600,
             }}
           >
-            {maskSensitive ? "🔓 Reveal" : "🔒 Mask"}
+            {maskSensitive ? (
+              <>
+                <UnlockIcon size={12} style={{ marginRight: 5 }} />
+                Reveal
+              </>
+            ) : (
+              <>
+                <LockIcon size={12} style={{ marginRight: 5 }} />
+                Mask
+              </>
+            )}
           </button>
         )}
 

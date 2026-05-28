@@ -3,6 +3,7 @@ import EmptyState from "../EmptyState";
 import TableView from "./TableView";
 import JsonView from "./JsonView";
 import type { DriverCapabilities } from "../../App";
+import { CopyIcon, CheckIcon } from "../Icons";
 
 type ResultMode = "table" | "json";
 
@@ -1076,7 +1077,17 @@ export default function QueryWorkbench({
                 onClick={copyResults}
                 title="Copy results to clipboard"
               >
-                {copied ? "✅ Copied!" : "📋 Copy"}
+                {copied ? (
+                  <>
+                    <CheckIcon size={12} style={{ marginRight: 5 }} />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <CopyIcon size={12} style={{ marginRight: 5 }} />
+                    Copy
+                  </>
+                )}
               </button>
             )}
           </div>

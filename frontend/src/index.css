@@ -3345,3 +3345,80 @@ textarea:focus-visible,
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* ── Sidebar bulk action bar ──────────────────────────────────────────────── */
+.sidebar-bulk-bar {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--line-strong);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+  margin-top: 16px;
+}
+
+.sidebar-bulk-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.sidebar-bulk-actions-row {
+  display: flex;
+  gap: 6px;
+}
+
+.sidebar-bulk-btn {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 7px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.sidebar-bulk-btn:hover:not(:disabled) {
+  background: var(--surface-raised);
+  transform: translateY(-1px);
+}
+
+.sidebar-bulk-btn.stop:hover:not(:disabled) {
+  border-color: var(--warning);
+  color: var(--warning);
+  box-shadow: 0 0 8px rgba(255, 159, 10, 0.2);
+}
+
+.sidebar-bulk-btn.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+  box-shadow: 0 0 8px rgba(255, 69, 58, 0.2);
+}
+
+.sidebar-bulk-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Spin animation for loading icons */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

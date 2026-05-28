@@ -1,11 +1,21 @@
 import { useEffect, useState, useRef } from "react";
 import type { DockerContainerInfo } from "../DockerSidebar";
+import {
+  RefreshIcon,
+  TrashIcon,
+  StopIcon,
+  PlayIcon,
+  RestartIcon,
+  CopyIcon,
+  CheckIcon,
+} from "../Icons";
 
 interface DockerDashboardViewProps {
   containerId: string;
   containers: DockerContainerInfo[];
   onStatusChange: (msg: string, isError?: boolean) => void;
   onRefresh: () => void;
+  onDeleted?: () => void;
 }
 
 interface StatsData {
@@ -20,12 +30,14 @@ export default function DockerDashboardView({
   containers,
   onStatusChange,
   onRefresh,
+  onDeleted,
 }: DockerDashboardViewProps) {
   const container = containers.find((c) => c.id === containerId);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [logs, setLogs] = useState<string>("");
   const [actionRunning, setActionRunning] = useState(false);
   const [logsCopied, setLogsCopied] = useState(false);
+  const [isTty, setIsTty] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const fetchLogs = async () => {
@@ -56,11 +68,26 @@ export default function DockerDashboardView({
     }
   };
 
+  const fetchInspect = async () => {
+    if (!container) return;
+    try {
+      const res = await fetch(`/api/docker/containers/${containerId}/inspect`);
+      const data = await res.json();
+      if (res.ok) {
+        setIsTty(!!(data.Config && data.Config.Tty));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     setStats(null);
     setLogs("Loading logs...");
+    setIsTty(false);
     fetchLogs();
     fetchStats();
+    fetchInspect();
 
     // Set intervals for updates
     const statsInterval = setInterval(fetchStats, 3000);
@@ -86,7 +113,18 @@ export default function DockerDashboardView({
     );
   }
 
-  const handleAction = async (action: "start" | "stop" | "restart") => {
+  const handleAction = async (
+    action: "start" | "stop" | "restart" | "delete",
+  ) => {
+    if (action === "delete") {
+      if (
+        !window.confirm(
+          `Are you sure you want to permanently delete container "${container.name}"?`,
+        )
+      ) {
+        return;
+      }
+    }
     setActionRunning(true);
     onStatusChange(`Sending ${action} command to ${container.name}...`, false);
     try {
@@ -98,12 +136,16 @@ export default function DockerDashboardView({
       const data = await res.json();
       if (res.ok) {
         onStatusChange(
-          `Container ${container.name} ${action}ed successfully!`,
+          `Container ${container.name} ${action === "delete" ? "deleted" : action + "ed"} successfully!`,
           false,
         );
-        onRefresh();
-        fetchLogs();
-        fetchStats();
+        if (action === "delete" && onDeleted) {
+          onDeleted();
+        } else {
+          onRefresh();
+          fetchLogs();
+          fetchStats();
+        }
       } else {
         onStatusChange(data.error || "Action execution failed.", true);
       }
@@ -160,17 +202,31 @@ export default function DockerDashboardView({
               onClick={() => handleAction("stop")}
               disabled={actionRunning}
             >
-              🛑 Stop
+              <StopIcon size={12} style={{ marginRight: 6 }} /> Stop
             </button>
           ) : (
-            <button
-              type="button"
-              className="control-btn start-btn"
-              onClick={() => handleAction("start")}
-              disabled={actionRunning}
-            >
-              ▶️ Start
-            </button>
+            <>
+              <button
+                type="button"
+                className="control-btn start-btn"
+                onClick={() => handleAction("start")}
+                disabled={actionRunning}
+              >
+                <PlayIcon size={12} style={{ marginRight: 6 }} /> Start
+              </button>
+              <button
+                type="button"
+                className="control-btn delete-btn"
+                style={{
+                  borderColor: "rgba(220, 38, 38, 0.4)",
+                  color: "rgba(239, 68, 68, 0.85)",
+                }}
+                onClick={() => handleAction("delete")}
+                disabled={actionRunning}
+              >
+                <TrashIcon size={12} style={{ marginRight: 6 }} /> Delete
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -178,7 +234,7 @@ export default function DockerDashboardView({
             onClick={() => handleAction("restart")}
             disabled={actionRunning || container.state !== "running"}
           >
-            🔄 Restart
+            <RestartIcon size={12} style={{ marginRight: 6 }} /> Restart
           </button>
         </div>
       </div>
@@ -281,6 +337,80 @@ export default function DockerDashboardView({
             )}
           </div>
         </div>
+
+        {/* TTY Interactive Access Command */}
+        {isTty && container.state === "running" && (
+          <div
+            className="metric-card"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <span className="metric-label">TTY Interactive Access</span>
+              <span
+                style={{
+                  fontSize: "0.76rem",
+                  color: "var(--text-muted)",
+                  display: "block",
+                  marginTop: "8px",
+                  lineHeight: "1.4",
+                }}
+              >
+                Run this command in your local terminal to attach to the shell:
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "var(--bg)",
+                border: "1px solid var(--line-strong)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 10px",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.78rem",
+                color: "var(--accent)",
+                marginTop: "12px",
+              }}
+            >
+              <code
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                docker exec -it {container.name} sh
+              </code>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `docker exec -it ${container.name} sh`,
+                  );
+                  onStatusChange("Command copied to clipboard!", false);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  padding: "0 2px 0 6px",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                title="Copy Command"
+              >
+                <CopyIcon size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Logs View Section */}
@@ -293,14 +423,24 @@ export default function DockerDashboardView({
               className="logs-action-btn"
               onClick={fetchLogs}
             >
-              🔄 Refresh Logs
+              <RefreshIcon size={13} style={{ marginRight: 6 }} /> Refresh Logs
             </button>
             <button
               type="button"
               className="logs-action-btn"
               onClick={copyLogs}
             >
-              {logsCopied ? "✅ Copied" : "📋 Copy Logs"}
+              {logsCopied ? (
+                <>
+                  <CheckIcon size={13} style={{ marginRight: 6 }} />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <CopyIcon size={13} style={{ marginRight: 6 }} />
+                  Copy Logs
+                </>
+              )}
             </button>
           </div>
         </div>

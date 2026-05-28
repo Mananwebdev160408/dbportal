@@ -8,7 +8,7 @@ import express from "express";
 import { rateLimit } from "express-rate-limit";
 import open from "open";
 import { DatabaseManager } from "./index.js";
-import { DockerService } from "./docker-service.js";
+import { DockerService, ContainerLaunchConfig } from "./docker-service.js";
 
 dotenv.config();
 
@@ -352,6 +352,20 @@ const main = async () => {
     }
   });
 
+  app.get("/api/docker/containers/:id/inspect", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const { id } = request.params;
+    try {
+      const details = await dockerService.inspectContainer(id);
+      response.status(200).json(details);
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
   app.post("/api/docker/containers/:id/action", async (request, response) => {
     if (!options.docker || !dockerService) {
       response.status(400).json({ error: "Docker mode is not enabled." });
@@ -359,15 +373,228 @@ const main = async () => {
     }
     const { id } = request.params;
     const action = request.body?.action;
-    if (action !== "start" && action !== "stop" && action !== "restart") {
+    if (
+      action !== "start" &&
+      action !== "stop" &&
+      action !== "restart" &&
+      action !== "delete"
+    ) {
       response
         .status(400)
-        .json({ error: "Action must be start, stop, or restart." });
+        .json({ error: "Action must be start, stop, restart, or delete." });
       return;
     }
     try {
       await dockerService.performAction(id, action);
       response.status(200).json({ success: true });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.get("/api/docker/images", async (_request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    try {
+      const list = await dockerService.listImages();
+      response.status(200).json({ images: list });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.delete("/api/docker/images/:id", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const { id } = request.params;
+    try {
+      await dockerService.removeImage(id);
+      response.status(200).json({ success: true });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.get("/api/docker/volumes", async (_request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    try {
+      const list = await dockerService.listVolumes();
+      response.status(200).json({ volumes: list });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.delete("/api/docker/volumes/:name", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const { name } = request.params;
+    try {
+      await dockerService.removeVolume(name);
+      response.status(200).json({ success: true });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  // ── Bulk Actions ──────────────────────────────────────────────────────────
+  app.post("/api/docker/containers/bulk-action", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const { ids, action } = request.body as { ids: string[]; action: string };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      response.status(400).json({ error: "ids must be a non-empty array." });
+      return;
+    }
+    if (action !== "stop" && action !== "delete") {
+      response.status(400).json({ error: "action must be stop or delete." });
+      return;
+    }
+    try {
+      const results = await dockerService.performBulkAction(ids, action);
+      response.status(200).json({ results });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.post("/api/docker/images/bulk-delete", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const { ids } = request.body as { ids: string[] };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      response.status(400).json({ error: "ids must be a non-empty array." });
+      return;
+    }
+    try {
+      const results = await dockerService.removeImages(ids);
+      response.status(200).json({ results });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.post("/api/docker/volumes/bulk-delete", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const { names } = request.body as { names: string[] };
+    if (!Array.isArray(names) || names.length === 0) {
+      response.status(400).json({ error: "names must be a non-empty array." });
+      return;
+    }
+    try {
+      const results = await dockerService.removeVolumes(names);
+      response.status(200).json({ results });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.get("/api/docker/hub/search", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const query = String(request.query.query || "");
+    if (!query) {
+      response.status(400).json({ error: "query parameter is required." });
+      return;
+    }
+    try {
+      const results = await dockerService.searchDockerHub(query);
+      response.status(200).json({ results });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.get("/api/docker/hub/tags", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const repo = String(request.query.repo || "");
+    if (!repo) {
+      response.status(400).json({ error: "repo parameter is required." });
+      return;
+    }
+    try {
+      const tags = await dockerService.getDockerHubTags(repo);
+      response.status(200).json({ tags });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.post("/api/docker/hub/run", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const configs = request.body?.configs as ContainerLaunchConfig[];
+    if (!Array.isArray(configs) || configs.length === 0) {
+      response
+        .status(400)
+        .json({ error: "configs array is required and cannot be empty." });
+      return;
+    }
+
+    // Set headers for chunked streaming
+    response.setHeader("Content-Type", "text/plain");
+    response.setHeader("Transfer-Encoding", "chunked");
+    response.setHeader("Cache-Control", "no-cache");
+    response.setHeader("Connection", "keep-alive");
+
+    const log = (msg: string) => {
+      response.write(`${msg}\n`);
+    };
+
+    try {
+      for (const config of configs) {
+        log(`[INFO] Preparing container ${config.name || config.image}...`);
+        await dockerService.runContainer(config, (status) => {
+          log(`[PROGRESS] ${config.name || config.image}: ${status}`);
+        });
+        log(`[SUCCESS] Container ${config.name || config.image} is running!`);
+      }
+      log(`[COMPLETE] All containers started successfully.`);
+      response.end();
+    } catch (error) {
+      log(`[ERROR] ${toMessage(error)}`);
+      response.end();
+    }
+  });
+
+  app.post("/api/docker/hub/save-compose", async (request, response) => {
+    if (!options.docker) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const yaml = request.body?.yaml;
+    if (typeof yaml !== "string" || !yaml.trim()) {
+      response.status(400).json({ error: "yaml string is required." });
+      return;
+    }
+    try {
+      const fs = await import("node:fs/promises");
+      const composePath = path.resolve(process.cwd(), "docker-compose.yml");
+      await fs.writeFile(composePath, yaml, "utf8");
+      response.status(200).json({ success: true, path: composePath });
     } catch (error) {
       response.status(500).json({ error: toMessage(error) });
     }
