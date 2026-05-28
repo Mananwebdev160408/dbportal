@@ -1090,6 +1090,7 @@ export default function QueryWorkbench({
               <button
                 className="modal-close"
                 onClick={() => setSelectedHistoryEntry(null)}
+                aria-label="Close"
               >
                 ×
               </button>
