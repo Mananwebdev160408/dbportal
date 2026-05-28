@@ -7,6 +7,11 @@
 [![GSSoC 2026](https://img.shields.io/badge/GSSoC-2026-pink?style=flat-square)](https://gssoc.girlscript.tech/)
 [![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289DA?style=flat-square&logo=discord)](https://discord.gg/YnRq6df2RY)
 
+> [!IMPORTANT]
+> ### 💬 Join our Discord Community!
+> Connect with other developers, collaborate with contributors, share feature ideas, and get support directly from the maintainers.
+> 👉 **[Click here to join the dbportal Discord Server](https://discord.gg/YnRq6df2RY)**
+
 `dbportal` is a local database explorer for developers who want one tool to inspect multiple databases, browse records, understand schema shape, and run read-only queries from a browser UI.
 
 It starts a local Express server, detects connections from `DATABASE_URL` and optional `DATABASE_URL_1` to `DATABASE_URL_10`, then opens a React dashboard for inspection and analysis.

@@ -275,7 +275,8 @@ Welcome to GSSoC! Here are some tips to get started quickly:
 
 ## Need Help?
 
-- [GitHub Discussions](https://github.com/Mananwebdev160408/dbportal/discussions) — questions, ideas, general chat
-- [Open an Issue](https://github.com/Mananwebdev160408/dbportal/issues/new/choose) — for bugs or feature requests
+- [Join our Discord Server](https://discord.gg/YnRq6df2RY) — chat with maintainers, get help setting up, or collaborate with fellow contributors
+- [GitHub Discussions](https://github.com/Mananwebdev160408/dbportal/discussions) — general questions, ideas, and feedback
+- [Open an Issue](https://github.com/Mananwebdev160408/dbportal/issues/new/choose) — for bug reports and feature requests
 
 Thank you for contributing!

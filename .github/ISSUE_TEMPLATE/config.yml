@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Join our Discord Server
+    url: https://discord.gg/YnRq6df2RY
+    about: Chat with maintainers and get real-time help or collaboration.
   - name: Ask a Question / General Discussion
     url: https://github.com/Mananwebdev160408/dbportal/discussions
     about: Use GitHub Discussions for questions, ideas, and general conversation.
