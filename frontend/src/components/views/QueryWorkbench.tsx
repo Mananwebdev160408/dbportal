@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import EmptyState from "../EmptyState";
 import TableView from "./TableView";
 import JsonView from "./JsonView";
@@ -160,6 +160,37 @@ export default function QueryWorkbench({
   maskSensitive = false,
 }: QueryWorkbenchProps) {
   const [rawQuery, setRawQuery] = useState("");
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const stored = localStorage.getItem("dbportal-query-panel-width");
+    return stored ? parseInt(stored, 10) : 420;
+  });
+
+  const handlePanelMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startWidth = panelWidth;
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const delta = moveEvent.clientX - startX;
+        const newWidth = Math.max(300, Math.min(800, startWidth + delta));
+        setPanelWidth(newWidth);
+      };
+
+      const handleMouseUp = () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    },
+    [panelWidth],
+  );
+
+  useEffect(() => {
+    localStorage.setItem("dbportal-query-panel-width", String(panelWidth));
+  }, [panelWidth]);
   const [collection, setCollection] = useState(tables[0] || "");
   const [filterText, setFilterText] = useState("{}");
   const [projectionText, setProjectionText] = useState("");
@@ -678,7 +709,10 @@ export default function QueryWorkbench({
   };
 
   return (
-    <div className="query-workspace">
+    <div
+      className="query-workspace"
+      style={{ gridTemplateColumns: `${panelWidth}px 4px 1fr` }}
+    >
       <section className="query-panel">
         <div className="query-header">
           <h3>Query Engine</h3>
@@ -1016,7 +1050,7 @@ export default function QueryWorkbench({
           )}
         </div>
       </section>
-
+      <div className="query-panel-resizer" onMouseDown={handlePanelMouseDown} />
       <section className="query-result-panel">
         <div className="query-result-header">
           <h3>Results</h3>

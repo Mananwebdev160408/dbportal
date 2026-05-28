@@ -91,6 +91,38 @@ export default function App() {
   const [pageSize, setPageSize] = useState(200);
   const [hasNextPage, setHasNextPage] = useState(false);
 
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const stored = localStorage.getItem("dbportal-sidebar-width");
+    return stored ? parseInt(stored, 10) : 240;
+  });
+
+  const handleSidebarMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startWidth = sidebarWidth;
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const delta = moveEvent.clientX - startX;
+        const newWidth = Math.max(180, Math.min(480, startWidth + delta));
+        setSidebarWidth(newWidth);
+      };
+
+      const handleMouseUp = () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    },
+    [sidebarWidth],
+  );
+
+  useEffect(() => {
+    localStorage.setItem("dbportal-sidebar-width", String(sidebarWidth));
+  }, [sidebarWidth]);
+
   // Apply theme & mode to <body>
   useEffect(() => {
     document.body.setAttribute("data-theme", theme);
@@ -546,7 +578,10 @@ export default function App() {
   }
 
   return (
-    <div className="app-layout">
+    <div
+      className="app-layout"
+      style={{ gridTemplateColumns: `${sidebarWidth}px 4px 1fr` }}
+    >
       <Sidebar
         connections={connections}
         activeDbId={activeDbId}
@@ -562,6 +597,7 @@ export default function App() {
         onSchemaClick={openSchemaVisualizer}
         onDbChange={switchDatabase}
       />
+      <div className="sidebar-resizer" onMouseDown={handleSidebarMouseDown} />
       <main className="main-area">
         <Toolbar
           title={

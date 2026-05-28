@@ -637,6 +637,37 @@ select {
   background-color: var(--accent);
 }
 
+.sidebar-resizer,
+.query-panel-resizer {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: all 0.2s ease;
+  z-index: 100;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.sidebar-resizer::after,
+.query-panel-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 1px;
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.sidebar-resizer:hover::after,
+.sidebar-resizer:active::after,
+.query-panel-resizer:hover::after,
+.query-panel-resizer:active::after {
+  background-color: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
 .null-val {
   color: var(--text-dim);
   font-style: italic;
