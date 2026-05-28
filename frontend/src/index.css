@@ -2451,6 +2451,353 @@ select {
 }
 
 /* ========================
+   Common Dashboard
+   ======================== */
+.common-dashboard-wrap {
+  padding: 28px;
+  display: grid;
+  gap: 22px;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.common-dashboard-btn {
+  margin-bottom: 14px;
+}
+
+.fleet-summary-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.fleet-summary-item {
+  min-width: 0;
+  padding: 18px 20px;
+  border-right: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+}
+
+.fleet-summary-item:last-child {
+  border-right: none;
+}
+
+.fleet-summary-item strong {
+  font-family: var(--font-mono);
+  font-size: clamp(1rem, 2vw, 1.7rem);
+  line-height: 1.15;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.fleet-summary-item.wide strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.common-section-head,
+.quick-actions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.common-section-head h3,
+.quick-actions-head h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.common-section-head p,
+.quick-actions-head p {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.health-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.health-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.health-card:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-raised);
+  transform: translateY(-2px);
+}
+
+.health-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.db-type-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.health-title {
+  min-width: 0;
+}
+
+.health-title h4 {
+  font-size: 0.95rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.health-title span {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.health-status {
+  border: 1px solid color-mix(in srgb, var(--success) 45%, transparent);
+  border-radius: 4px;
+  padding: 3px 7px;
+  color: var(--success);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.health-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.health-stats div {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--bg);
+  min-width: 0;
+}
+
+.health-stats span {
+  display: block;
+  margin-bottom: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.health-stats strong {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.db-jump-link,
+.quick-action-row button,
+.jump-table-list button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.db-jump-link {
+  padding: 9px 10px;
+  text-align: center;
+}
+
+.db-jump-link:hover,
+.quick-action-row button:hover,
+.jump-table-list button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.common-insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 20px;
+}
+
+.fleet-bar-list {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.fleet-bar-row {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+}
+
+.fleet-bar-row:hover {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+}
+
+.quick-actions-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.quick-actions-head select {
+  min-width: 220px;
+  max-width: 100%;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.quick-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.quick-action-row button {
+  padding: 9px 12px;
+}
+
+.jump-table-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.jump-table-list button {
+  padding: 9px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  min-width: 0;
+}
+
+.jump-table-list span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jump-table-list strong {
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .fleet-summary-bar,
+  .common-insight-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fleet-summary-item:nth-child(2) {
+    border-right: none;
+  }
+
+  .fleet-summary-item:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 720px) {
+  .common-dashboard-wrap {
+    padding: 18px;
+  }
+
+  .fleet-summary-bar,
+  .common-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fleet-summary-item {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .fleet-summary-item:last-child {
+    border-bottom: none;
+  }
+
+  .common-section-head,
+  .quick-actions-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .quick-actions-head select,
+  .quick-action-row button {
+    width: 100%;
+  }
+}
+
+/* ========================
    Schema Visualizer
    ======================== */
 .schema-layout {

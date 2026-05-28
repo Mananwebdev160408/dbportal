@@ -18,6 +18,7 @@ interface SidebarProps {
   activeTable: string;
   appMode: AppMode;
   capabilities: DriverCapabilities;
+  onCommonDashboardClick: () => void;
   onOverviewClick: () => void;
   onQueryClick: () => void;
   onSchemaClick: () => void;
@@ -54,6 +55,22 @@ const GridIcon = () => (
     <path d="M3 3h18v18H3z" />
     <path d="M3 9h18" />
     <path d="M9 21V9" />
+  </svg>
+);
+
+const DashboardIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="7" height="8" />
+    <rect x="14" y="3" width="7" height="5" />
+    <rect x="14" y="12" width="7" height="9" />
+    <rect x="3" y="15" width="7" height="6" />
   </svg>
 );
 
@@ -115,6 +132,7 @@ export default function Sidebar({
   activeTable,
   appMode,
   capabilities,
+  onCommonDashboardClick,
   onOverviewClick,
   onQueryClick,
   onSchemaClick,
@@ -158,6 +176,15 @@ export default function Sidebar({
             aria-label="Filter tables"
           />
         </div>
+
+        <button
+          className={`overview-btn common-dashboard-btn${appMode === "common" ? " active" : ""}`}
+          onClick={onCommonDashboardClick}
+          type="button"
+        >
+          <DashboardIcon />
+          <span>Common Dashboard</span>
+        </button>
 
         <div className="db-selector-wrapper">
           <div className="section-label">Active Connection</div>

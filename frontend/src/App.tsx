@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import Toolbar from "./components/Toolbar";
 import EmptyState from "./components/EmptyState";
 import SkeletonTableLoader from "./components/SkeletonTableLoader";
 import OverviewView from "./components/views/OverviewView";
+import CommonDashboardView from "./components/views/CommonDashboardView";
 import TableView from "./components/views/TableView";
 import DocumentsView from "./components/views/DocumentsView";
 import JsonView from "./components/views/JsonView";
@@ -12,7 +13,7 @@ import QueryWorkbench from "./components/views/QueryWorkbench";
 import SchemaView from "./components/views/SchemaView";
 
 export type ViewMode = "table" | "documents" | "json" | "inspector";
-export type AppMode = "overview" | "table" | "query" | "schema";
+export type AppMode = "common" | "overview" | "table" | "query" | "schema";
 
 export interface DriverCapabilities {
   rawQuery: boolean;
@@ -198,6 +199,28 @@ export default function App() {
     }
   }, []);
 
+  const loadCommonDashboard = useCallback(async () => {
+    setAppMode("common");
+    setCurrentTable("");
+    setSearch("");
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/overview");
+      const payload = await res.json();
+      if (!res.ok)
+        throw new Error(payload.error || "Failed to load common dashboard.");
+      setOverview(payload);
+      showStatus("Fleet dashboard ready");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      showStatus(msg, true);
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const switchDatabase = async (dbId: string) => {
     setActiveDbId(dbId);
     setLoading(true);
@@ -214,6 +237,18 @@ export default function App() {
       setLoading(false);
     }
   };
+
+  const openDatabaseOverview = useCallback(
+    async (dbId: string) => {
+      await switchDatabase(dbId);
+      setAppMode("overview");
+      setCurrentTable("");
+      setSearch("");
+      setError("");
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const loadTable = useCallback(
     async (
@@ -274,27 +309,55 @@ export default function App() {
     [activeDbId, pageSize],
   );
 
-  const openQueryWorkspace = useCallback(() => {
+  const openQueryWorkspace = useCallback(async (targetDbId?: string) => {
+    if (targetDbId && targetDbId !== activeDbId) {
+      setActiveDbId(targetDbId);
+      setLoading(true);
+      try {
+        await loadDatabaseMetadata(targetDbId);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        showStatus(msg, true);
+        setError(msg);
+        setLoading(false);
+        return;
+      }
+    }
     setAppMode("query");
     setCurrentTable("");
     setSearch("");
     setError("");
     setLoading(false);
     showStatus("Query workspace ready");
-  }, []);
+  }, [activeDbId]);
 
-  const openSchemaVisualizer = useCallback(() => {
+  const openSchemaVisualizer = useCallback(async (targetDbId?: string) => {
+    if (targetDbId && targetDbId !== activeDbId) {
+      setActiveDbId(targetDbId);
+      setLoading(true);
+      try {
+        await loadDatabaseMetadata(targetDbId);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        showStatus(msg, true);
+        setError(msg);
+        setLoading(false);
+        return;
+      }
+    }
     setAppMode("schema");
     setCurrentTable("");
     setSearch("");
     setError("");
     setLoading(false);
     showStatus("Schema visualizer ready");
-  }, []);
+  }, [activeDbId]);
 
   const handleReload = () => {
     setReloadKey((k) => k + 1);
-    if (appMode === "overview") {
+    if (appMode === "common") {
+      loadCommonDashboard();
+    } else if (appMode === "overview") {
       loadOverview();
     } else if (currentTable) {
       loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, 0);
@@ -329,9 +392,11 @@ export default function App() {
         <EmptyState>
           <div className="loading-pulse" />
           <p>
-            {appMode === "overview"
-              ? "Loading overview..."
-              : "Fetching records..."}
+            {appMode === "common"
+              ? "Loading common dashboard..."
+              : appMode === "overview"
+                ? "Loading overview..."
+                : "Fetching records..."}
           </p>
         </EmptyState>
       );
@@ -344,6 +409,19 @@ export default function App() {
           <p className="error-msg">Failed to connect to the backend.</p>
           <p style={{ opacity: 0.6, fontSize: "0.85rem" }}>{error}</p>
         </EmptyState>
+      );
+    }
+
+    if (appMode === "common" && overview) {
+      return (
+        <CommonDashboardView
+          overview={overview}
+          activeDbId={activeDbId}
+          onDatabaseOverview={openDatabaseOverview}
+          onQueryClick={openQueryWorkspace}
+          onSchemaClick={openSchemaVisualizer}
+          onTableClick={loadTable}
+        />
       );
     }
 
@@ -457,6 +535,7 @@ export default function App() {
         activeTable={currentTable}
         appMode={appMode}
         capabilities={capabilities}
+        onCommonDashboardClick={loadCommonDashboard}
         onOverviewClick={loadOverview}
         onTableClick={loadTable}
         onQueryClick={openQueryWorkspace}
@@ -466,7 +545,9 @@ export default function App() {
       <main className="main-area">
         <Toolbar
           title={
-            appMode === "overview"
+            appMode === "common"
+              ? "Common Dashboard"
+              : appMode === "overview"
               ? "Overview"
               : appMode === "query"
                 ? "Query Console"
@@ -475,8 +556,10 @@ export default function App() {
                   : currentTable || "Select a Table"
           }
           dbType={
-            appMode === "overview" && (overview?.databases?.length ?? 0) > 1
-              ? "Overview"
+            appMode === "common"
+              ? "Fleet"
+              : appMode === "overview" && (overview?.databases?.length ?? 0) > 1
+                ? "Overview"
               : dbType
           }
           theme={theme}
