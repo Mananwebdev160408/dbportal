@@ -239,6 +239,76 @@ Want to discuss features, get help, or connect with other contributors? Join our
   <img src="https://contrib.rocks/image?repo=Mananwebdev160408/dbportal" />
 </a>
 
+## Troubleshooting
+
+### Port conflicts
+
+If the default port (3000) is already in use, you will see an `EADDRINUSE` error. Use the `--port` flag to specify a different port:
+
+```bash
+npx dbportal --port 4000
+```
+
+Or set the `PORT` environment variable in your `.env` file:
+
+```env
+PORT=4000
+```
+
+### PostgreSQL SSL certificate issues
+
+When connecting to PostgreSQL with `sslmode=require` or `sslmode=verify-full`, you may encounter certificate errors. To disable SSL verification for local development, append `?sslmode=disable` to your connection string:
+
+```env
+DATABASE_URL=postgres://user:pass@localhost:5432/my_db?sslmode=disable
+```
+
+For production-like environments, ensure the server's CA certificate is trusted by your system or use the `sslrootcert` connection parameter.
+
+### MongoDB SRV resolution issues
+
+MongoDB SRV connection strings (`mongodb+srv://`) require DNS SRV record resolution, which may fail on some networks or if the hostname is incorrect. If you encounter DNS errors:
+
+- Verify the hostname is correct and reachable.
+- Fall back to a standard `mongodb://` connection string by resolving the SRV records manually:
+
+```env
+DATABASE_URL=mongodb://host1:27017,host2:27017/my_db?replicaSet=myReplicaSet
+```
+
+If using a local MongoDB instance, use the direct connection string:
+
+```env
+DATABASE_URL=mongodb://localhost:27017/my_db
+```
+
+### SQLite Windows file path issues
+
+On Windows, SQLite connection strings use relative or absolute paths. Backslashes in the path must be escaped or replaced with forward slashes:
+
+```env
+# Correct — forward slashes
+DATABASE_URL=sqlite:C:/data/my_app.sqlite
+
+# Correct — escaped backslashes
+DATABASE_URL=sqlite:C:\\data\\my_app.sqlite
+
+# Also valid — relative path
+DATABASE_URL=sqlite:./local.db
+```
+
+If SQLite reports `unable to open database file`, verify that the directory exists and the process has write permission.
+
+### Missing DATABASE_URL configuration
+
+If the server starts but no databases appear, you likely have not set `DATABASE_URL`. Create a `.env` file in the project root with at least one connection string:
+
+```env
+DATABASE_URL=sqlite:./local.db
+```
+
+The server logs a warning on startup if `DATABASE_URL` is not set. Use `DATABASE_URL_1` through `DATABASE_URL_10` for additional connections.
+
 ## License
 
 MIT © Manan Gupta
