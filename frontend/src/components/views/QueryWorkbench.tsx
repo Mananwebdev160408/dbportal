@@ -12,6 +12,7 @@ interface QueryWorkbenchProps {
   tables: string[];
   capabilities: DriverCapabilities;
   onStatus: (msg: string, isError?: boolean) => void;
+  maskSensitive?: boolean;
 }
 
 interface StructuredQueryPayload {
@@ -156,6 +157,7 @@ export default function QueryWorkbench({
   tables,
   capabilities,
   onStatus,
+  maskSensitive = false,
 }: QueryWorkbenchProps) {
   const [rawQuery, setRawQuery] = useState("");
   const [collection, setCollection] = useState(tables[0] || "");
@@ -1072,9 +1074,9 @@ export default function QueryWorkbench({
               <p>Run a query to see results here.</p>
             </EmptyState>
           ) : resultMode === "table" ? (
-            <TableView rows={resultRows} />
+            <TableView rows={resultRows} maskSensitive={maskSensitive} />
           ) : (
-            <JsonView rows={resultRows} />
+            <JsonView rows={resultRows} maskSensitive={maskSensitive} />
           )}
         </div>
       </section>

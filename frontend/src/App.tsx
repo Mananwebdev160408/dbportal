@@ -451,10 +451,19 @@ export default function App() {
 
     if (appMode === "table") {
       if (viewMode === "documents")
-        return <DocumentsView rows={filteredData} />;
-      if (viewMode === "json") return <JsonView rows={filteredData} />;
+        return (
+          <DocumentsView rows={filteredData} maskSensitive={maskSensitive} />
+        );
+      if (viewMode === "json")
+        return <JsonView rows={filteredData} maskSensitive={maskSensitive} />;
       if (viewMode === "inspector")
-        return <InspectorView key={reloadKey} rows={filteredData} />;
+        return (
+          <InspectorView
+            key={reloadKey}
+            rows={filteredData}
+            maskSensitive={maskSensitive}
+          />
+        );
       return (
         <TableView
           rows={data}
@@ -505,6 +514,7 @@ export default function App() {
           tables={tables}
           capabilities={capabilities}
           onStatus={showStatus}
+          maskSensitive={maskSensitive}
         />
       );
     }

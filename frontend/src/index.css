@@ -719,6 +719,36 @@ select {
   color: var(--text);
 }
 
+.copy-card-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.copy-card-btn:hover {
+  color: var(--accent);
+  background: var(--line);
+}
+
+.copy-card-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.copy-card-btn:active svg {
+  transform: scale(0.9);
+}
+
 /* ========================
    Inspector View
    ======================== */
