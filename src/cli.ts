@@ -115,6 +115,7 @@ const isSqlDriver = (kind: string): boolean => {
   const value = kind.toLowerCase();
   return (
     value.includes("postgres") ||
+    value.includes("cockroach") ||
     value.includes("mysql") ||
     value.includes("mssql") ||
     value.includes("sqlserver") ||

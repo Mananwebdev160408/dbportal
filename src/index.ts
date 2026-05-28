@@ -50,6 +50,12 @@ const registerBuiltInDrivers = (): void => {
   });
 
   registerDatabaseDriver({
+    kind: "cockroachdb",
+    protocols: ["cockroachdb:", "cockroach:"],
+    create: (databaseUrl) => new PostgresDriver(databaseUrl),
+  });
+
+  registerDatabaseDriver({
     kind: "mongodb",
     protocols: ["mongodb:", "mongodb+srv:"],
     create: (databaseUrl) => new MongoDriver(databaseUrl),
@@ -184,7 +190,8 @@ export class DatabaseConnection {
   }
 
   async getSchema(): Promise<DatabaseSchema> {
-    return this.driver.getSchema();
+    const schema = await this.driver.getSchema();
+    return { ...schema, dbType: this.databaseKind };
   }
 
   async query(raw: DriverQueryInput): Promise<any> {

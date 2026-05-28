@@ -129,7 +129,10 @@ const formatSqlIdentifier = (
   }
 
   const normalizedType = databaseType.toLowerCase();
-  if (normalizedType.includes("postgres")) {
+  if (
+    normalizedType.includes("postgres") ||
+    normalizedType.includes("cockroach")
+  ) {
     return `"${trimmed.replace(/"/g, '""')}"`;
   }
 
