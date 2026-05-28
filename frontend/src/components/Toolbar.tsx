@@ -21,6 +21,7 @@ interface ToolbarProps {
   onMaskToggle: () => void;
   rowLimit?: number;
   onLimitChange?: (limit: number) => void;
+  isDocker?: boolean;
 }
 
 const SearchIcon = () => (
@@ -226,6 +227,7 @@ export default function Toolbar({
   onMaskToggle,
   rowLimit = 200,
   onLimitChange,
+  isDocker = false,
 }: ToolbarProps) {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
@@ -280,66 +282,70 @@ export default function Toolbar({
       </div>
 
       <div className="toolbar-controls">
-        <div className="search-box">
-          <SearchIcon />
-          <input
-            type="text"
-            id="search-input"
-            placeholder="Search records..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            disabled={searchDisabled}
-            aria-label="Filter rows"
-          />
-        </div>
+        {!isDocker && (
+          <div className="search-box">
+            <SearchIcon />
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Search records..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              disabled={searchDisabled}
+              aria-label="Filter rows"
+            />
+          </div>
+        )}
 
-        <div
-          className={`dropdown-container${isViewOpen ? " open" : ""}`}
-          ref={dropdownRef}
-        >
-          <button
-            className="icon-btn dropdown-trigger"
-            onClick={() => setIsViewOpen(!isViewOpen)}
-            type="button"
-            aria-haspopup="listbox"
-            aria-expanded={isViewOpen}
-            disabled={viewDisabled}
+        {!isDocker && (
+          <div
+            className={`dropdown-container${isViewOpen ? " open" : ""}`}
+            ref={dropdownRef}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 16,
-                  height: 16,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {ViewIcons[viewMode]}
-              </div>
-              <span>{ViewLabels[viewMode]}</span>
-            </div>
-            <ChevronIcon />
-          </button>
-
-          {isViewOpen && (
-            <div className="dropdown-menu" role="listbox">
-              {(Object.keys(ViewLabels) as ViewMode[]).map((v) => (
-                <button
-                  key={v}
-                  className={`dropdown-item${viewMode === v ? " active" : ""}`}
-                  onClick={() => handleViewSelect(v)}
-                  type="button"
-                  role="option"
-                  aria-selected={viewMode === v}
+            <button
+              className="icon-btn dropdown-trigger"
+              onClick={() => setIsViewOpen(!isViewOpen)}
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isViewOpen}
+              disabled={viewDisabled}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  {ViewIcons[v]}
-                  <span>{ViewLabels[v]}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                  {ViewIcons[viewMode]}
+                </div>
+                <span>{ViewLabels[viewMode]}</span>
+              </div>
+              <ChevronIcon />
+            </button>
+
+            {isViewOpen && (
+              <div className="dropdown-menu" role="listbox">
+                {(Object.keys(ViewLabels) as ViewMode[]).map((v) => (
+                  <button
+                    key={v}
+                    className={`dropdown-item${viewMode === v ? " active" : ""}`}
+                    onClick={() => handleViewSelect(v)}
+                    type="button"
+                    role="option"
+                    aria-selected={viewMode === v}
+                  >
+                    {ViewIcons[v]}
+                    <span>{ViewLabels[v]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div
           className={`dropdown-container${isThemeOpen ? " open" : ""}`}
@@ -418,31 +424,33 @@ export default function Toolbar({
           {mode === "dark" ? <SunIcon /> : <MoonIcon />}
         </button>
 
-        <button
-          className={`icon-btn mask-toggle-btn${maskSensitive ? " active" : ""}`}
-          onClick={onMaskToggle}
-          type="button"
-          aria-label="Toggle sensitive data masking"
-          title={
-            maskSensitive
-              ? "Show sensitive values"
-              : "Hide sensitive values (password, token, secret)"
-          }
-          style={{
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "0 12px",
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
-          {maskSensitive ? "🔓 Reveal" : "🔒 Mask"}
-        </button>
+        {!isDocker && (
+          <button
+            className={`icon-btn mask-toggle-btn${maskSensitive ? " active" : ""}`}
+            onClick={onMaskToggle}
+            type="button"
+            aria-label="Toggle sensitive data masking"
+            title={
+              maskSensitive
+                ? "Show sensitive values"
+                : "Hide sensitive values (password, token, secret)"
+            }
+            style={{
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "0 12px",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            {maskSensitive ? "🔓 Reveal" : "🔒 Mask"}
+          </button>
+        )}
 
         {/* Rows-per-page selector — visible only in table mode */}
-        {!viewDisabled && (
+        {!viewDisabled && !isDocker && (
           <div
             style={{
               display: "flex",

@@ -3191,3 +3191,157 @@ textarea:focus-visible,
   outline: 2px solid #2563eb !important;
   outline-offset: 2px !important;
 }
+
+/* ========================
+   Docker Dashboard View
+   ======================== */
+.docker-dashboard-wrap {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.docker-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.status-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.status-pill.success {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(0, 242, 255, 0.3);
+}
+
+.status-pill.danger {
+  background: rgba(255, 69, 58, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(255, 69, 58, 0.3);
+}
+
+.control-row {
+  display: flex;
+  gap: 10px;
+}
+
+.control-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.control-btn:hover:not(:disabled) {
+  background: var(--surface-raised);
+  border-color: var(--text-dim);
+}
+
+.control-btn.start-btn:hover:not(:disabled) {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.control-btn.stop-btn:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.control-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.circular-metric-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 60px;
+  margin: 10px 0;
+}
+
+.bindings-list::-webkit-scrollbar {
+  width: 3px;
+}
+
+.logs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 350px;
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logs-action-btn {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logs-action-btn:hover {
+  background: var(--surface-raised);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.logs-terminal {
+  flex: 1;
+  background: #060608;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 450px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.logs-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: #a2a2ad;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

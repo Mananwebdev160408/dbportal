@@ -53,6 +53,7 @@
   },
   "homepage": "https://github.com/Mananwebdev160408/dbportal#readme",
   "dependencies": {
+    "dockerode": "^5.0.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.2",
@@ -66,6 +67,7 @@
     "sqlite3": "^6.0.1"
   },
   "devDependencies": {
+    "@types/dockerode": "^4.0.1",
     "@types/express": "^5.0.3",
     "@types/mssql": "^9.1.11",
     "@types/node": "^25.5.2",

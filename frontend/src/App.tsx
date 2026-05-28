@@ -11,9 +11,17 @@ import JsonView from "./components/views/JsonView";
 import InspectorView from "./components/views/InspectorView";
 import QueryWorkbench from "./components/views/QueryWorkbench";
 import SchemaView from "./components/views/SchemaView";
+import DockerSidebar, { DockerContainerInfo } from "./components/DockerSidebar";
+import DockerDashboardView from "./components/views/DockerDashboardView";
 
 export type ViewMode = "table" | "documents" | "json" | "inspector";
-export type AppMode = "common" | "overview" | "table" | "query" | "schema";
+export type AppMode =
+  | "common"
+  | "overview"
+  | "table"
+  | "query"
+  | "schema"
+  | "docker";
 
 export interface DriverCapabilities {
   rawQuery: boolean;
@@ -72,6 +80,10 @@ export default function App() {
     structuredQuery: false,
   });
   const [appMode, setAppMode] = useState<AppMode>("common");
+  const [isDockerMode, setIsDockerMode] = useState(false);
+  const [containers, setContainersList] = useState<DockerContainerInfo[]>([]);
+  const [selectedContainerId, setSelectedContainerId] = useState<string>("");
+  const [dockerRefreshKey, setDockerRefreshKey] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [currentTable, setCurrentTable] = useState("");
   const [data, setData] = useState<Record<string, unknown>[]>([]);
@@ -149,6 +161,27 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       try {
+        const configRes = await fetch("/api/config");
+        const configPayload = await configRes.json();
+
+        if (configPayload.mode === "docker") {
+          setIsDockerMode(true);
+          setAppMode("docker");
+
+          const containersRes = await fetch("/api/docker/containers");
+          const containersPayload = await containersRes.json();
+          if (containersRes.ok) {
+            const list = containersPayload.containers || [];
+            setContainersList(list);
+            if (list.length > 0) {
+              setSelectedContainerId(list[0].id);
+            }
+          }
+          setLoading(false);
+          showStatus("Docker engine connected");
+          return;
+        }
+
         const connRes = await fetch("/api/connections");
         const connPayload = await connRes.json();
         if (!connRes.ok)
@@ -397,6 +430,16 @@ export default function App() {
 
   const handleReload = () => {
     setReloadKey((k) => k + 1);
+    if (isDockerMode) {
+      setDockerRefreshKey((k) => k + 1);
+      fetch("/api/docker/containers")
+        .then((res) => res.json())
+        .then((data) => {
+          setContainersList(data.containers || []);
+        });
+      showStatus("Refreshed containers list");
+      return;
+    }
     if (appMode === "common") {
       loadCommonDashboard();
     } else if (appMode === "overview") {
@@ -568,6 +611,75 @@ export default function App() {
       </EmptyState>
     );
   };
+
+  if (isDockerMode) {
+    return (
+      <div
+        className="app-layout"
+        style={{ gridTemplateColumns: `${sidebarWidth}px 4px 1fr` }}
+      >
+        <DockerSidebar
+          containers={containers}
+          selectedContainerId={selectedContainerId}
+          onSelectContainer={(id) => {
+            setSelectedContainerId(id);
+            showStatus("Loaded container details");
+          }}
+        />
+        <div className="sidebar-resizer" onMouseDown={handleSidebarMouseDown} />
+        <main className="main-area">
+          <Toolbar
+            title={
+              containers.find((c) => c.id === selectedContainerId)?.name ||
+              "Docker Container"
+            }
+            dbType="Docker"
+            theme={theme}
+            mode={mode}
+            viewMode={viewMode}
+            search=""
+            searchDisabled={true}
+            reloadDisabled={loading}
+            viewDisabled={true}
+            status={status}
+            statusError={statusError}
+            onThemeChange={toggleTheme}
+            onModeToggle={toggleMode}
+            onViewChange={setViewMode}
+            onSearchChange={setSearch}
+            onReload={handleReload}
+            maskSensitive={maskSensitive}
+            onMaskToggle={() => setMaskSensitive((v) => !v)}
+            rowLimit={pageSize}
+            onLimitChange={handleLimitChange}
+            isDocker={true}
+          />
+          <div className="data-container">
+            {loading ? (
+              <EmptyState>
+                <div className="loading-pulse" />
+                <p>Connecting to Docker...</p>
+              </EmptyState>
+            ) : (
+              <DockerDashboardView
+                key={dockerRefreshKey}
+                containerId={selectedContainerId}
+                containers={containers}
+                onStatusChange={showStatus}
+                onRefresh={() => {
+                  fetch("/api/docker/containers")
+                    .then((res) => res.json())
+                    .then((data) => {
+                      setContainersList(data.containers || []);
+                    });
+                }}
+              />
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const activeDbData = overview?.databases?.find((db) => db.id === activeDbId);
   const tableCounts: Record<string, number> = {};

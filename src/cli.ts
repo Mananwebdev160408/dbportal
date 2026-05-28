@@ -8,6 +8,7 @@ import express from "express";
 import { rateLimit } from "express-rate-limit";
 import open from "open";
 import { DatabaseManager } from "./index.js";
+import { DockerService } from "./docker-service.js";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ const MAX_PORT_SCAN = 25;
 interface CliOptions {
   host: string;
   port: number;
+  docker: boolean;
 }
 
 const toMessage = (error: unknown): string => {
@@ -57,14 +59,20 @@ const parseCliOptions = (argv: string[]): CliOptions => {
   const options: CliOptions = {
     host: process.env.HOST?.trim() || "127.0.0.1",
     port: parsePortOption(process.env.PORT ?? "0", "PORT"),
+    docker: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
     if (arg === "--help") {
-      console.log("Usage: dbportal [--host <host>] [--port <port>]");
+      console.log("Usage: dbportal [--host <host>] [--port <port>] [--docker]");
       process.exit(0);
+    }
+
+    if (arg === "--docker") {
+      options.docker = true;
+      continue;
     }
 
     if (arg === "--host") {
@@ -224,38 +232,54 @@ const listenOnAvailablePort = async (
 
 const main = async () => {
   const options = parseCliOptions(process.argv.slice(2));
+  let dockerService: DockerService | null = null;
   const urls: { id: string; url: string }[] = [];
-  if (process.env.DATABASE_URL) {
-    urls.push({ id: "primary", url: process.env.DATABASE_URL });
-  }
 
-  // Look for DATABASE_URL_1, DATABASE_URL_2, etc.
-  for (let i = 1; i <= 10; i++) {
-    const url = process.env[`DATABASE_URL_${i}`];
-    if (url) {
-      urls.push({ id: `db_${i}`, url });
+  if (options.docker) {
+    dockerService = new DockerService();
+    const isDockerAvailable = await dockerService.checkConnection();
+    if (!isDockerAvailable) {
+      console.error(
+        "Docker daemon is not running or accessible. Please start Docker and try again.",
+      );
+      process.exitCode = 1;
+      return;
+    }
+  } else {
+    if (process.env.DATABASE_URL) {
+      urls.push({ id: "primary", url: process.env.DATABASE_URL });
+    }
+
+    // Look for DATABASE_URL_1, DATABASE_URL_2, etc.
+    for (let i = 1; i <= 10; i++) {
+      const url = process.env[`DATABASE_URL_${i}`];
+      if (url) {
+        urls.push({ id: `db_${i}`, url });
+      }
+    }
+
+    if (urls.length === 0) {
+      console.error(
+        "No DATABASE_URL found in .env. Please provide at least one connection string.",
+      );
+      process.exitCode = 1;
+      return;
     }
   }
 
-  if (urls.length === 0) {
-    console.error(
-      "No DATABASE_URL found in .env. Please provide at least one connection string.",
-    );
-    process.exitCode = 1;
-    return;
-  }
-
   const manager = new DatabaseManager();
-  for (const item of urls) {
-    manager.addConnection(item.id, item.url);
-  }
+  if (!options.docker) {
+    for (const item of urls) {
+      manager.addConnection(item.id, item.url);
+    }
 
-  try {
-    await manager.connectAll();
-  } catch (error) {
-    console.error(`Database connection failed: ${toMessage(error)}`);
-    process.exitCode = 1;
-    return;
+    try {
+      await manager.connectAll();
+    } catch (error) {
+      console.error(`Database connection failed: ${toMessage(error)}`);
+      process.exitCode = 1;
+      return;
+    }
   }
 
   const app = express();
@@ -273,6 +297,10 @@ const main = async () => {
   // Serve the built React app
   app.use(express.static(frontendDist));
 
+  app.get("/api/config", (_request, response) => {
+    response.status(200).json({ mode: options.docker ? "docker" : "database" });
+  });
+
   app.get("/api/connections", (_request, response) => {
     const list = manager.listConnections().map((c) => ({
       id: c.getId(),
@@ -280,6 +308,69 @@ const main = async () => {
       kind: c.getKind(),
     }));
     response.status(200).json({ connections: list });
+  });
+
+  // Docker Routes (only active in dockerMode)
+  app.get("/api/docker/containers", async (_request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    try {
+      const list = await dockerService.listContainers();
+      response.status(200).json({ containers: list });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.get("/api/docker/containers/:id/logs", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const { id } = request.params;
+    try {
+      const logs = await dockerService.getContainerLogs(id);
+      response.status(200).json({ logs });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.get("/api/docker/containers/:id/stats", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const { id } = request.params;
+    try {
+      const stats = await dockerService.getContainerStats(id);
+      response.status(200).json(stats);
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.post("/api/docker/containers/:id/action", async (request, response) => {
+    if (!options.docker || !dockerService) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+    const { id } = request.params;
+    const action = request.body?.action;
+    if (action !== "start" && action !== "stop" && action !== "restart") {
+      response
+        .status(400)
+        .json({ error: "Action must be start, stop, or restart." });
+      return;
+    }
+    try {
+      await dockerService.performAction(id, action);
+      response.status(200).json({ success: true });
+    } catch (error) {
+      response.status(500).json({ error: toMessage(error) });
+    }
   });
 
   app.get("/api/tables", async (request, response) => {
@@ -440,7 +531,11 @@ const main = async () => {
     server = started.server;
     const uiUrl = "http://" + hostForUrl(options.host) + ":" + started.port;
 
-    console.log(`dbportal connected (${urls.length} database(s)).`);
+    if (options.docker) {
+      console.log(`dbportal connected (Docker Mode).`);
+    } else {
+      console.log(`dbportal connected (${urls.length} database(s)).`);
+    }
     console.log(`Dashboard running at ${uiUrl}`);
 
     try {
