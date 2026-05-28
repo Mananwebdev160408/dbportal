@@ -225,7 +225,7 @@ export default function Sidebar({
         {(capabilities.rawQuery || capabilities.structuredQuery) && (
           <button
             className={`overview-btn${appMode === "query" ? " active" : ""}`}
-            onClick={onQueryClick}
+            onClick={() => onQueryClick()}
             type="button"
           >
             <QueryIcon />
@@ -235,7 +235,7 @@ export default function Sidebar({
 
         <button
           className={`overview-btn${appMode === "schema" ? " active" : ""}`}
-          onClick={onSchemaClick}
+          onClick={() => onSchemaClick()}
           type="button"
         >
           <SchemaIcon />
@@ -268,19 +268,21 @@ export default function Sidebar({
                 <TableIcon />
                 <span>{name}</span>
                 {tableCounts[name] !== undefined && (
-                  <span style={{
-                    marginLeft: 'auto',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    background: 'var(--accent, #6366f1)',
-                    color: '#fff',
-                    borderRadius: '999px',
-                    padding: '1px 7px',
-                    minWidth: '20px',
-                    textAlign: 'center',
-                    opacity: 0.85,
-                  }}>
-                    {tableCounts[name] > 9999 ? '9999+' : tableCounts[name]}
+                  <span
+                    style={{
+                      marginLeft: "auto",
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      background: "var(--accent, #6366f1)",
+                      color: "#fff",
+                      borderRadius: "999px",
+                      padding: "1px 7px",
+                      minWidth: "20px",
+                      textAlign: "center",
+                      opacity: 0.85,
+                    }}
+                  >
+                    {tableCounts[name] > 9999 ? "9999+" : tableCounts[name]}
                   </span>
                 )}
               </button>

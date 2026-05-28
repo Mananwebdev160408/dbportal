@@ -71,7 +71,7 @@ export default function App() {
     rawQuery: false,
     structuredQuery: false,
   });
-  const [appMode, setAppMode] = useState<AppMode>("overview");
+  const [appMode, setAppMode] = useState<AppMode>("common");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [currentTable, setCurrentTable] = useState("");
   const [data, setData] = useState<Record<string, unknown>[]>([]);
@@ -139,7 +139,7 @@ export default function App() {
         const overviewPayload = await overviewRes.json();
         if (overviewRes.ok) {
           setOverview(overviewPayload);
-          showStatus("Connected");
+          showStatus("Fleet dashboard ready");
         }
 
         setLoading(false);
@@ -309,49 +309,59 @@ export default function App() {
     [activeDbId, pageSize],
   );
 
-  const openQueryWorkspace = useCallback(async (targetDbId?: string) => {
-    if (targetDbId && targetDbId !== activeDbId) {
-      setActiveDbId(targetDbId);
-      setLoading(true);
-      try {
-        await loadDatabaseMetadata(targetDbId);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        showStatus(msg, true);
-        setError(msg);
-        setLoading(false);
-        return;
+  const openQueryWorkspace = useCallback(
+    async (targetDbId?: string) => {
+      const resolvedDbId =
+        typeof targetDbId === "string" ? targetDbId : undefined;
+      if (resolvedDbId && resolvedDbId !== activeDbId) {
+        setActiveDbId(resolvedDbId);
+        setLoading(true);
+        try {
+          await loadDatabaseMetadata(resolvedDbId);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          showStatus(msg, true);
+          setError(msg);
+          setLoading(false);
+          return;
+        }
       }
-    }
-    setAppMode("query");
-    setCurrentTable("");
-    setSearch("");
-    setError("");
-    setLoading(false);
-    showStatus("Query workspace ready");
-  }, [activeDbId]);
+      setAppMode("query");
+      setCurrentTable("");
+      setSearch("");
+      setError("");
+      setLoading(false);
+      showStatus("Query workspace ready");
+    },
+    [activeDbId],
+  );
 
-  const openSchemaVisualizer = useCallback(async (targetDbId?: string) => {
-    if (targetDbId && targetDbId !== activeDbId) {
-      setActiveDbId(targetDbId);
-      setLoading(true);
-      try {
-        await loadDatabaseMetadata(targetDbId);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        showStatus(msg, true);
-        setError(msg);
-        setLoading(false);
-        return;
+  const openSchemaVisualizer = useCallback(
+    async (targetDbId?: string) => {
+      const resolvedDbId =
+        typeof targetDbId === "string" ? targetDbId : undefined;
+      if (resolvedDbId && resolvedDbId !== activeDbId) {
+        setActiveDbId(resolvedDbId);
+        setLoading(true);
+        try {
+          await loadDatabaseMetadata(resolvedDbId);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          showStatus(msg, true);
+          setError(msg);
+          setLoading(false);
+          return;
+        }
       }
-    }
-    setAppMode("schema");
-    setCurrentTable("");
-    setSearch("");
-    setError("");
-    setLoading(false);
-    showStatus("Schema visualizer ready");
-  }, [activeDbId]);
+      setAppMode("schema");
+      setCurrentTable("");
+      setSearch("");
+      setError("");
+      setLoading(false);
+      showStatus("Schema visualizer ready");
+    },
+    [activeDbId],
+  );
 
   const handleReload = () => {
     setReloadKey((k) => k + 1);
@@ -548,19 +558,19 @@ export default function App() {
             appMode === "common"
               ? "Common Dashboard"
               : appMode === "overview"
-              ? "Overview"
-              : appMode === "query"
-                ? "Query Console"
-                : appMode === "schema"
-                  ? "Schema"
-                  : currentTable || "Select a Table"
+                ? "Overview"
+                : appMode === "query"
+                  ? "Query Console"
+                  : appMode === "schema"
+                    ? "Schema"
+                    : currentTable || "Select a Table"
           }
           dbType={
             appMode === "common"
               ? "Fleet"
               : appMode === "overview" && (overview?.databases?.length ?? 0) > 1
                 ? "Overview"
-              : dbType
+                : dbType
           }
           theme={theme}
           mode={mode}
