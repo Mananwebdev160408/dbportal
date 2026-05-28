@@ -107,10 +107,10 @@ export default function App() {
     localStorage.setItem("dbportal-mode", next);
   };
 
-  const showStatus = (msg: string, isError = false) => {
+  const showStatus = useCallback((msg: string, isError = false) => {
     setStatus(msg);
     setStatusError(isError);
-  };
+  }, []);
 
   // Load connections and initial state
   useEffect(() => {
