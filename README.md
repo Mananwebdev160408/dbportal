@@ -172,6 +172,120 @@ npm run dev:ui
 npm run build
 ```
 
+## Troubleshooting
+
+### Port already in use
+
+**Error**
+
+```bash
+Error: Unable to find an available port between 3000 and 3024
+```
+
+**Fix**
+
+Set a custom port in your `.env` file:
+
+```env
+PORT=4000
+```
+
+Or pass a port directly with the CLI:
+
+```bash
+npx dbportal --port 4000
+```
+
+### PostgreSQL SSL certificate errors
+
+**Error**
+
+```bash
+self-signed certificate in certificate chain
+```
+
+**Fix**
+
+Depending on your PostgreSQL setup, append one of the following to your `DATABASE_URL`:
+
+```env
+?sslmode=disable
+```
+
+or
+
+```env
+?sslmode=require
+```
+
+Example:
+
+```env
+DATABASE_URL=postgres://user:password@localhost:5432/my_db?sslmode=require
+```
+
+### MongoDB SRV resolution failing
+
+**Error**
+
+```bash
+querySrv ENOTFOUND _mongodb._tcp.cluster.mongodb.net
+```
+
+**Fix**
+
+This is usually caused by DNS resolution issues.
+
+- Check your internet connection and DNS settings
+- VPNs or corporate proxies may block SRV resolution
+- Try using a direct `mongodb://` connection string instead of `mongodb+srv://`
+
+Example:
+
+```env
+mongodb://localhost:27017/my_db
+```
+
+### SQLite file path issues on Windows
+
+**Error**
+
+```bash
+SQLITE_CANTOPEN: unable to open database file
+```
+
+**Fix**
+
+Use forward slashes or double backslashes in SQLite paths.
+
+Examples:
+
+```env
+sqlite:./data/app.sqlite
+```
+
+```env
+sqlite:C:/Users/you/app.sqlite
+```
+
+### No DATABASE_URL found
+
+**Error**
+
+```bash
+No DATABASE_URL found in .env. Please provide at least one connection string.
+```
+
+**Fix**
+
+Make sure your `.env` file exists in the same directory where you run:
+
+```bash
+npx dbportal
+```
+
+The CLI reads `.env` from the current working directory.
+
 ## API endpoints
 
 - `GET /api/connections`
