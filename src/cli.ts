@@ -718,7 +718,21 @@ const main = async () => {
       const result = await conn.query(query);
       response.status(200).json(result);
     } catch (error) {
-      response.status(400).json({ error: toMessage(error) });
+      const message = toMessage(error);
+      const isTimeout =
+        message.toLowerCase().includes("timed out") ||
+        message.toLowerCase().includes("timeout") ||
+        message.toLowerCase().includes("etimedout") ||
+        message.toLowerCase().includes("killed");
+      response.status(isTimeout ? 504 : 400).json({
+        error: message,
+        ...(isTimeout && {
+          timeout: true,
+          retryAfter: 5,
+          suggestion:
+            "The database connection timed out. This usually means the server is unreachable, the connection string is incorrect, or the database is overloaded. Please verify your connection details and try again.",
+        }),
+      });
     }
   });
 

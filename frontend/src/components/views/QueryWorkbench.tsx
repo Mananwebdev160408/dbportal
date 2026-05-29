@@ -161,6 +161,8 @@ export default function QueryWorkbench({
   maskSensitive = false,
 }: QueryWorkbenchProps) {
   const [rawQuery, setRawQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [panelWidth, setPanelWidth] = useState(() => {
     const stored = localStorage.getItem("dbportal-query-panel-width");
     return stored ? parseInt(stored, 10) : 420;
@@ -547,7 +549,15 @@ export default function QueryWorkbench({
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Unknown query error";
-      setRunError(message);
+      const isTimeout =
+        message.toLowerCase().includes("timed out") ||
+        message.toLowerCase().includes("timeout") ||
+        message.toLowerCase().includes("etimedout");
+      setRunError(
+        isTimeout
+          ? `${message}\n\nYou can retry the query once the database is reachable.`
+          : message,
+      );
       onStatus(message, true);
     } finally {
       setRunning(false);
@@ -664,6 +674,34 @@ export default function QueryWorkbench({
     setRunError("");
     onStatus("Query editor reset", false);
   };
+
+  const handleSort = useCallback((col: string) => {
+    setSortBy((prev) => {
+      if (prev === col) {
+        setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+        return col;
+      }
+      setSortOrder("asc");
+      return col;
+    });
+  }, []);
+
+  const sortedResultRows = useMemo(() => {
+    if (!sortBy) return resultRows;
+    return [...resultRows].sort((a, b) => {
+      const va = a[sortBy];
+      const vb = b[sortBy];
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === "number" && typeof vb === "number") {
+        return sortOrder === "asc" ? va - vb : vb - va;
+      }
+      const sa = String(va);
+      const sb = String(vb);
+      const cmp = sa.localeCompare(sb);
+      return sortOrder === "asc" ? cmp : -cmp;
+    });
+  }, [resultRows, sortBy, sortOrder]);
 
   const copyResults = async () => {
     if (resultRows.length === 0) return;
@@ -1119,7 +1157,7 @@ export default function QueryWorkbench({
               <p>Run a query to see results here.</p>
             </EmptyState>
           ) : resultMode === "table" ? (
-            <TableView rows={resultRows} maskSensitive={maskSensitive} />
+            <TableView rows={sortedResultRows} maskSensitive={maskSensitive} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
           ) : (
             <JsonView rows={resultRows} maskSensitive={maskSensitive} />
           )}
