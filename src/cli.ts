@@ -136,7 +136,7 @@ const isMongoDriver = (kind: string): boolean =>
 
 const isReadOnlySqlQuery = (query: string): boolean => {
   const normalized = query
-    .replace(/\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\//g, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
     .replace(/--.*$/gm, " ")
     .trim()
     .toLowerCase();

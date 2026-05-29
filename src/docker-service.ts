@@ -175,6 +175,9 @@ export class DockerService {
   }
 
   async getDockerHubTags(repo: string): Promise<string[]> {
+    if (!/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)?$/.test(repo)) {
+      throw new Error("Invalid repository name format");
+    }
     const fullRepo = repo.includes("/") ? repo : `library/${repo}`;
     const url = `https://hub.docker.com/v2/repositories/${fullRepo}/tags?page_size=100`;
     const res = await fetch(url);
