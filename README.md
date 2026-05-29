@@ -520,7 +520,7 @@ The CLI reads `.env` from the current working directory. This error does not app
 
 - The package ships the compiled backend in `dist/` and the built frontend in `frontend/dist/`.
 - npm publish currently requires an account token or 2FA OTP on your account.
-- The package name is `dbportal` and the current version is `1.0.4`.
+- The package name is `dbportal` and the current version is `1.1.0`.
 
 ---
 
