@@ -278,7 +278,9 @@ Docker mode does not require any environment variables.
 
 ## Installation
 
-### Run with npx
+### Use with npx (no install needed)
+
+The fastest way — no installation required:
 
 ```bash
 # Database mode
@@ -288,19 +290,37 @@ npx dbportal
 npx dbportal --docker
 ```
 
-Use CLI flags when you need a specific bind address or port:
+With specific host or port:
 
 ```bash
 npx dbportal --host 127.0.0.1 --port 4000
 npx dbportal --docker --port 5656
 ```
 
-### Install globally
+### Install as a dev dependency (recommended)
+
+Add dbportal to your project so your whole team gets the same version:
 
 ```bash
-npm install -g dbportal
-dbportal
-dbportal --docker
+npm install --save-dev dbportal
+```
+
+Then add a script to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "db": "dbportal",
+    "db:docker": "dbportal --docker"
+  }
+}
+```
+
+Run it with:
+
+```bash
+npm run db
+npm run db:docker
 ```
 
 ### Develop from this repository

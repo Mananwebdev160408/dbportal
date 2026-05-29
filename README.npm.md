@@ -4,8 +4,28 @@
 
 ## Install
 
+### As a dev dependency (recommended)
+
 ```bash
-npm install dbportal
+npm install --save-dev dbportal
+```
+
+Add scripts to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "db": "dbportal",
+    "db:docker": "dbportal --docker"
+  }
+}
+```
+
+### Or use directly with npx (no install needed)
+
+```bash
+npx dbportal
+npx dbportal --docker
 ```
 
 ## Quick start
@@ -14,8 +34,9 @@ npm install dbportal
 
 ```bash
 DATABASE_URL=postgres://user:password@localhost:5432/my_db
-npx dbportal
+npm run db
 ```
+
 
 Optional additional connections:
 
@@ -26,10 +47,10 @@ DATABASE_URL_2=sqlite:./local.db
 
 ### Docker mode
 
-No database credentials required. Just run with the `--docker` flag:
+No database credentials required. Just run:
 
 ```bash
-npx dbportal --docker
+npm run db:docker
 ```
 
 Requires Docker Desktop (or Docker Engine) to be running on the same machine.
