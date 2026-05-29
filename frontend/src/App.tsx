@@ -48,6 +48,7 @@ export interface DatabaseConnectionInfo {
   id: string;
   name: string;
   kind: string;
+  isAlive?: boolean;
 }
 
 export interface MultiDatabaseOverview {
@@ -210,7 +211,19 @@ export default function App() {
           throw new Error(connPayload.error || "Failed to list connections.");
 
         const list = connPayload.connections || [];
-        setConnections(list);
+
+        // Check health for each connection
+        const withHealth = await Promise.all(
+          list.map(async (conn: DatabaseConnectionInfo) => {
+            try {
+              const res = await fetch(`/api/health?dbId=${conn.id}`);
+              return { ...conn, isAlive: res.ok };
+            } catch {
+              return { ...conn, isAlive: false };
+            }
+          }),
+        );
+        setConnections(withHealth);
 
         // Use primary or first available
         const initialId =
@@ -265,7 +278,19 @@ export default function App() {
       throw err;
     }
   };
-
+  const checkConnectionHealth = useCallback(async () => {
+    const updated = await Promise.all(
+      connections.map(async (conn) => {
+        try {
+          const res = await fetch(`/api/health?dbId=${conn.id}`);
+          return { ...conn, isAlive: res.ok };
+        } catch {
+          return { ...conn, isAlive: false };
+        }
+      }),
+    );
+    setConnections(updated);
+  }, [connections]);
   const loadOverview = useCallback(async () => {
     setAppMode("overview");
     setLoading(true);
