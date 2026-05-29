@@ -108,90 +108,50 @@ No `.env` or database credentials needed. Requires Docker Desktop (or Docker Eng
 ### Multi-database fleet dashboard
 
 - Shown automatically when two or more connections are configured.
-- Summary bar with total databases, objects, and records across all connections.
-- Health-card grid — one card per database with online status, object count, and record count.
-- Cross-database size comparison bar chart (clickable — jumps to that database).
-- Database-type distribution donut chart with legend.
-- Quick-actions panel — select any connected database to open its query console, schema visualizer, or jump straight to a table.
+- Summary bar showing total databases, objects, and records across all connections.
+- Per-database health cards with cross-database size comparison and type distribution chart.
+- Quick-actions to jump to any database's query console, schema visualizer, or a specific table.
 
-### Overview dashboard (per database)
+### Overview dashboard
 
-- Total tables / collections and record counts.
-- Data distribution donut for the active database.
-- Top object bars and explanatory insights.
-- Click-through navigation into a selected table or collection.
+- Table / collection counts and record totals.
+- Data distribution chart and top-object insights.
+- Click-through navigation into any table or collection.
 
 ### Data explorer
 
-- Table view for rows and columns with **pagination** (configurable page size).
-- **Draggable column resizing** — drag the resize handle on any column header to widen or narrow it.
-- **Per-column inline filters** — type in a filter row below the headers and press Enter to filter.
-- **Row-range indicator** — shows the current page number and exact row range (e.g. Rows 1–100).
-- **Export CSV** — download the currently loaded result set as a `.csv` file.
-- **Sensitive column masking** — columns named `password`, `token`, or `secret` are hidden behind `*****` with a toggle to reveal.
-- **Skeleton loaders** while table data is fetching.
-- **Row count badge** next to each table name in the sidebar.
-- Document cards for record inspection.
-- JSON view for raw payloads.
-- Inspector view for field-by-field analysis.
-- Sidebar object filtering and database switching.
-- **Friendly error UI with Retry button** when an API call fails.
+- Table, document, JSON, and inspector views.
+- Pagination with configurable page size.
+- Per-column filtering, sortable columns, and CSV export.
+- Sensitive column masking — hides `password`, `token`, and `secret` fields behind `*****`.
 
 ### Schema visualizer
 
-- Auto-generated graph from relational metadata.
-- Foreign-key edges and column summaries.
-- Table inspector with columns and relationships.
+- Auto-generated relational graph from foreign-key and column metadata.
+- Table inspector with column types and relationships.
 
 ### Query workspace
 
-- SQL query mode for relational drivers.
-- MongoDB structured query mode with filter, projection, sort, and limit.
-- Mongo aggregation pipeline mode with example pipelines.
-- **Query bookmarks** — save and recall frequent queries from local storage.
-- Recent query history stored in local storage.
-- **Execution time badge** displayed after every query run.
-- **Ctrl + Enter** keyboard shortcut to run a query without leaving the keyboard.
-- **Copy-to-clipboard** button for query results.
-- Result rendering as table or JSON.
+- SQL mode for relational drivers with read-only enforcement.
+- MongoDB structured query and aggregation pipeline mode.
+- Query bookmarks, history, and copy-to-clipboard.
 
 ### Docker container manager
 
-- Live container list with running / stopped grouping.
-- Per-container CPU %, memory usage, port bindings, and health status.
-- Container action buttons: start, stop, restart, delete.
-- **Bulk actions**: toggle Select mode → check containers → Stop selected or Delete selected.
-- Container logs with auto-scroll, refresh, and clipboard copy.
-- TTY shell access command shown inline for interactive containers.
+- Live container list with CPU %, memory, ports, and health status.
+- Start, stop, restart, and delete containers individually or in bulk.
+- Container logs with clipboard copy.
 
 ### Container launcher
 
-- Search Docker Hub images with live dropdown results.
-- Select version tag from the fetched tag list.
-- Configure port bindings (host:container, TCP/UDP).
-- Configure volume mounts (host path → container path).
-- Configure environment variables (key=value).
-- Set a custom startup command to override the image entrypoint.
-- Enable TTY / interactive mode (`-it`) for shell-based images such as ubuntu or busybox.
-- Auto-populates defaults for known images (Redis, PostgreSQL, MySQL, MongoDB, MariaDB, RabbitMQ, Elasticsearch, Memcached, Nginx).
+- Search Docker Hub, pick a tag, configure ports / volumes / env vars, and launch containers.
+- Auto-populates sensible defaults for common images (Redis, Postgres, MySQL, MongoDB, Nginx, and more).
 - Multi-container batch launch with a real-time execution log.
-- Generate and download a `docker-compose.yml` for the current configuration.
+- Generate and export a `docker-compose.yml` for the current setup.
 
-### Local images browser
+### Images & Volumes browser
 
-- Lists all locally downloaded Docker images.
-- Shows short image ID, repository tags, size, and creation date.
-- Delete individual images.
-- **Bulk delete** — select any number of images and delete them all with one click.
-- Search / filter by tag or ID.
-
-### Local volumes browser
-
-- Lists all local Docker volumes.
-- Shows volume name, driver, scope, and mountpoint path.
-- Delete individual volumes.
-- **Bulk delete** — select any number of volumes and delete them all with one click.
-- Search / filter by name or driver.
+- Browse, search, and delete local Docker images and volumes individually or in bulk.
 
 ---
 

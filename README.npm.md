@@ -76,37 +76,22 @@ Requires Docker Desktop (or Docker Engine) to be running on the same machine.
 
 ### Database mode
 
-- Overview dashboard with counts and record distribution.
-- **Multi-database fleet dashboard** — summary bar, per-database health cards, cross-database comparison charts, and quick-action shortcuts when multiple connections are configured.
-- Data explorer with table, document, JSON, and inspector views.
-  - **Pagination** with configurable page size.
-  - **Draggable column resizing** — drag any column header border to resize.
-  - **Per-column inline filters** — type in the filter row and press Enter.
-  - **Row-range indicator** showing current page and exact row numbers.
-  - **Export CSV** — download the current result set as a `.csv` file.
-  - **Sensitive column masking** — hides `password`, `token`, and `secret` columns behind `*****`.
-  - **Skeleton loaders** while data fetches.
-  - **Row count badge** next to each table name in the sidebar.
-  - **Friendly error UI** with a Retry button on failed requests.
+- Multi-database fleet dashboard with health cards, comparison charts, and quick-actions (shown when multiple connections are configured).
+- Overview dashboard with table/collection counts and data distribution.
+- Data explorer with table, document, JSON, and inspector views — pagination, column filtering, CSV export, and sensitive field masking.
 - Schema visualizer for relational databases.
-- Query workspace with SQL, Mongo structured queries, and Mongo aggregation examples.
-  - **Query bookmarks** — save and recall frequent queries.
-  - **Execution time badge** after every query run.
-  - **Ctrl + Enter** shortcut to run queries.
-  - **Copy-to-clipboard** for query results.
+- Query workspace with SQL and MongoDB modes, bookmarks, and history.
 - Read-only backend safeguards.
 
 ### Docker mode
 
-- Live container list with running / stopped grouping and health indicators.
-- Per-container CPU %, memory, and port bindings.
-- Start, stop, restart, and delete containers.
-- **Bulk actions** — select multiple containers and stop or delete them all at once.
-- **Container launcher** — search Docker Hub, pick a tag, configure ports / volumes / env vars, set a custom command or enable TTY (`-it`), and launch containers with a live execution log.
-- Generate and export a `docker-compose.yml` for your configuration.
-- **Images tab** — browse, search, and bulk-delete local images.
-- **Volumes tab** — browse, search, and bulk-delete local volumes.
-- Container logs with auto-scroll and clipboard copy.
+- Live container list with CPU %, memory, port bindings, and health status.
+- Start, stop, restart, and delete containers individually or in bulk.
+- Container launcher — search Docker Hub, configure ports / volumes / env vars, and run containers with a live progress log.
+- Generate and export a `docker-compose.yml` for your setup.
+- Browse, search, and bulk-delete local images and volumes.
+- Container logs with clipboard copy.
+
 
 ## Read-only safeguards (database mode)
 
