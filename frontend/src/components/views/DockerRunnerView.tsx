@@ -397,21 +397,40 @@ export default function DockerRunnerView({
     setSaveStatus("Saving...");
     setSaveError(false);
     try {
-      const res = await fetch("/api/docker/hub/save-compose", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ yaml: composeYaml }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSaveStatus(`Saved successfully to ${data.path}`);
+      if ("showSaveFilePicker" in window) {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: "docker-compose.yml",
+          types: [
+            {
+              description: "YAML File",
+              accept: { "text/yaml": [".yml", ".yaml"] },
+            },
+          ],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(composeYaml);
+        await writable.close();
+        setSaveStatus(`Saved successfully to ${handle.name}`);
       } else {
-        setSaveStatus(data.error || "Failed to save file.");
-        setSaveError(true);
+        // Fallback for older browsers
+        const blob = new Blob([composeYaml], { type: "text/yaml" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "docker-compose.yml";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setSaveStatus("Downloaded docker-compose.yml");
       }
     } catch (err: any) {
-      setSaveStatus(err.message || "Failed to save file.");
-      setSaveError(true);
+      if (err.name !== "AbortError") {
+        setSaveStatus(err.message || "Failed to save file.");
+        setSaveError(true);
+      } else {
+        setSaveStatus(""); // User cancelled the picker
+      }
     }
   };
 

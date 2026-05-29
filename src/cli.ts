@@ -580,26 +580,6 @@ const main = async () => {
     }
   });
 
-  app.post("/api/docker/hub/save-compose", async (request, response) => {
-    if (!options.docker) {
-      response.status(400).json({ error: "Docker mode is not enabled." });
-      return;
-    }
-    const yaml = request.body?.yaml;
-    if (typeof yaml !== "string" || !yaml.trim()) {
-      response.status(400).json({ error: "yaml string is required." });
-      return;
-    }
-    try {
-      const fs = await import("node:fs/promises");
-      const composePath = path.resolve(process.cwd(), "docker-compose.yml");
-      await fs.writeFile(composePath, yaml, "utf8");
-      response.status(200).json({ success: true, path: composePath });
-    } catch (error) {
-      response.status(500).json({ error: toMessage(error) });
-    }
-  });
-
   app.get("/api/tables", async (request, response) => {
     const dbId = String(request.query.dbId || "primary");
     try {
