@@ -547,7 +547,15 @@ export default function QueryWorkbench({
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Unknown query error";
-      setRunError(message);
+      const isTimeout =
+        message.toLowerCase().includes("timed out") ||
+        message.toLowerCase().includes("timeout") ||
+        message.toLowerCase().includes("etimedout");
+      setRunError(
+        isTimeout
+          ? `${message}\n\nYou can retry the query once the database is reachable.`
+          : message,
+      );
       onStatus(message, true);
     } finally {
       setRunning(false);
