@@ -49,7 +49,8 @@ You will also need access to at least one database to test against (PostgreSQL, 
 dbportal/
 ├── src/                    # Backend — Node.js + Express + TypeScript
 │   ├── index.ts            # Express server, route definitions
-│   ├── cli.ts              # CLI entry point
+│   ├── cli.ts              # CLI entry point + all API route handlers
+│   ├── docker-service.ts   # Docker daemon adapter (containers, images, volumes)
 │   └── drivers/            # Database-specific driver implementations
 │       ├── types.ts        # Shared driver interface
 │       ├── postgres-driver.ts
@@ -60,13 +61,20 @@ dbportal/
 │       └── redis-driver.ts
 ├── frontend/               # Frontend — React + Vite + TypeScript
 │   └── src/
-│       ├── App.tsx         # Root component and app state
+│       ├── App.tsx         # Root component and app state (db + docker modes)
 │       ├── index.css       # Global styles and design tokens
 │       └── components/     # UI components
-│           ├── Sidebar.tsx
+│           ├── Icons.tsx           # Shared SVG icon set (no emoji, no icon library)
+│           ├── Sidebar.tsx         # Database mode sidebar
+│           ├── DockerSidebar.tsx   # Docker mode sidebar with bulk select
 │           ├── Toolbar.tsx
 │           ├── EmptyState.tsx
-│           └── views/      # Data Explorer view modes
+│           └── views/
+│               ├── DockerDashboardView.tsx  # Container metrics + logs
+│               ├── DockerRunnerView.tsx     # Container launcher + compose export
+│               ├── DockerImagesView.tsx     # Local images browser
+│               ├── DockerVolumesView.tsx    # Local volumes browser
+│               └── ...                      # Database Explorer view modes
 ├── bin/
 │   └── cli.js              # Compiled CLI launcher (do not edit directly)
 ├── dist/                   # Compiled backend output (git-ignored)
@@ -127,6 +135,8 @@ npm run dev:ui
 ```
 
 Then open `http://localhost:5173` in your browser. The frontend proxies API calls to the backend at `http://localhost:3000`.
+
+> **Testing Docker mode locally**: start the backend with `npm run dev` then add `--docker` to the nodemon command (or run `node dist/cli.cjs --docker --port 5656` after a build). The frontend Vite server at port 5173 proxies all `/api/` requests to the backend.
 
 ### 5. Build for Production
 
@@ -241,7 +251,7 @@ ci: add GitHub Actions workflow for type checking
 ### PR Checklist
 
 - [ ] `npm run lint` passes with no errors
-- [ ] Changes are tested locally against a real database connection
+- [ ] Changes are tested locally against a real database connection or Docker daemon
 - [ ] No unrelated files are changed
 - [ ] The PR description clearly explains what and why
 
@@ -253,7 +263,8 @@ ci: add GitHub Actions workflow for type checking
 - **Formatting**: Prettier is configured — run `npm run format` before committing
 - **No ORM**: database access uses native drivers only (by design)
 - **No frontend framework additions**: the frontend uses React + Vite; do not add large dependencies without discussion
-- **Read-only guarantee**: do not add write/mutate endpoints to the backend — this is a core design constraint
+- **Icons**: use the shared `Icons.tsx` SVG set — do not add emoji or third-party icon libraries. Add new icons to `Icons.tsx` if needed.
+- **Read-only guarantee**: do not add write/mutate endpoints to the database backend — this is a core design constraint (Docker management endpoints are an intentional exception)
 - **Component scope**: keep React components focused and small; extract logic into hooks or utilities when components grow large
 
 ---
