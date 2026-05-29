@@ -8,6 +8,7 @@ import express from "express";
 import { rateLimit } from "express-rate-limit";
 import open from "open";
 import { DatabaseManager } from "./index.js";
+import { isReadOnlySqlQuery } from "./query-safety.js";
 
 dotenv.config();
 
@@ -124,26 +125,6 @@ const isSqlDriver = (kind: string): boolean => {
 
 const isMongoDriver = (kind: string): boolean =>
   kind.toLowerCase().includes("mongo");
-
-const isReadOnlySqlQuery = (query: string): boolean => {
-  const normalized = query
-    .replace(/\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\//g, " ")
-    .replace(/--.*$/gm, " ")
-    .trim()
-    .toLowerCase();
-
-  // Read-only entry points we allow in this app.
-  const startsReadOnly =
-    /^(select|with|show|describe|desc|explain|pragma)\b/.test(normalized);
-  if (!startsReadOnly) {
-    return false;
-  }
-
-  // Block known mutating/privileged statements even if hidden in CTEs.
-  const forbidden =
-    /\b(insert|update|delete|drop|truncate|alter|create|replace|merge|grant|revoke|commit|rollback|savepoint|attach|detach)\b/;
-  return !forbidden.test(normalized);
-};
 
 const hasMutatingMongoStages = (pipeline: unknown): boolean => {
   if (!Array.isArray(pipeline)) {
