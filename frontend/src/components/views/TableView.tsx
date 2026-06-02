@@ -295,11 +295,7 @@ export default function TableView({
                     const summary = fullJson.substring(0, 50);
                     const titleText = `Read-only preview\n\n${fullJson}`;
                     return (
-                      <td
-                        key={col}
-                        className="json-cell"
-                        title={titleText}
-                      >
+                      <td key={col} className="json-cell" title={titleText}>
                         <code
                           dangerouslySetInnerHTML={{
                             __html: `${escapeHtml(summary)}${fullJson.length >= 50 ? "..." : ""}`,

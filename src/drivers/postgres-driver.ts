@@ -14,7 +14,12 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
     promise,
     new Promise<T>((_, reject) =>
       setTimeout(
-        () => reject(new Error(`Connection timed out after ${ms / 1000}s. The database server may be unreachable or overloaded. Check your connection details and try again.`)),
+        () =>
+          reject(
+            new Error(
+              `Connection timed out after ${ms / 1000}s. The database server may be unreachable or overloaded. Check your connection details and try again.`,
+            ),
+          ),
         ms,
       ),
     ),
@@ -39,7 +44,10 @@ export class PostgresDriver implements DatabaseDriver {
     }
 
     let pgModule: {
-      Client: new (config: { connectionString: string }) => {
+      Client: new (config: {
+        connectionString: string;
+        connectionTimeoutMillis?: number;
+      }) => {
         connect: () => Promise<unknown>;
         query: (
           sql: string,
@@ -229,7 +237,10 @@ export class PostgresDriver implements DatabaseDriver {
   async query(query: string): Promise<QueryResult> {
     const startTime = performance.now();
     const client = await this.getClient();
-    const result = (await withTimeout(client.query(query), DB_TIMEOUT_MS)) as any;
+    const result = (await withTimeout(
+      client.query(query),
+      DB_TIMEOUT_MS,
+    )) as any;
     const endTime = performance.now();
 
     return {
