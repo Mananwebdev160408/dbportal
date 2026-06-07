@@ -631,6 +631,62 @@ const main = async () => {
     }
   });
 
+  app.get("/api/global-search", async (request, response) => {
+    const dbId = String(request.query.dbId || "primary");
+    const search = String(request.query.query || "").trim();
+
+    if (!search) {
+      response.status(400).json({
+        error: "Search query is required.",
+      });
+      return;
+    }
+
+    try {
+      const conn = manager.getConnection(dbId);
+
+      const tables = await conn.getTables();
+
+      const results: {
+        table: string;
+        count: number;
+        rows: Record<string, unknown>[];
+      }[] = [];
+
+      for (const table of tables) {
+        try {
+          const rows = await conn.getTableData(table, 100);
+
+          const matches = rows.filter((row) =>
+            Object.values(row).some((value) =>
+              String(value).toLowerCase().includes(search.toLowerCase()),
+            ),
+          );
+
+          if (matches.length > 0) {
+            results.push({
+              table,
+              count: matches.length,
+              rows: matches.slice(0, 10),
+            });
+          }
+        } catch {
+          // Ignore table-level failures
+        }
+      }
+
+      response.status(200).json({
+        query: search,
+        totalTables: results.length,
+        results,
+      });
+    } catch (error) {
+      response.status(500).json({
+        error: toMessage(error),
+      });
+    }
+  });
+
   app.get("/api/data/:name", async (request, response) => {
     const dbId = String(request.query.dbId || "primary");
     const { name } = request.params;

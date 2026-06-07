@@ -97,6 +97,38 @@ export default function App() {
   const [status, setStatus] = useState("Connecting...");
   const [statusError, setStatusError] = useState(false);
   const [search, setSearch] = useState("");
+  const [globalResults, setGlobalResults] = useState<any[]>([]);
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+
+  useEffect(() => {
+    const runGlobalSearch = async () => {
+      if (!search.trim()) {
+        setGlobalResults([]);
+        return;
+      }
+
+      try {
+        setGlobalSearchLoading(true);
+
+        const res = await fetch(
+          `/api/global-search?query=${encodeURIComponent(search)}`,
+        );
+
+        const text = await res.text();
+        const payload = text ? JSON.parse(text) : {};
+
+        if (res.ok) {
+          setGlobalResults(payload.results || []);
+        }
+      } catch (err) {
+        console.error("Global search failed:", err);
+      } finally {
+        setGlobalSearchLoading(false);
+      }
+    };
+
+    runGlobalSearch();
+  }, [search]);
   const [reloadKey, setReloadKey] = useState(0);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -675,7 +707,7 @@ export default function App() {
             mode={mode}
             viewMode={viewMode}
             search=""
-            searchDisabled={true}
+            searchDisabled={false}
             reloadDisabled={loading}
             viewDisabled={true}
             status={status}
@@ -799,7 +831,7 @@ export default function App() {
           mode={mode}
           viewMode={viewMode}
           search={search}
-          searchDisabled={appMode !== "table"}
+          searchDisabled={false}
           reloadDisabled={loading || appMode === "query"}
           viewDisabled={appMode !== "table"}
           status={status}
@@ -814,7 +846,62 @@ export default function App() {
           rowLimit={pageSize}
           onLimitChange={handleLimitChange}
         />
-        <div className="data-container">{renderContent()}</div>
+        <div className="data-container">
+          {search.trim() && (
+            <div
+              style={{
+                padding: "12px",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              <h3>Global Search Results</h3>
+
+              {globalSearchLoading ? (
+                <p>Searching...</p>
+              ) : globalResults.length === 0 ? (
+                <p>No matches found.</p>
+              ) : (
+                globalResults.map((result) => (
+                  <div
+                    key={result.table}
+                    onClick={() => loadTable(result.table)}
+                    style={{
+                      marginBottom: "12px",
+                      padding: "8px",
+                      border: "1px solid var(--border)",
+                      borderRadius: "6px",
+                    }}
+                  >
+                    <strong>{result.table}</strong>
+                    <p>{result.count} matches</p>
+
+                    {result.rows?.map((row: any, idx: number) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: "8px",
+                          marginTop: "6px",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          background: "rgba(255,255,255,0.02)",
+                          fontSize: "12px",
+                        }}
+                      >
+                        {Object.entries(row).map(([key, value]) => (
+                          <div key={key}>
+                            <strong>{key}:</strong> {String(value)}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {renderContent()}
+        </div>
       </main>
     </div>
   );

@@ -11,3 +11,6 @@ frontend/dist
 .claude/
 .qoder/
 skills-lock.json
+
+# Database files
+*.db
