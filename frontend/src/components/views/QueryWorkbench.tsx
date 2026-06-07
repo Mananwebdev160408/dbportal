@@ -1158,6 +1158,7 @@ export default function QueryWorkbench({
             </EmptyState>
           ) : resultMode === "table" ? (
             <TableView
+              tableName={collection}
               rows={sortedResultRows}
               maskSensitive={maskSensitive}
               sortBy={sortBy}

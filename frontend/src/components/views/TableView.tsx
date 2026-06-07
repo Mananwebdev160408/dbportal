@@ -1,12 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import EmptyState from "../EmptyState";
+import * as XLSX from "xlsx";
 
 const SENSITIVE_KEYS = ["password", "token", "secret"];
 
 const isSensitiveColumn = (col: string): boolean =>
   SENSITIVE_KEYS.some((k) => col.toLowerCase().includes(k));
 
-const exportCSV = (rows: Record<string, unknown>[], columns: string[]) => {
+const exportCSV = (
+  rows: Record<string, unknown>[],
+  columns: string[],
+  filename: string,
+) => {
   const header = columns.join(",");
   const csvRows = rows.map((row) =>
     columns
@@ -22,14 +27,67 @@ const exportCSV = (rows: Record<string, unknown>[], columns: string[]) => {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.setAttribute("download", "export.csv");
+  link.setAttribute("download", filename);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 };
 
+const exportJSON = (rows: Record<string, unknown>[], filename: string) => {
+  const jsonString = JSON.stringify(rows, null, 2);
+  const blob = new Blob([jsonString], {
+    type: "application/json;charset=utf-8;",
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};
+
+const exportExcel = (
+  rows: Record<string, unknown>[],
+  columns: string[],
+  filename: string,
+) => {
+  const formattedRows = rows.map((row) => {
+    const formattedRow: Record<string, unknown> = {};
+    columns.forEach((col) => {
+      const val = row[col];
+      formattedRow[col] =
+        typeof val === "object" && val !== null ? JSON.stringify(val) : val;
+    });
+    return formattedRow;
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(formattedRows, {
+    header: columns,
+  });
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+  XLSX.writeFile(workbook, filename);
+};
+
+const getExportFilename = (
+  tableName: string | undefined,
+  extension: string,
+) => {
+  if (tableName && tableName.trim()) {
+    const cleanName = tableName
+      .trim()
+      .toLowerCase()
+      .replace(/[\s/\\?%*:|"<>]/g, "_");
+    return `${cleanName}-export.${extension}`;
+  }
+  return `table-export.${extension}`;
+};
+
 interface TableViewProps {
+  tableName?: string;
   rows: Record<string, unknown>[];
   sortBy?: string;
   sortOrder?: "asc" | "desc";
@@ -56,6 +114,7 @@ const DEFAULT_COL_WIDTH = 150;
 const MIN_COL_WIDTH = 60;
 
 export default function TableView({
+  tableName,
   rows,
   sortBy,
   sortOrder,
@@ -92,6 +151,22 @@ export default function TableView({
     });
     observer.observe(wrapperRef.current);
     return () => observer.disconnect();
+  }, []);
+
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        exportRef.current &&
+        !exportRef.current.contains(event.target as Node)
+      ) {
+        setIsExportOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   if (!rows.length) {
@@ -186,12 +261,80 @@ export default function TableView({
         ) : (
           <span />
         )}
-        <button
-          className="export-csv-btn"
-          onClick={() => exportCSV(rows, columns)}
+        <div
+          className={`dropdown-container${isExportOpen ? " open" : ""}`}
+          ref={exportRef}
         >
-          Export CSV ↓
-        </button>
+          <button
+            className="export-csv-btn dropdown-trigger"
+            onClick={() => setIsExportOpen(!isExportOpen)}
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded={isExportOpen}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              minWidth: "auto",
+            }}
+          >
+            <span>Export</span>
+            <svg
+              className="chevron"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          {isExportOpen && (
+            <div className="dropdown-menu" role="listbox" style={{ right: 0 }}>
+              <button
+                className="dropdown-item"
+                onClick={() => {
+                  exportCSV(rows, columns, getExportFilename(tableName, "csv"));
+                  setIsExportOpen(false);
+                }}
+                type="button"
+                style={{ textAlign: "left", width: "100%" }}
+              >
+                <span>Export as CSV (.csv)</span>
+              </button>
+              <button
+                className="dropdown-item"
+                onClick={() => {
+                  exportJSON(rows, getExportFilename(tableName, "json"));
+                  setIsExportOpen(false);
+                }}
+                type="button"
+                style={{ textAlign: "left", width: "100%" }}
+              >
+                <span>Export as JSON (.json)</span>
+              </button>
+              <button
+                className="dropdown-item"
+                onClick={() => {
+                  exportExcel(
+                    rows,
+                    columns,
+                    getExportFilename(tableName, "xlsx"),
+                  );
+                  setIsExportOpen(false);
+                }}
+                type="button"
+                style={{ textAlign: "left", width: "100%" }}
+              >
+                <span>Export as Excel (.xlsx)</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <div
         className="table-responsive-wrapper"

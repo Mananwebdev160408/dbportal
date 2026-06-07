@@ -578,6 +578,7 @@ export default function App() {
         );
       return (
         <TableView
+          tableName={currentTable}
           rows={data}
           maskSensitive={maskSensitive}
           sortBy={sortBy}
