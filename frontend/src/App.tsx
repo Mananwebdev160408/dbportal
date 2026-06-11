@@ -77,6 +77,10 @@ export default function App() {
   const [mode, setMode] = useState<AppearanceMode>(getPreferredMode);
   const [connections, setConnections] = useState<DatabaseConnectionInfo[]>([]);
   const [activeDbId, setActiveDbId] = useState<string>("primary");
+  const [pinnedTables, setPinnedTables] = useState<string[]>(() => {
+    const stored = localStorage.getItem("dbportal-pinned-tables");
+    return stored ? JSON.parse(stored) : [];
+  });
   const [tables, setTables] = useState<string[]>([]);
   const [dbType, setDbType] = useState("");
   const [capabilities, setCapabilities] = useState<DriverCapabilities>({
@@ -155,6 +159,20 @@ export default function App() {
     setMode(next);
     localStorage.setItem("dbportal-mode", next);
   };
+
+  const handleTogglePin = useCallback(
+    (tableName: string) => {
+      const key = `${activeDbId}:${tableName}`;
+      setPinnedTables((prev) => {
+        const next = prev.includes(key)
+          ? prev.filter((k) => k !== key)
+          : [...prev, key];
+        localStorage.setItem("dbportal-pinned-tables", JSON.stringify(next));
+        return next;
+      });
+    },
+    [activeDbId],
+  );
 
   const showStatus = useCallback((msg: string, isError = false) => {
     setStatus(msg);
@@ -773,6 +791,8 @@ export default function App() {
         onQueryClick={openQueryWorkspace}
         onSchemaClick={openSchemaVisualizer}
         onDbChange={switchDatabase}
+        pinnedTables={pinnedTables}
+        onTogglePin={handleTogglePin}
       />
       <div className="sidebar-resizer" onMouseDown={handleSidebarMouseDown} />
       <main className="main-area">

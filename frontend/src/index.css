@@ -2507,6 +2507,52 @@ select {
   text-overflow: ellipsis;
 }
 
+.pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease,
+    transform 0.1s ease;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.table-item:hover .pin-btn {
+  opacity: 0.5;
+}
+
+.pin-btn:hover {
+  opacity: 1 !important;
+  color: #fbbf24;
+  transform: scale(1.15);
+}
+
+.pin-btn.pinned {
+  color: #fbbf24;
+  opacity: 0.9;
+}
+
+.pinned-label-row .section-label {
+  color: #fbbf24 !important;
+}
+
+.pinned-table-list .table-item {
+  border-left: 2px solid rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.02);
+}
+
+.pinned-table-list .table-item:hover {
+  background: rgba(251, 191, 36, 0.05);
+}
+
 .list-empty-state {
   padding: 18px 10px;
 }

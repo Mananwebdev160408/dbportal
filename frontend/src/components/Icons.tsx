@@ -285,3 +285,23 @@ export const TerminalIcon = ({ size = 14, style, className }: IconProps) => (
     <line x1="12" y1="19" x2="20" y2="19" />
   </svg>
 );
+
+export const StarIcon = ({
+  size = 14,
+  style,
+  className,
+  filled,
+}: IconProps & { filled?: boolean }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ ...base(size), ...style }}
+    className={className}
+  >
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
