@@ -3,7 +3,36 @@ import EmptyState from "../EmptyState";
 
 interface InspectorViewProps {
   rows: Record<string, unknown>[];
+  maskSensitive?: boolean;
 }
+
+const SENSITIVE_KEYS = ["password", "token", "secret"];
+
+const isSensitiveKey = (key: string): boolean =>
+  SENSITIVE_KEYS.some((k) => key.toLowerCase().includes(k));
+
+const maskObject = (obj: any): any => {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(maskObject);
+  }
+  if (typeof obj === "object") {
+    const masked: Record<string, any> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (isSensitiveKey(key)) {
+        masked[key] = "*****";
+      } else if (typeof val === "object" && val !== null) {
+        masked[key] = maskObject(val);
+      } else {
+        masked[key] = val;
+      }
+    }
+    return masked;
+  }
+  return obj;
+};
 
 const getRowLabel = (row: Record<string, unknown>, index: number): string => {
   const preferredKeys = ["id", "_id", "name", "title", "email"];
@@ -24,7 +53,10 @@ const formatFieldValue = (value: unknown): string => {
   return String(value);
 };
 
-export default function InspectorView({ rows }: InspectorViewProps) {
+export default function InspectorView({
+  rows,
+  maskSensitive = false,
+}: InspectorViewProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   if (!rows.length) {
@@ -35,13 +67,18 @@ export default function InspectorView({ rows }: InspectorViewProps) {
     );
   }
 
-  const safeIndex = Math.max(0, Math.min(selectedIndex, rows.length - 1));
-  const selectedRow = rows[safeIndex] ?? {};
+  const displayRows = maskSensitive ? rows.map(maskObject) : rows;
+
+  const safeIndex = Math.max(
+    0,
+    Math.min(selectedIndex, displayRows.length - 1),
+  );
+  const selectedRow = displayRows[safeIndex] ?? {};
 
   return (
     <div className="inspector-layout">
       <section className="inspector-list">
-        {rows.map((row, index) => (
+        {displayRows.map((row, index) => (
           <button
             key={index}
             className={`inspector-row-btn${index === safeIndex ? " active" : ""}`}

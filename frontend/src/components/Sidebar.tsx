@@ -18,11 +18,13 @@ interface SidebarProps {
   activeTable: string;
   appMode: AppMode;
   capabilities: DriverCapabilities;
+  onCommonDashboardClick: () => void;
   onOverviewClick: () => void;
   onQueryClick: () => void;
   onSchemaClick: () => void;
   onTableClick: (name: string) => void;
   onDbChange: (id: string) => void;
+  onOpenConnectionBuilder: () => void;
 }
 
 const TableIcon = () => (
@@ -54,6 +56,22 @@ const GridIcon = () => (
     <path d="M3 3h18v18H3z" />
     <path d="M3 9h18" />
     <path d="M9 21V9" />
+  </svg>
+);
+
+const DashboardIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="7" height="8" />
+    <rect x="14" y="3" width="7" height="5" />
+    <rect x="14" y="12" width="7" height="9" />
+    <rect x="3" y="15" width="7" height="6" />
   </svg>
 );
 
@@ -115,12 +133,14 @@ export default function Sidebar({
   activeTable,
   appMode,
   capabilities,
+  onCommonDashboardClick,
   onOverviewClick,
   onQueryClick,
   onSchemaClick,
   onTableClick,
   onDbChange,
   tableCounts = {},
+  onOpenConnectionBuilder,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -159,6 +179,15 @@ export default function Sidebar({
           />
         </div>
 
+        <button
+          className={`overview-btn common-dashboard-btn${appMode === "common" ? " active" : ""}`}
+          onClick={onCommonDashboardClick}
+          type="button"
+        >
+          <DashboardIcon />
+          <span>Common Dashboard</span>
+        </button>
+
         <div className="db-selector-wrapper">
           <div className="section-label">Active Connection</div>
           <div className="db-connection-list">
@@ -169,7 +198,17 @@ export default function Sidebar({
                 onClick={() => onDbChange(conn.id)}
                 type="button"
               >
-                <div className="indicator" />
+                <div
+                  className="indicator"
+                  style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    backgroundColor:
+                      conn.isAlive === false ? "#ef4444" : "#22c55e",
+                    flexShrink: 0,
+                  }}
+                />
                 <div className="conn-info">
                   <span className="name">{conn.name}</span>
                   <span className="kind">{conn.kind.toUpperCase()}</span>
@@ -179,6 +218,42 @@ export default function Sidebar({
                 </span>
               </button>
             ))}
+            <button
+              className="db-connection-item connection-builder-btn"
+              onClick={onOpenConnectionBuilder}
+              type="button"
+              style={{
+                marginTop: "8px",
+                justifyContent: "center",
+                borderStyle: "dashed",
+                borderColor: "var(--line-strong)",
+                opacity: 0.75,
+              }}
+            >
+              <span
+                className="name"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                }}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ width: 12, height: 12 }}
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Build Connection URI
+              </span>
+            </button>
           </div>
         </div>
 
@@ -198,7 +273,7 @@ export default function Sidebar({
         {(capabilities.rawQuery || capabilities.structuredQuery) && (
           <button
             className={`overview-btn${appMode === "query" ? " active" : ""}`}
-            onClick={onQueryClick}
+            onClick={() => onQueryClick()}
             type="button"
           >
             <QueryIcon />
@@ -208,7 +283,7 @@ export default function Sidebar({
 
         <button
           className={`overview-btn${appMode === "schema" ? " active" : ""}`}
-          onClick={onSchemaClick}
+          onClick={() => onSchemaClick()}
           type="button"
         >
           <SchemaIcon />
@@ -241,19 +316,21 @@ export default function Sidebar({
                 <TableIcon />
                 <span>{name}</span>
                 {tableCounts[name] !== undefined && (
-                  <span style={{
-                    marginLeft: 'auto',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    background: 'var(--accent, #6366f1)',
-                    color: '#fff',
-                    borderRadius: '999px',
-                    padding: '1px 7px',
-                    minWidth: '20px',
-                    textAlign: 'center',
-                    opacity: 0.85,
-                  }}>
-                    {tableCounts[name] > 9999 ? '9999+' : tableCounts[name]}
+                  <span
+                    style={{
+                      marginLeft: "auto",
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      background: "var(--accent, #6366f1)",
+                      color: "#fff",
+                      borderRadius: "999px",
+                      padding: "1px 7px",
+                      minWidth: "20px",
+                      textAlign: "center",
+                      opacity: 0.85,
+                    }}
+                  >
+                    {tableCounts[name] > 9999 ? "9999+" : tableCounts[name]}
                   </span>
                 )}
               </button>

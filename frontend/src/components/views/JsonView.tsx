@@ -2,7 +2,36 @@ import { useState } from "react";
 
 interface JsonViewProps {
   rows: Record<string, unknown>[];
+  maskSensitive?: boolean;
 }
+
+const SENSITIVE_KEYS = ["password", "token", "secret"];
+
+const isSensitiveKey = (key: string): boolean =>
+  SENSITIVE_KEYS.some((k) => key.toLowerCase().includes(k));
+
+const maskObject = (obj: any): any => {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(maskObject);
+  }
+  if (typeof obj === "object") {
+    const masked: Record<string, any> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (isSensitiveKey(key)) {
+        masked[key] = "*****";
+      } else if (typeof val === "object" && val !== null) {
+        masked[key] = maskObject(val);
+      } else {
+        masked[key] = val;
+      }
+    }
+    return masked;
+  }
+  return obj;
+};
 
 const CopyIcon = () => (
   <svg
@@ -35,12 +64,17 @@ const CheckIcon = () => (
   </svg>
 );
 
-export default function JsonView({ rows }: JsonViewProps) {
+export default function JsonView({
+  rows,
+  maskSensitive = false,
+}: JsonViewProps) {
   const [copied, setCopied] = useState(false);
-  const jsonString = JSON.stringify(rows, null, 2);
+
+  const displayRows = maskSensitive ? rows.map(maskObject) : rows;
+  const jsonString = JSON.stringify(displayRows, null, 2);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(jsonString);
+    navigator.clipboard.writeText(jsonString).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

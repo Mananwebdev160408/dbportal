@@ -1,6 +1,6 @@
 {
   "name": "dbportal",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "A local read-only database explorer for multiple connection strings.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -53,29 +53,31 @@
   },
   "homepage": "https://github.com/Mananwebdev160408/dbportal#readme",
   "dependencies": {
+    "dockerode": "^5.0.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.2",
-    "mongodb": "^6.20.0",
+    "mongodb": "^7.2.0",
     "mssql": "^12.2.1",
     "mysql2": "^3.15.2",
-    "open": "^10.2.0",
+    "open": "^11.0.0",
     "pg": "^8.16.3",
-    "redis": "^5.11.0",
+    "redis": "^6.0.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^6.0.1"
   },
   "devDependencies": {
+    "@types/dockerode": "^4.0.1",
     "@types/express": "^5.0.3",
-    "@types/mssql": "^9.1.11",
+    "@types/mssql": "^12.3.0",
     "@types/node": "^25.5.2",
     "@types/pg": "^8.15.6",
-    "@types/sqlite3": "^3.1.11",
+    "@types/sqlite3": "^5.1.0",
     "husky": "^9.0.0",
-    "lint-staged": "^15.0.0",
+    "lint-staged": "^17.0.7",
     "prettier": "^3.8.1",
     "tsup": "^8.5.1",
-    "typescript": "5.4",
+    "typescript": "5.9",
     "vitest": "^4.1.7"
   }
 }

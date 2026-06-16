@@ -1,5 +1,6 @@
 import type { ViewMode, Theme, AppearanceMode } from "../App";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { LockIcon, UnlockIcon } from "./Icons";
 interface ToolbarProps {
   title: string;
   dbType: string;
@@ -21,6 +22,9 @@ interface ToolbarProps {
   onMaskToggle: () => void;
   rowLimit?: number;
   onLimitChange?: (limit: number) => void;
+  isDocker?: boolean;
+  data?: Record<string, unknown>[];
+  currentTable?: string;
 }
 
 const SearchIcon = () => (
@@ -87,7 +91,35 @@ const ChevronIcon = () => (
     <path d="m6 9 6 6 6-6" />
   </svg>
 );
+const exportCsv = (rows: Record<string, unknown>[], filename: string) => {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(","),
+    ...rows.map((r) =>
+      headers.map((h) => JSON.stringify(r[h] ?? "")).join(","),
+    ),
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
+const exportJson = (rows: Record<string, unknown>[], filename: string) => {
+  if (!rows.length) return;
+  const json = JSON.stringify(rows, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 const SunIcon = () => (
   <svg
     width="15"
@@ -226,9 +258,14 @@ export default function Toolbar({
   onMaskToggle,
   rowLimit = 200,
   onLimitChange,
+  isDocker = false,
+  data = [] as Record<string, unknown>[],
+  currentTable = "export",
 }: ToolbarProps) {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const themeRef = useRef<HTMLDivElement>(null);
 
@@ -245,6 +282,12 @@ export default function Toolbar({
         !themeRef.current.contains(event.target as Node)
       ) {
         setIsThemeOpen(false);
+      }
+      if (
+        exportRef.current &&
+        !exportRef.current.contains(event.target as Node)
+      ) {
+        setIsExportOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -280,66 +323,70 @@ export default function Toolbar({
       </div>
 
       <div className="toolbar-controls">
-        <div className="search-box">
-          <SearchIcon />
-          <input
-            type="text"
-            id="search-input"
-            placeholder="Search records..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            disabled={searchDisabled}
-            aria-label="Filter rows"
-          />
-        </div>
+        {!isDocker && (
+          <div className="search-box">
+            <SearchIcon />
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Search records..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              disabled={searchDisabled}
+              aria-label="Filter rows"
+            />
+          </div>
+        )}
 
-        <div
-          className={`dropdown-container${isViewOpen ? " open" : ""}`}
-          ref={dropdownRef}
-        >
-          <button
-            className="icon-btn dropdown-trigger"
-            onClick={() => setIsViewOpen(!isViewOpen)}
-            type="button"
-            aria-haspopup="listbox"
-            aria-expanded={isViewOpen}
-            disabled={viewDisabled}
+        {!isDocker && (
+          <div
+            className={`dropdown-container${isViewOpen ? " open" : ""}`}
+            ref={dropdownRef}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 16,
-                  height: 16,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {ViewIcons[viewMode]}
-              </div>
-              <span>{ViewLabels[viewMode]}</span>
-            </div>
-            <ChevronIcon />
-          </button>
-
-          {isViewOpen && (
-            <div className="dropdown-menu" role="listbox">
-              {(Object.keys(ViewLabels) as ViewMode[]).map((v) => (
-                <button
-                  key={v}
-                  className={`dropdown-item${viewMode === v ? " active" : ""}`}
-                  onClick={() => handleViewSelect(v)}
-                  type="button"
-                  role="option"
-                  aria-selected={viewMode === v}
+            <button
+              className="icon-btn dropdown-trigger"
+              onClick={() => setIsViewOpen(!isViewOpen)}
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isViewOpen}
+              disabled={viewDisabled}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  {ViewIcons[v]}
-                  <span>{ViewLabels[v]}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                  {ViewIcons[viewMode]}
+                </div>
+                <span>{ViewLabels[viewMode]}</span>
+              </div>
+              <ChevronIcon />
+            </button>
+
+            {isViewOpen && (
+              <div className="dropdown-menu" role="listbox">
+                {(Object.keys(ViewLabels) as ViewMode[]).map((v) => (
+                  <button
+                    key={v}
+                    className={`dropdown-item${viewMode === v ? " active" : ""}`}
+                    onClick={() => handleViewSelect(v)}
+                    type="button"
+                    role="option"
+                    aria-selected={viewMode === v}
+                  >
+                    {ViewIcons[v]}
+                    <span>{ViewLabels[v]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div
           className={`dropdown-container${isThemeOpen ? " open" : ""}`}
@@ -418,31 +465,43 @@ export default function Toolbar({
           {mode === "dark" ? <SunIcon /> : <MoonIcon />}
         </button>
 
-        <button
-          className={`icon-btn mask-toggle-btn${maskSensitive ? " active" : ""}`}
-          onClick={onMaskToggle}
-          type="button"
-          aria-label="Toggle sensitive data masking"
-          title={
-            maskSensitive
-              ? "Show sensitive values"
-              : "Hide sensitive values (password, token, secret)"
-          }
-          style={{
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "0 12px",
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
-          {maskSensitive ? "🔓 Reveal" : "🔒 Mask"}
-        </button>
+        {!isDocker && (
+          <button
+            className={`icon-btn mask-toggle-btn${maskSensitive ? " active" : ""}`}
+            onClick={onMaskToggle}
+            type="button"
+            aria-label="Toggle sensitive data masking"
+            title={
+              maskSensitive
+                ? "Show sensitive values"
+                : "Hide sensitive values (password, token, secret)"
+            }
+            style={{
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "0 12px",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            {maskSensitive ? (
+              <>
+                <UnlockIcon size={12} style={{ marginRight: 5 }} />
+                Reveal
+              </>
+            ) : (
+              <>
+                <LockIcon size={12} style={{ marginRight: 5 }} />
+                Mask
+              </>
+            )}
+          </button>
+        )}
 
         {/* Rows-per-page selector — visible only in table mode */}
-        {!viewDisabled && (
+        {!viewDisabled && !isDocker && (
           <div
             style={{
               display: "flex",
@@ -485,7 +544,56 @@ export default function Toolbar({
             </select>
           </div>
         )}
+        {!isDocker && data.length > 0 && (
+          <div
+            className={`dropdown-container${isExportOpen ? " open" : ""}`}
+            ref={exportRef}
+          >
+            <button
+              className="icon-btn dropdown-trigger"
+              onClick={() => setIsExportOpen(!isExportOpen)}
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isExportOpen}
+              style={{
+                height: 36,
+                padding: "0 12px",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <span>Export</span>
+              <ChevronIcon />
+            </button>
 
+            {isExportOpen && (
+              <div className="dropdown-menu" role="listbox">
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    const date = new Date().toISOString().split("T")[0];
+                    exportCsv(data, `${currentTable}_${date}.csv`);
+                    setIsExportOpen(false);
+                  }}
+                  type="button"
+                >
+                  <span>Export as CSV</span>
+                </button>
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    const date = new Date().toISOString().split("T")[0];
+                    exportJson(data, `${currentTable}_${date}.json`);
+                    setIsExportOpen(false);
+                  }}
+                  type="button"
+                >
+                  <span>Export as JSON</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         <button
           className="reload-btn"
           onClick={onReload}

@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import EmptyState from "../EmptyState";
+import VisualQueryBuilder from "./VisualQueryBuilder";
 import TableView from "./TableView";
 import JsonView from "./JsonView";
 import type { DriverCapabilities } from "../../App";
+import { CopyIcon, CheckIcon } from "../Icons";
 
 type ResultMode = "table" | "json";
 
@@ -12,6 +14,7 @@ interface QueryWorkbenchProps {
   tables: string[];
   capabilities: DriverCapabilities;
   onStatus: (msg: string, isError?: boolean) => void;
+  maskSensitive?: boolean;
 }
 
 interface StructuredQueryPayload {
@@ -129,7 +132,10 @@ const formatSqlIdentifier = (
   }
 
   const normalizedType = databaseType.toLowerCase();
-  if (normalizedType.includes("postgres")) {
+  if (
+    normalizedType.includes("postgres") ||
+    normalizedType.includes("cockroach")
+  ) {
     return `"${trimmed.replace(/"/g, '""')}"`;
   }
 
@@ -153,8 +159,66 @@ export default function QueryWorkbench({
   tables,
   capabilities,
   onStatus,
+  maskSensitive = false,
 }: QueryWorkbenchProps) {
-  const [rawQuery, setRawQuery] = useState("");
+  interface QueryTab {
+    id: string;
+    title: string;
+    rawQuery: string;
+  }
+  const [tabs, setTabs] = useState<QueryTab[]>([
+    {
+      id: "tab-1",
+      title: "Query 1",
+      rawQuery: "",
+    },
+  ]);
+
+  const [activeTabId, setActiveTabId] = useState("tab-1");
+
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
+  const rawQuery = activeTab?.rawQuery ?? "";
+
+  const setRawQuery = (value: string) => {
+    setTabs((prev) =>
+      prev.map((tab) =>
+        tab.id === activeTabId ? { ...tab, rawQuery: value } : tab,
+      ),
+    );
+  };
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const stored = localStorage.getItem("dbportal-query-panel-width");
+    return stored ? parseInt(stored, 10) : 420;
+  });
+
+  const handlePanelMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startWidth = panelWidth;
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const delta = moveEvent.clientX - startX;
+        const newWidth = Math.max(300, Math.min(800, startWidth + delta));
+        setPanelWidth(newWidth);
+      };
+
+      const handleMouseUp = () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    },
+    [panelWidth],
+  );
+
+  useEffect(() => {
+    localStorage.setItem("dbportal-query-panel-width", String(panelWidth));
+  }, [panelWidth]);
   const [collection, setCollection] = useState(tables[0] || "");
   const [filterText, setFilterText] = useState("{}");
   const [projectionText, setProjectionText] = useState("");
@@ -420,7 +484,7 @@ export default function QueryWorkbench({
       throw new Error("Raw query is not supported by this driver.");
     }
 
-    const query = rawQuery.trim();
+    const query = activeTab.rawQuery.trim();
     if (!query) {
       throw new Error("Query cannot be empty.");
     }
@@ -485,7 +549,7 @@ export default function QueryWorkbench({
       if (supportsStructured && !supportsRaw) {
         rows = await runStructuredQuery();
       } else {
-        const query = rawQuery.trim();
+        const query = activeTab.rawQuery.trim();
         const startTime = performance.now();
         const res = await fetch(`/api/query?dbId=${dbId}`, {
           method: "POST",
@@ -510,7 +574,15 @@ export default function QueryWorkbench({
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Unknown query error";
-      setRunError(message);
+      const isTimeout =
+        message.toLowerCase().includes("timed out") ||
+        message.toLowerCase().includes("timeout") ||
+        message.toLowerCase().includes("etimedout");
+      setRunError(
+        isTimeout
+          ? `${message}\n\nYou can retry the query once the database is reachable.`
+          : message,
+      );
       onStatus(message, true);
     } finally {
       setRunning(false);
@@ -561,7 +633,7 @@ export default function QueryWorkbench({
               null,
               2,
             )
-          : rawQuery.trim();
+          : activeTab.rawQuery.trim();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Invalid query";
       onStatus(`Cannot bookmark: ${msg}`, true);
@@ -628,12 +700,44 @@ export default function QueryWorkbench({
     onStatus("Query editor reset", false);
   };
 
+  const handleSort = useCallback((col: string) => {
+    setSortBy((prev) => {
+      if (prev === col) {
+        setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+        return col;
+      }
+      setSortOrder("asc");
+      return col;
+    });
+  }, []);
+
+  const sortedResultRows = useMemo(() => {
+    if (!sortBy) return resultRows;
+    return [...resultRows].sort((a, b) => {
+      const va = a[sortBy];
+      const vb = b[sortBy];
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === "number" && typeof vb === "number") {
+        return sortOrder === "asc" ? va - vb : vb - va;
+      }
+      const sa = String(va);
+      const sb = String(vb);
+      const cmp = sa.localeCompare(sb);
+      return sortOrder === "asc" ? cmp : -cmp;
+    });
+  }, [resultRows, sortBy, sortOrder]);
+
   const copyResults = async () => {
     if (resultRows.length === 0) return;
     const text = JSON.stringify(resultRows, null, 2);
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard write denied
+    }
   };
 
   const applyRawExample = (sql: string) => {
@@ -669,7 +773,10 @@ export default function QueryWorkbench({
   };
 
   return (
-    <div className="query-workspace">
+    <div
+      className="query-workspace"
+      style={{ gridTemplateColumns: `${panelWidth}px 4px 1fr` }}
+    >
       <section className="query-panel">
         <div className="query-header">
           <h3>Query Engine</h3>
@@ -740,7 +847,21 @@ export default function QueryWorkbench({
             </div>
           )}
         </div>
-
+        {supportsStructured && (
+          <VisualQueryBuilder
+            tables={tables}
+            columns={[]}
+            onApply={(filter, col, lim) => {
+              setCollection(col);
+              setFilterText(JSON.stringify(filter, null, 2));
+              setLimitText(String(lim));
+              onStatus(
+                "Visual query applied — click Run Query to execute.",
+                false,
+              );
+            }}
+          />
+        )}
         {supportsStructured && (
           <div className="query-group">
             <label htmlFor="query-collection">Collection/Table</label>
@@ -851,28 +972,67 @@ export default function QueryWorkbench({
         )}
 
         {supportsRaw && (
-          <div className="query-group">
-            <label htmlFor="query-raw">Raw Query</label>
-            <textarea
-              id="query-raw"
-              className="query-textarea query-textarea-lg"
-              value={rawQuery}
-              onChange={(event) => setRawQuery(event.target.value)}
-              onKeyDown={(e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                  e.preventDefault();
-                  runQuery();
+          <>
+            <div className="query-tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={tab.id === activeTabId ? "active" : ""}
+                  onClick={() => setActiveTabId(tab.id)}
+                >
+                  {tab.title}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const newTab = {
+                    id: `tab-${Date.now()}`,
+                    title: `Query ${tabs.length + 1}`,
+                    rawQuery: "",
+                  };
+
+                  setTabs((prev) => [...prev, newTab]);
+                  setActiveTabId(newTab.id);
+                }}
+              >
+                + New Tab
+              </button>
+            </div>
+
+            <div className="query-group">
+              <label htmlFor="query-raw">Raw Query</label>
+              <textarea
+                id="query-raw"
+                className="query-textarea query-textarea-lg"
+                value={activeTab.rawQuery}
+                onChange={(event) => {
+                  setTabs((prev) =>
+                    prev.map((tab) =>
+                      tab.id === activeTabId
+                        ? { ...tab, rawQuery: event.target.value }
+                        : tab,
+                    ),
+                  );
+                }}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    runQuery();
+                  }
+                }}
+                spellCheck={false}
+                placeholder={
+                  dbType.toLowerCase().includes("mssql") ||
+                  dbType.toLowerCase().includes("sqlserver")
+                    ? "SELECT TOP 50 * FROM users;"
+                    : "SELECT * FROM users LIMIT 50;"
                 }
-              }}
-              spellCheck={false}
-              placeholder={
-                dbType.toLowerCase().includes("mssql") ||
-                dbType.toLowerCase().includes("sqlserver")
-                  ? "SELECT TOP 50 * FROM users;"
-                  : "SELECT * FROM users LIMIT 50;"
-              }
-            />
-          </div>
+              />
+            </div>
+          </>
         )}
 
         <div className="query-actions">
@@ -1007,7 +1167,7 @@ export default function QueryWorkbench({
           )}
         </div>
       </section>
-
+      <div className="query-panel-resizer" onMouseDown={handlePanelMouseDown} />
       <section className="query-result-panel">
         <div className="query-result-header">
           <h3>Results</h3>
@@ -1033,7 +1193,17 @@ export default function QueryWorkbench({
                 onClick={copyResults}
                 title="Copy results to clipboard"
               >
-                {copied ? "✅ Copied!" : "📋 Copy"}
+                {copied ? (
+                  <>
+                    <CheckIcon size={12} style={{ marginRight: 5 }} />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <CopyIcon size={12} style={{ marginRight: 5 }} />
+                    Copy
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -1065,9 +1235,15 @@ export default function QueryWorkbench({
               <p>Run a query to see results here.</p>
             </EmptyState>
           ) : resultMode === "table" ? (
-            <TableView rows={resultRows} />
+            <TableView
+              rows={sortedResultRows}
+              maskSensitive={maskSensitive}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+            />
           ) : (
-            <JsonView rows={resultRows} />
+            <JsonView rows={resultRows} maskSensitive={maskSensitive} />
           )}
         </div>
       </section>
@@ -1086,6 +1262,7 @@ export default function QueryWorkbench({
               <button
                 className="modal-close"
                 onClick={() => setSelectedHistoryEntry(null)}
+                aria-label="Close"
               >
                 ×
               </button>
