@@ -152,6 +152,7 @@ export default function App() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(200);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [showConnectionStringBuilder, setShowConnectionStringBuilder] =
     useState(false);
 
@@ -416,56 +417,83 @@ export default function App() {
       sField?: string,
       sOrder?: "asc" | "desc",
       currentFilters?: Record<string, string>,
-      targetPage?: number,
+      targetPage = 0,
+      mode: "replace" | "append" = "replace",
+      targetPageSize = pageSize,
     ) => {
       const dbToUse = targetDbId || activeDbId;
+      const shouldAppend = mode === "append";
+
       if (targetDbId && targetDbId !== activeDbId) {
         setActiveDbId(targetDbId);
         await loadDatabaseMetadata(targetDbId);
       }
 
-      const resolvedPage = targetPage ?? 0;
-
       setAppMode("table");
       setCurrentTable(name);
-      setData([]);
-      setLoading(true);
       setError("");
 
+      if (shouldAppend) {
+        setLoadingMore(true);
+      } else {
+        setData([]);
+        setLoading(true);
+      }
+
       try {
-        const offset = resolvedPage * pageSize;
-        let url = `/api/data/${encodeURIComponent(name)}?dbId=${dbToUse}&limit=${pageSize}&offset=${offset}`;
+        const offset = targetPage * targetPageSize;
+        let url = `/api/data/${encodeURIComponent(
+          name,
+        )}?dbId=${dbToUse}&limit=${targetPageSize}&offset=${offset}`;
+
         if (sField) {
-          url += `&sortBy=${encodeURIComponent(sField)}&sortOrder=${sOrder || "asc"}`;
+          url += `&sortBy=${encodeURIComponent(sField)}&sortOrder=${
+            sOrder || "asc"
+          }`;
         }
+
         if (currentFilters && Object.keys(currentFilters).length > 0) {
           url += `&filters=${encodeURIComponent(JSON.stringify(currentFilters))}`;
         }
 
         const res = await fetch(url);
         const payload = await res.json();
-        if (!res.ok)
+
+        if (!res.ok) {
           throw new Error(payload.error || "Failed to load table data.");
+        }
+
         const rows: Record<string, unknown>[] = payload.data || [];
-        setData(rows);
-        setPage(resolvedPage);
-        setHasNextPage(rows.length === pageSize);
-        const startRow = offset + 1;
-        const endRow = offset + rows.length;
+        const loadedCount = shouldAppend
+          ? data.length + rows.length
+          : rows.length;
+
+        setData((prev) => (shouldAppend ? [...prev, ...rows] : rows));
+        setPage(targetPage);
+        setHasNextPage(rows.length === targetPageSize);
+
         showStatus(
           rows.length > 0
-            ? `Page ${resolvedPage + 1} · Rows ${startRow}–${endRow}`
-            : "No records found",
+            ? `Loaded ${loadedCount} rows${
+                rows.length === targetPageSize ? " - scroll for more" : ""
+              }`
+            : shouldAppend
+              ? "No more records found"
+              : "No records found",
         );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         showStatus(msg, true);
         setError(msg);
       } finally {
-        setLoading(false);
+        if (shouldAppend) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
       }
     },
-    [activeDbId, pageSize],
+    [activeDbId, data.length, pageSize, showStatus],
   );
 
   const openQueryWorkspace = useCallback(
@@ -539,7 +567,17 @@ export default function App() {
     } else if (appMode === "overview") {
       loadOverview();
     } else if (currentTable) {
-      loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, 0);
+      setData([]);
+      setPage(0);
+      loadTable(
+        currentTable,
+        activeDbId,
+        sortBy,
+        sortOrder,
+        filters,
+        0,
+        "replace",
+      );
     } else if (appMode === "schema") {
       setSchemaReloadKey((k) => k + 1);
     }
@@ -548,10 +586,57 @@ export default function App() {
   const handleLimitChange = (newLimit: number) => {
     setPageSize(newLimit);
     setPage(0);
+    setData([]);
+
     if (appMode === "table" && currentTable) {
-      loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, 0);
+      loadTable(
+        currentTable,
+        activeDbId,
+        sortBy,
+        sortOrder,
+        filters,
+        0,
+        "replace",
+        newLimit,
+      );
     }
   };
+
+  const loadMoreRows = useCallback(() => {
+    if (
+      loading ||
+      loadingMore ||
+      !hasNextPage ||
+      !currentTable ||
+      appMode !== "table"
+    ) {
+      return;
+    }
+
+    loadTable(
+      currentTable,
+      activeDbId,
+      sortBy,
+      sortOrder,
+      filters,
+      page + 1,
+      "append",
+      pageSize,
+    );
+  }, [
+    activeDbId,
+    appMode,
+    currentTable,
+    filters,
+    hasNextPage,
+    loadTable,
+    loading,
+    loadingMore,
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  ]);
 
   const filteredData =
     appMode === "table" && search.trim()
@@ -652,18 +737,33 @@ export default function App() {
           sortBy={sortBy}
           sortOrder={sortOrder}
           filters={filters}
-          page={page}
-          pageSize={pageSize}
           hasNextPage={hasNextPage}
+          isLoadingMore={loadingMore}
+          onLoadMore={loadMoreRows}
           onSort={(field) => {
             const nextOrder =
               sortBy === field && sortOrder === "asc" ? "desc" : "asc";
+
             setSortBy(field);
             setSortOrder(nextOrder);
-            loadTable(currentTable, activeDbId, field, nextOrder, filters, 0);
+            setPage(0);
+            setData([]);
+
+            loadTable(
+              currentTable,
+              activeDbId,
+              field,
+              nextOrder,
+              filters,
+              0,
+              "replace",
+            );
           }}
           onFilterChange={(newFilters) => {
             setFilters(newFilters);
+            setPage(0);
+            setData([]);
+
             loadTable(
               currentTable,
               activeDbId,
@@ -671,16 +771,7 @@ export default function App() {
               sortOrder,
               newFilters,
               0,
-            );
-          }}
-          onPageChange={(newPage) => {
-            loadTable(
-              currentTable,
-              activeDbId,
-              sortBy,
-              sortOrder,
-              filters,
-              newPage,
+              "replace",
             );
           }}
         />
