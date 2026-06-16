@@ -6,7 +6,6 @@ import SkeletonTableLoader from "./components/SkeletonTableLoader";
 import DockerSidebar, { DockerContainerInfo } from "./components/DockerSidebar";
 import { AlertTriangleIcon } from "./components/Icons";
 import ConnectionStringBuilderModal from "./components/ConnectionStringBuilderModal";
-
 const OverviewView = lazy(() => import("./components/views/OverviewView"));
 const CommonDashboardView = lazy(
   () => import("./components/views/CommonDashboardView"),
@@ -732,6 +731,7 @@ export default function App() {
         );
       return (
         <TableView
+          tableName={currentTable}
           rows={data}
           maskSensitive={maskSensitive}
           sortBy={sortBy}
