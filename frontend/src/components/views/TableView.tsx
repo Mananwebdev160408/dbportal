@@ -308,7 +308,10 @@ export default function TableView({
   );
 
   return (
-    <div className="table-view-container">
+    <div
+      className="table-view-container"
+      style={{ display: "flex", flexDirection: "column", height: "100%" }}
+    >
       <div
         style={{
           display: "flex",
@@ -404,7 +407,7 @@ export default function TableView({
         onScroll={handleScroll}
         style={{
           width: "100%",
-          maxHeight: "calc(100vh - 260px)",
+          flex: 1,
           overflow: "auto",
         }}
       >
