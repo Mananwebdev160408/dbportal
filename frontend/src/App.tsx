@@ -1,22 +1,35 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense, lazy } from "react";
 import Sidebar from "./components/Sidebar";
 import Toolbar from "./components/Toolbar";
 import EmptyState from "./components/EmptyState";
 import SkeletonTableLoader from "./components/SkeletonTableLoader";
-import OverviewView from "./components/views/OverviewView";
-import CommonDashboardView from "./components/views/CommonDashboardView";
-import TableView from "./components/views/TableView";
-import DocumentsView from "./components/views/DocumentsView";
-import JsonView from "./components/views/JsonView";
-import InspectorView from "./components/views/InspectorView";
-import QueryWorkbench from "./components/views/QueryWorkbench";
-import SchemaView from "./components/views/SchemaView";
 import DockerSidebar, { DockerContainerInfo } from "./components/DockerSidebar";
-import DockerDashboardView from "./components/views/DockerDashboardView";
-import DockerRunnerView from "./components/views/DockerRunnerView";
-import DockerImagesView from "./components/views/DockerImagesView";
-import DockerVolumesView from "./components/views/DockerVolumesView";
 import { AlertTriangleIcon } from "./components/Icons";
+import ConnectionStringBuilderModal from "./components/ConnectionStringBuilderModal";
+
+const OverviewView = lazy(() => import("./components/views/OverviewView"));
+const CommonDashboardView = lazy(
+  () => import("./components/views/CommonDashboardView"),
+);
+const TableView = lazy(() => import("./components/views/TableView"));
+const DocumentsView = lazy(() => import("./components/views/DocumentsView"));
+const JsonView = lazy(() => import("./components/views/JsonView"));
+const InspectorView = lazy(() => import("./components/views/InspectorView"));
+const QueryWorkbench = lazy(() => import("./components/views/QueryWorkbench"));
+const SchemaView = lazy(() => import("./components/views/SchemaView"));
+
+const DockerDashboardView = lazy(
+  () => import("./components/views/DockerDashboardView"),
+);
+const DockerRunnerView = lazy(
+  () => import("./components/views/DockerRunnerView"),
+);
+const DockerImagesView = lazy(
+  () => import("./components/views/DockerImagesView"),
+);
+const DockerVolumesView = lazy(
+  () => import("./components/views/DockerVolumesView"),
+);
 
 export type ViewMode = "table" | "documents" | "json" | "inspector";
 export type AppMode =
@@ -48,6 +61,7 @@ export interface DatabaseConnectionInfo {
   id: string;
   name: string;
   kind: string;
+  isAlive?: boolean;
 }
 
 export interface MultiDatabaseOverview {
@@ -106,6 +120,8 @@ export default function App() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(200);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [showConnectionStringBuilder, setShowConnectionStringBuilder] =
+    useState(false);
 
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = localStorage.getItem("dbportal-sidebar-width");
@@ -210,7 +226,19 @@ export default function App() {
           throw new Error(connPayload.error || "Failed to list connections.");
 
         const list = connPayload.connections || [];
-        setConnections(list);
+
+        // Check health for each connection
+        const withHealth = await Promise.all(
+          list.map(async (conn: DatabaseConnectionInfo) => {
+            try {
+              const res = await fetch(`/api/health?dbId=${conn.id}`);
+              return { ...conn, isAlive: res.ok };
+            } catch {
+              return { ...conn, isAlive: false };
+            }
+          }),
+        );
+        setConnections(withHealth);
 
         // Use primary or first available
         const initialId =
@@ -265,7 +293,19 @@ export default function App() {
       throw err;
     }
   };
-
+  const checkConnectionHealth = useCallback(async () => {
+    const updated = await Promise.all(
+      connections.map(async (conn) => {
+        try {
+          const res = await fetch(`/api/health?dbId=${conn.id}`);
+          return { ...conn, isAlive: res.ok };
+        } catch {
+          return { ...conn, isAlive: false };
+        }
+      }),
+    );
+    setConnections(updated);
+  }, [connections]);
   const loadOverview = useCallback(async () => {
     setAppMode("overview");
     setLoading(true);
@@ -518,6 +558,14 @@ export default function App() {
           />
           <p className="error-msg">Failed to connect to the backend.</p>
           <p style={{ opacity: 0.6, fontSize: "0.85rem" }}>{error}</p>
+          <button
+            className="reload-btn"
+            style={{ marginTop: "16px" }}
+            onClick={() => setShowConnectionStringBuilder(true)}
+            type="button"
+          >
+            Open Connection Builder
+          </button>
         </EmptyState>
       );
     }
@@ -531,6 +579,7 @@ export default function App() {
           onQueryClick={openQueryWorkspace}
           onSchemaClick={openSchemaVisualizer}
           onTableClick={loadTable}
+          onOpenConnectionBuilder={() => setShowConnectionStringBuilder(true)}
         />
       );
     }
@@ -692,54 +741,63 @@ export default function App() {
             isDocker={true}
           />
           <div className="data-container">
-            {loading ? (
-              <EmptyState>
-                <div className="loading-pulse" />
-                <p>Connecting to Docker...</p>
-              </EmptyState>
-            ) : selectedContainerId === "__runner__" ? (
-              <DockerRunnerView
-                onRefreshSidebar={() => {
-                  fetch("/api/docker/containers")
-                    .then((res) => res.json())
-                    .then((data) => {
-                      setContainersList(data.containers || []);
-                    });
-                }}
-                onStatusChange={showStatus}
-              />
-            ) : selectedContainerId === "__images__" ? (
-              <DockerImagesView onStatusChange={showStatus} />
-            ) : selectedContainerId === "__volumes__" ? (
-              <DockerVolumesView onStatusChange={showStatus} />
-            ) : (
-              <DockerDashboardView
-                key={dockerRefreshKey}
-                containerId={selectedContainerId}
-                containers={containers}
-                onStatusChange={showStatus}
-                onRefresh={() => {
-                  fetch("/api/docker/containers")
-                    .then((res) => res.json())
-                    .then((data) => {
-                      setContainersList(data.containers || []);
-                    });
-                }}
-                onDeleted={() => {
-                  fetch("/api/docker/containers")
-                    .then((res) => res.json())
-                    .then((data) => {
-                      const list = data.containers || [];
-                      setContainersList(list);
-                      if (list.length > 0) {
-                        setSelectedContainerId(list[0].id);
-                      } else {
-                        setSelectedContainerId("");
-                      }
-                    });
-                }}
-              />
-            )}
+            <Suspense
+              fallback={
+                <EmptyState>
+                  <div className="loading-pulse" />
+                  <p>Loading Docker view...</p>
+                </EmptyState>
+              }
+            >
+              {loading ? (
+                <EmptyState>
+                  <div className="loading-pulse" />
+                  <p>Connecting to Docker...</p>
+                </EmptyState>
+              ) : selectedContainerId === "__runner__" ? (
+                <DockerRunnerView
+                  onRefreshSidebar={() => {
+                    fetch("/api/docker/containers")
+                      .then((res) => res.json())
+                      .then((data) => {
+                        setContainersList(data.containers || []);
+                      });
+                  }}
+                  onStatusChange={showStatus}
+                />
+              ) : selectedContainerId === "__images__" ? (
+                <DockerImagesView onStatusChange={showStatus} />
+              ) : selectedContainerId === "__volumes__" ? (
+                <DockerVolumesView onStatusChange={showStatus} />
+              ) : (
+                <DockerDashboardView
+                  key={dockerRefreshKey}
+                  containerId={selectedContainerId}
+                  containers={containers}
+                  onStatusChange={showStatus}
+                  onRefresh={() => {
+                    fetch("/api/docker/containers")
+                      .then((res) => res.json())
+                      .then((data) => {
+                        setContainersList(data.containers || []);
+                      });
+                  }}
+                  onDeleted={() => {
+                    fetch("/api/docker/containers")
+                      .then((res) => res.json())
+                      .then((data) => {
+                        const list = data.containers || [];
+                        setContainersList(list);
+                        if (list.length > 0) {
+                          setSelectedContainerId(list[0].id);
+                        } else {
+                          setSelectedContainerId("");
+                        }
+                      });
+                  }}
+                />
+              )}
+            </Suspense>
           </div>
         </main>
       </div>
@@ -773,6 +831,7 @@ export default function App() {
         onQueryClick={openQueryWorkspace}
         onSchemaClick={openSchemaVisualizer}
         onDbChange={switchDatabase}
+        onOpenConnectionBuilder={() => setShowConnectionStringBuilder(true)}
       />
       <div className="sidebar-resizer" onMouseDown={handleSidebarMouseDown} />
       <main className="main-area">
@@ -813,9 +872,27 @@ export default function App() {
           onMaskToggle={() => setMaskSensitive((v) => !v)}
           rowLimit={pageSize}
           onLimitChange={handleLimitChange}
+          data={filteredData}
+          currentTable={currentTable}
         />
-        <div className="data-container">{renderContent()}</div>
+        <div className="data-container">
+          <Suspense
+            fallback={
+              <EmptyState>
+                <div className="loading-pulse" />
+                <p>Loading view...</p>
+              </EmptyState>
+            }
+          >
+            {renderContent()}
+          </Suspense>
+        </div>
       </main>
+      {showConnectionStringBuilder && (
+        <ConnectionStringBuilderModal
+          onClose={() => setShowConnectionStringBuilder(false)}
+        />
+      )}
     </div>
   );
 }
