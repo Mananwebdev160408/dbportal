@@ -24,6 +24,7 @@ interface CliOptions {
   host: string;
   port: number;
   docker: boolean;
+  write: boolean;
 }
 
 const toMessage = (error: unknown): string => {
@@ -61,13 +62,16 @@ const parseCliOptions = (argv: string[]): CliOptions => {
     host: process.env.HOST?.trim() || "127.0.0.1",
     port: parsePortOption(process.env.PORT ?? "0", "PORT"),
     docker: false,
+    write: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
     if (arg === "--help") {
-      console.log("Usage: dbportal [--host <host>] [--port <port>] [--docker]");
+      console.log(
+        "Usage: dbportal [--host <host>] [--port <port>] [--docker] [--write]",
+      );
       process.exit(0);
     }
 
@@ -75,7 +79,10 @@ const parseCliOptions = (argv: string[]): CliOptions => {
       options.docker = true;
       continue;
     }
-
+    if (arg === "--write") {
+      options.write = true;
+      continue;
+    }
     if (arg === "--host") {
       const host = argv[index + 1]?.trim();
       if (!host) {
@@ -279,7 +286,10 @@ const main = async () => {
   app.use(express.static(frontendDist));
 
   app.get("/api/config", (_request, response) => {
-    response.status(200).json({ mode: options.docker ? "docker" : "database" });
+    response.status(200).json({
+      mode: options.docker ? "docker" : "database",
+      writeMode: options.write,
+    });
   });
 
   app.get("/api/connections", (_request, response) => {
@@ -735,9 +745,10 @@ const main = async () => {
           return;
         }
 
-        if (!isReadOnlySqlQuery(query)) {
+        if (!isReadOnlySqlQuery(query) && !options.write) {
           response.status(403).json({
-            error: "Only read-only SQL statements are allowed in this build.",
+            error:
+              "Write mode is disabled. Start dbportal with --write flag to enable INSERT, UPDATE, and DELETE.",
           });
           return;
         }

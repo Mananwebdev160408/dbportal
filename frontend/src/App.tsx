@@ -151,10 +151,10 @@ export default function App() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(200);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [writeMode, setWriteMode] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showConnectionStringBuilder, setShowConnectionStringBuilder] =
     useState(false);
-
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = localStorage.getItem("dbportal-sidebar-width");
     return stored ? parseInt(stored, 10) : 240;
@@ -233,7 +233,9 @@ export default function App() {
       try {
         const configRes = await fetch("/api/config");
         const configPayload = await configRes.json();
-
+        if (configPayload.writeMode) {
+          setWriteMode(true);
+        }
         if (configPayload.mode === "docker") {
           setIsDockerMode(true);
           setAppMode("docker");
@@ -958,6 +960,25 @@ export default function App() {
       />
       <div className="sidebar-resizer" onMouseDown={handleSidebarMouseDown} />
       <main className="main-area">
+        {writeMode && (
+          <div
+            style={{
+              background: "#7c2d12",
+              color: "#fef3c7",
+              padding: "8px 16px",
+              fontSize: "13px",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              borderBottom: "1px solid #b45309",
+            }}
+          >
+            <AlertTriangleIcon size={15} style={{ color: "#fbbf24" }} />
+            ⚠️ Write mode enabled — INSERT, UPDATE, and DELETE operations are
+            allowed. Use with caution.
+          </div>
+        )}
         <Toolbar
           title={
             appMode === "common"

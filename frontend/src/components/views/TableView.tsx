@@ -111,7 +111,6 @@ const escapeHtml = (value: unknown): string => {
     .replace(/'/g, "&#39;");
 };
 
-
 const DEFAULT_COL_WIDTH = 150;
 const MIN_COL_WIDTH = 60;
 const ROW_HEIGHT = 42;

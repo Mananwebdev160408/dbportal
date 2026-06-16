@@ -1,5 +1,5 @@
 import type { ViewMode, Theme, AppearanceMode } from "../App";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, ReactNode } from "react";
 import { LockIcon, UnlockIcon } from "./Icons";
 interface ToolbarProps {
   title: string;
@@ -158,7 +158,7 @@ const MoonIcon = () => (
   </svg>
 );
 
-const ViewIcons: Record<ViewMode, JSX.Element> = {
+const ViewIcons: Record<ViewMode, ReactNode> = {
   table: (
     <svg
       viewBox="0 0 24 24"
