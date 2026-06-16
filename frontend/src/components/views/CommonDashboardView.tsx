@@ -149,7 +149,9 @@ export default function CommonDashboardView({
           <div className="fleet-bar-list">
             {databases.map((db) => {
               const width =
-                maxRecords > 0 ? ((db.totalRecords || 0) / maxRecords) * 100 : 0;
+                maxRecords > 0
+                  ? ((db.totalRecords || 0) / maxRecords) * 100
+                  : 0;
               return (
                 <button
                   key={db.id}
