@@ -79,5 +79,8 @@
     "tsup": "^8.5.1",
     "typescript": "5.9",
     "vitest": "^4.1.7"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
   }
 }
