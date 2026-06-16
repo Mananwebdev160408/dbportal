@@ -44,7 +44,10 @@ export class PostgresDriver implements DatabaseDriver {
     }
 
     let pgModule: {
-      Client: new (config: { connectionString: string }) => {
+      Client: new (config: {
+        connectionString: string;
+        connectionTimeoutMillis?: number;
+      }) => {
         connect: () => Promise<unknown>;
         query: (
           sql: string,
@@ -64,7 +67,12 @@ export class PostgresDriver implements DatabaseDriver {
     const client = new pgModule.Client({
       connectionString: this.connectionString,
     });
-    await withTimeout(client.connect(), DB_TIMEOUT_MS);
+    try {
+      await withTimeout(client.connect(), DB_TIMEOUT_MS);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`PostgreSQL connection failed: ${detail}`);
+    }
     this.client = client;
   }
 

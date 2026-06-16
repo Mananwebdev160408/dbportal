@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import EmptyState from "../EmptyState";
+import VisualQueryBuilder from "./VisualQueryBuilder";
 import TableView from "./TableView";
 import JsonView from "./JsonView";
 import type { DriverCapabilities } from "../../App";
@@ -846,7 +847,21 @@ export default function QueryWorkbench({
             </div>
           )}
         </div>
-
+        {supportsStructured && (
+          <VisualQueryBuilder
+            tables={tables}
+            columns={[]}
+            onApply={(filter, col, lim) => {
+              setCollection(col);
+              setFilterText(JSON.stringify(filter, null, 2));
+              setLimitText(String(lim));
+              onStatus(
+                "Visual query applied — click Run Query to execute.",
+                false,
+              );
+            }}
+          />
+        )}
         {supportsStructured && (
           <div className="query-group">
             <label htmlFor="query-collection">Collection/Table</label>
