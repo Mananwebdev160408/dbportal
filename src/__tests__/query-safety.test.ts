@@ -28,4 +28,27 @@ describe("isReadOnlySqlQuery", () => {
     expect(isReadOnlySqlQuery("EXECUTE xp_cmdshell 'dir'")).toBe(false);
     expect(isReadOnlySqlQuery("CALL read_procedure()")).toBe(false);
   });
+
+  it("handles SQL comments correctly", () => {
+    expect(isReadOnlySqlQuery("SELECT * FROM users /* inline comment */")).toBe(
+      true,
+    );
+    expect(isReadOnlySqlQuery("SELECT * -- line comment\nFROM users")).toBe(
+      true,
+    );
+    expect(isReadOnlySqlQuery("SELECT '/* not a comment */'")).toBe(true);
+    expect(
+      isReadOnlySqlQuery("SELECT * FROM users WHERE name = '-- not a comment'"),
+    ).toBe(true);
+    expect(
+      isReadOnlySqlQuery(
+        "SELECT * FROM users /* comment with forbidden word like DELETE */",
+      ),
+    ).toBe(true);
+    expect(
+      isReadOnlySqlQuery(
+        "SELECT * FROM users -- comment with forbidden word like UPDATE",
+      ),
+    ).toBe(true);
+  });
 });

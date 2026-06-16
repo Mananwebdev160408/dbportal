@@ -70,7 +70,20 @@ export class PostgresDriver implements DatabaseDriver {
     try {
       await withTimeout(client.connect(), DB_TIMEOUT_MS);
     } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
+      let detail = "";
+      if (err instanceof Error) {
+        if (err.message) {
+          detail = err.message;
+        } else if ("errors" in err && Array.isArray((err as any).errors)) {
+          detail = (err as any).errors
+            .map((e: any) => e.message || String(e))
+            .join(", ");
+        } else {
+          detail = err.toString();
+        }
+      } else {
+        detail = String(err);
+      }
       throw new Error(`PostgreSQL connection failed: ${detail}`);
     }
     this.client = client;
