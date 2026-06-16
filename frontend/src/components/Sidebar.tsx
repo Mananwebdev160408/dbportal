@@ -24,6 +24,7 @@ interface SidebarProps {
   onSchemaClick: () => void;
   onTableClick: (name: string) => void;
   onDbChange: (id: string) => void;
+  onOpenConnectionBuilder: () => void;
 }
 
 const TableIcon = () => (
@@ -139,6 +140,7 @@ export default function Sidebar({
   onTableClick,
   onDbChange,
   tableCounts = {},
+  onOpenConnectionBuilder,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -216,6 +218,42 @@ export default function Sidebar({
                 </span>
               </button>
             ))}
+            <button
+              className="db-connection-item connection-builder-btn"
+              onClick={onOpenConnectionBuilder}
+              type="button"
+              style={{
+                marginTop: "8px",
+                justifyContent: "center",
+                borderStyle: "dashed",
+                borderColor: "var(--line-strong)",
+                opacity: 0.75,
+              }}
+            >
+              <span
+                className="name"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                }}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ width: 12, height: 12 }}
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Build Connection URI
+              </span>
+            </button>
           </div>
         </div>
 

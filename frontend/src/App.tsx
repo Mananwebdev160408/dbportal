@@ -17,6 +17,7 @@ import DockerRunnerView from "./components/views/DockerRunnerView";
 import DockerImagesView from "./components/views/DockerImagesView";
 import DockerVolumesView from "./components/views/DockerVolumesView";
 import { AlertTriangleIcon } from "./components/Icons";
+import ConnectionStringBuilderModal from "./components/ConnectionStringBuilderModal";
 
 export type ViewMode = "table" | "documents" | "json" | "inspector";
 export type AppMode =
@@ -107,6 +108,8 @@ export default function App() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(200);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [showConnectionStringBuilder, setShowConnectionStringBuilder] =
+    useState(false);
 
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = localStorage.getItem("dbportal-sidebar-width");
@@ -543,6 +546,14 @@ export default function App() {
           />
           <p className="error-msg">Failed to connect to the backend.</p>
           <p style={{ opacity: 0.6, fontSize: "0.85rem" }}>{error}</p>
+          <button
+            className="reload-btn"
+            style={{ marginTop: "16px" }}
+            onClick={() => setShowConnectionStringBuilder(true)}
+            type="button"
+          >
+            Open Connection Builder
+          </button>
         </EmptyState>
       );
     }
@@ -556,6 +567,7 @@ export default function App() {
           onQueryClick={openQueryWorkspace}
           onSchemaClick={openSchemaVisualizer}
           onTableClick={loadTable}
+          onOpenConnectionBuilder={() => setShowConnectionStringBuilder(true)}
         />
       );
     }
@@ -798,6 +810,7 @@ export default function App() {
         onQueryClick={openQueryWorkspace}
         onSchemaClick={openSchemaVisualizer}
         onDbChange={switchDatabase}
+        onOpenConnectionBuilder={() => setShowConnectionStringBuilder(true)}
       />
       <div className="sidebar-resizer" onMouseDown={handleSidebarMouseDown} />
       <main className="main-area">
@@ -843,6 +856,11 @@ export default function App() {
         />
         <div className="data-container">{renderContent()}</div>
       </main>
+      {showConnectionStringBuilder && (
+        <ConnectionStringBuilderModal
+          onClose={() => setShowConnectionStringBuilder(false)}
+        />
+      )}
     </div>
   );
 }

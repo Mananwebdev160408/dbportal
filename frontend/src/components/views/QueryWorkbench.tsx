@@ -1157,7 +1157,13 @@ export default function QueryWorkbench({
               <p>Run a query to see results here.</p>
             </EmptyState>
           ) : resultMode === "table" ? (
-            <TableView rows={sortedResultRows} maskSensitive={maskSensitive} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+            <TableView
+              rows={sortedResultRows}
+              maskSensitive={maskSensitive}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+            />
           ) : (
             <JsonView rows={resultRows} maskSensitive={maskSensitive} />
           )}
