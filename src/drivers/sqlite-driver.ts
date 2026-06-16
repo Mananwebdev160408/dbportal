@@ -37,7 +37,7 @@ export class SqliteDriver implements DatabaseDriver {
     const filename = this.resolveFilename(this.connectionString);
     const db = await sqliteModule.open({
       filename,
-      driver: sqlite3Module.Database,
+      driver: sqlite3Module.Database || sqlite3Module.default?.Database,
     });
 
     this.db = db as SqliteDatabase;

@@ -6,29 +6,6 @@ const SENSITIVE_KEYS = ["password", "token", "secret"];
 const isSensitiveColumn = (col: string): boolean =>
   SENSITIVE_KEYS.some((k) => col.toLowerCase().includes(k));
 
-const exportCSV = (rows: Record<string, unknown>[], columns: string[]) => {
-  const header = columns.join(",");
-  const csvRows = rows.map((row) =>
-    columns
-      .map((col) => {
-        const val = row[col] ?? "";
-        const str = typeof val === "object" ? JSON.stringify(val) : String(val);
-        return `"${str.replace(/"/g, '""')}"`;
-      })
-      .join(","),
-  );
-  const csvString = [header, ...csvRows].join("\n");
-  const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", "export.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
-};
-
 interface TableViewProps {
   rows: Record<string, unknown>[];
   sortBy?: string;
@@ -52,6 +29,23 @@ const escapeHtml = (value: unknown): string => {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+};
+
+const exportCSV = (rows: Record<string, unknown>[], columns: string[]) => {
+  if (!rows.length) return;
+  const csv = [
+    columns.join(","),
+    ...rows.map((r) =>
+      columns.map((h) => JSON.stringify(r[h] ?? "")).join(","),
+    ),
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "table_export.csv";
+  a.click();
+  URL.revokeObjectURL(url);
 };
 
 const DEFAULT_COL_WIDTH = 150;
