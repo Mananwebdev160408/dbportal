@@ -838,6 +838,8 @@ export default function App() {
           onMaskToggle={() => setMaskSensitive((v) => !v)}
           rowLimit={pageSize}
           onLimitChange={handleLimitChange}
+          data={filteredData}
+          currentTable={currentTable}
         />
         <div className="data-container">{renderContent()}</div>
       </main>
