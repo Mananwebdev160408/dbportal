@@ -66,7 +66,6 @@ export class PostgresDriver implements DatabaseDriver {
 
     const client = new pgModule.Client({
       connectionString: this.connectionString,
-      connectionTimeoutMillis: DB_TIMEOUT_MS,
     });
     try {
       await withTimeout(client.connect(), DB_TIMEOUT_MS);
