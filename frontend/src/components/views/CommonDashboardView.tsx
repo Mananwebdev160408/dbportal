@@ -9,6 +9,7 @@ interface CommonDashboardViewProps {
   onQueryClick: (dbId?: string) => void;
   onSchemaClick: (dbId?: string) => void;
   onTableClick: (name: string, dbId?: string) => void;
+  onOpenConnectionBuilder: () => void;
 }
 
 const formatNumber = (value: number) => value.toLocaleString();
@@ -23,6 +24,7 @@ export default function CommonDashboardView({
   onQueryClick,
   onSchemaClick,
   onTableClick,
+  onOpenConnectionBuilder,
 }: CommonDashboardViewProps) {
   const databases = overview.databases || [];
   const [selectedDbId, setSelectedDbId] = useState(
@@ -100,11 +102,37 @@ export default function CommonDashboardView({
         </div>
       </div>
 
-      <div className="common-section-head">
+      <div
+        className="common-section-head"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div>
           <h3>Fleet Health</h3>
           <p>{databases.length} database nodes reporting aggregate metadata</p>
         </div>
+        <button
+          className="icon-btn"
+          onClick={onOpenConnectionBuilder}
+          type="button"
+          style={{ display: "flex", alignItems: "center", gap: "6px" }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ width: 14, height: 14 }}
+          >
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+          </svg>
+          <span>Connection String Builder</span>
+        </button>
       </div>
 
       <div className="health-card-grid">

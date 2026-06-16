@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import EmptyState from "../EmptyState";
+import VisualQueryBuilder from "./VisualQueryBuilder";
 import TableView from "./TableView";
 import JsonView from "./JsonView";
 import type { DriverCapabilities } from "../../App";
@@ -160,7 +161,31 @@ export default function QueryWorkbench({
   onStatus,
   maskSensitive = false,
 }: QueryWorkbenchProps) {
-  const [rawQuery, setRawQuery] = useState("");
+  interface QueryTab {
+    id: string;
+    title: string;
+    rawQuery: string;
+  }
+  const [tabs, setTabs] = useState<QueryTab[]>([
+    {
+      id: "tab-1",
+      title: "Query 1",
+      rawQuery: "",
+    },
+  ]);
+
+  const [activeTabId, setActiveTabId] = useState("tab-1");
+
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
+  const rawQuery = activeTab?.rawQuery ?? "";
+
+  const setRawQuery = (value: string) => {
+    setTabs((prev) =>
+      prev.map((tab) =>
+        tab.id === activeTabId ? { ...tab, rawQuery: value } : tab,
+      ),
+    );
+  };
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [panelWidth, setPanelWidth] = useState(() => {
@@ -459,7 +484,7 @@ export default function QueryWorkbench({
       throw new Error("Raw query is not supported by this driver.");
     }
 
-    const query = rawQuery.trim();
+    const query = activeTab.rawQuery.trim();
     if (!query) {
       throw new Error("Query cannot be empty.");
     }
@@ -524,7 +549,7 @@ export default function QueryWorkbench({
       if (supportsStructured && !supportsRaw) {
         rows = await runStructuredQuery();
       } else {
-        const query = rawQuery.trim();
+        const query = activeTab.rawQuery.trim();
         const startTime = performance.now();
         const res = await fetch(`/api/query?dbId=${dbId}`, {
           method: "POST",
@@ -608,7 +633,7 @@ export default function QueryWorkbench({
               null,
               2,
             )
-          : rawQuery.trim();
+          : activeTab.rawQuery.trim();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Invalid query";
       onStatus(`Cannot bookmark: ${msg}`, true);
@@ -822,7 +847,21 @@ export default function QueryWorkbench({
             </div>
           )}
         </div>
-
+        {supportsStructured && (
+          <VisualQueryBuilder
+            tables={tables}
+            columns={[]}
+            onApply={(filter, col, lim) => {
+              setCollection(col);
+              setFilterText(JSON.stringify(filter, null, 2));
+              setLimitText(String(lim));
+              onStatus(
+                "Visual query applied — click Run Query to execute.",
+                false,
+              );
+            }}
+          />
+        )}
         {supportsStructured && (
           <div className="query-group">
             <label htmlFor="query-collection">Collection/Table</label>
@@ -933,28 +972,67 @@ export default function QueryWorkbench({
         )}
 
         {supportsRaw && (
-          <div className="query-group">
-            <label htmlFor="query-raw">Raw Query</label>
-            <textarea
-              id="query-raw"
-              className="query-textarea query-textarea-lg"
-              value={rawQuery}
-              onChange={(event) => setRawQuery(event.target.value)}
-              onKeyDown={(e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                  e.preventDefault();
-                  runQuery();
+          <>
+            <div className="query-tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={tab.id === activeTabId ? "active" : ""}
+                  onClick={() => setActiveTabId(tab.id)}
+                >
+                  {tab.title}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const newTab = {
+                    id: `tab-${Date.now()}`,
+                    title: `Query ${tabs.length + 1}`,
+                    rawQuery: "",
+                  };
+
+                  setTabs((prev) => [...prev, newTab]);
+                  setActiveTabId(newTab.id);
+                }}
+              >
+                + New Tab
+              </button>
+            </div>
+
+            <div className="query-group">
+              <label htmlFor="query-raw">Raw Query</label>
+              <textarea
+                id="query-raw"
+                className="query-textarea query-textarea-lg"
+                value={activeTab.rawQuery}
+                onChange={(event) => {
+                  setTabs((prev) =>
+                    prev.map((tab) =>
+                      tab.id === activeTabId
+                        ? { ...tab, rawQuery: event.target.value }
+                        : tab,
+                    ),
+                  );
+                }}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    runQuery();
+                  }
+                }}
+                spellCheck={false}
+                placeholder={
+                  dbType.toLowerCase().includes("mssql") ||
+                  dbType.toLowerCase().includes("sqlserver")
+                    ? "SELECT TOP 50 * FROM users;"
+                    : "SELECT * FROM users LIMIT 50;"
                 }
-              }}
-              spellCheck={false}
-              placeholder={
-                dbType.toLowerCase().includes("mssql") ||
-                dbType.toLowerCase().includes("sqlserver")
-                  ? "SELECT TOP 50 * FROM users;"
-                  : "SELECT * FROM users LIMIT 50;"
-              }
-            />
-          </div>
+              />
+            </div>
+          </>
         )}
 
         <div className="query-actions">

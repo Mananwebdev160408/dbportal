@@ -1,12 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import EmptyState from "../EmptyState";
+import * as XLSX from "xlsx";
 
 const SENSITIVE_KEYS = ["password", "token", "secret"];
 
 const isSensitiveColumn = (col: string): boolean =>
   SENSITIVE_KEYS.some((k) => col.toLowerCase().includes(k));
 
-const exportCSV = (rows: Record<string, unknown>[], columns: string[]) => {
+const exportCSV = (
+  rows: Record<string, unknown>[],
+  columns: string[],
+  filename: string,
+) => {
   const header = columns.join(",");
   const csvRows = rows.map((row) =>
     columns
@@ -22,14 +27,66 @@ const exportCSV = (rows: Record<string, unknown>[], columns: string[]) => {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.setAttribute("download", "export.csv");
+  link.setAttribute("download", filename);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 };
 
+const exportJSON = (rows: Record<string, unknown>[], filename: string) => {
+  const jsonString = JSON.stringify(rows, null, 2);
+  const blob = new Blob([jsonString], {
+    type: "application/json;charset=utf-8;",
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};
+
+const exportExcel = (
+  rows: Record<string, unknown>[],
+  columns: string[],
+  filename: string,
+) => {
+  const formattedRows = rows.map((row) => {
+    const formattedRow: Record<string, unknown> = {};
+    columns.forEach((col) => {
+      const val = row[col];
+      formattedRow[col] =
+        typeof val === "object" && val !== null ? JSON.stringify(val) : val;
+    });
+    return formattedRow;
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(formattedRows, {
+    header: columns,
+  });
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+  XLSX.writeFile(workbook, filename);
+};
+
+const getExportFilename = (
+  tableName: string | undefined,
+  extension: string,
+) => {
+  if (tableName && tableName.trim()) {
+    const cleanName = tableName
+      .trim()
+      .toLowerCase()
+      .replace(/[\s/\\?%*:|"<>]/g, "_");
+    return `${cleanName}-export.${extension}`;
+  }
+  return `table-export.${extension}`;
+};
 interface TableViewProps {
+  tableName?: string;
   rows: Record<string, unknown>[];
   sortBy?: string;
   sortOrder?: "asc" | "desc";
@@ -41,6 +98,8 @@ interface TableViewProps {
   pageSize?: number;
   hasNextPage?: boolean;
   onPageChange?: (page: number) => void;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 const escapeHtml = (value: unknown): string => {
@@ -54,8 +113,12 @@ const escapeHtml = (value: unknown): string => {
 
 const DEFAULT_COL_WIDTH = 150;
 const MIN_COL_WIDTH = 60;
+const ROW_HEIGHT = 42;
+const OVERSCAN_ROWS = 10;
+const LOAD_MORE_THRESHOLD = 320;
 
 export default function TableView({
+  tableName,
   rows,
   sortBy,
   sortOrder,
@@ -63,36 +126,95 @@ export default function TableView({
   onSort,
   onFilterChange,
   maskSensitive = false,
-  page = 0,
-  pageSize = 200,
   hasNextPage = false,
-  onPageChange,
+  isLoadingMore = false,
+  onLoadMore,
 }: TableViewProps) {
   const [localFilters, setLocalFilters] =
     useState<Record<string, string>>(filters);
-
-  useEffect(() => {
-    setLocalFilters(filters);
-  }, [filters]);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(480);
+
   const dragState = useRef<{
     col: string;
     startX: number;
     startWidth: number;
   } | null>(null);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const loadMoreRequestedRef = useRef(false);
+
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
 
   useEffect(() => {
     if (!wrapperRef.current) return;
+
     const observer = new ResizeObserver((entries) => {
       if (entries[0]) {
         setContainerWidth(entries[0].contentRect.width);
+        setViewportHeight(entries[0].contentRect.height || 480);
       }
     });
+
     observer.observe(wrapperRef.current);
     return () => observer.disconnect();
   }, []);
+
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        exportRef.current &&
+        !exportRef.current.contains(event.target as Node)
+      ) {
+        setIsExportOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoadingMore) {
+      loadMoreRequestedRef.current = false;
+    }
+  }, [isLoadingMore, rows.length]);
+
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+
+    wrapperRef.current.scrollTop = 0;
+    setScrollTop(0);
+  }, [sortBy, sortOrder, filters]);
+
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+
+      setScrollTop(target.scrollTop);
+      setViewportHeight(target.clientHeight);
+
+      const distanceFromBottom =
+        target.scrollHeight - target.scrollTop - target.clientHeight;
+
+      if (
+        distanceFromBottom < LOAD_MORE_THRESHOLD &&
+        hasNextPage &&
+        !isLoadingMore &&
+        !loadMoreRequestedRef.current
+      ) {
+        loadMoreRequestedRef.current = true;
+        onLoadMore?.();
+      }
+    },
+    [hasNextPage, isLoadingMore, onLoadMore],
+  );
 
   if (!rows.length) {
     return (
@@ -121,16 +243,19 @@ export default function TableView({
     (e: React.MouseEvent, col: string) => {
       e.preventDefault();
       e.stopPropagation();
+
       const startWidth = colWidths[col] ?? DEFAULT_COL_WIDTH;
       dragState.current = { col, startX: e.clientX, startWidth };
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
         if (!dragState.current) return;
+
         const delta = moveEvent.clientX - dragState.current.startX;
         const newWidth = Math.max(
           MIN_COL_WIDTH,
           dragState.current.startWidth + delta,
         );
+
         setColWidths((prev) => ({
           ...prev,
           [dragState.current!.col]: newWidth,
@@ -165,6 +290,23 @@ export default function TableView({
     return raw * scaleFactor;
   };
 
+  const visibleStart = Math.max(
+    0,
+    Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN_ROWS,
+  );
+
+  const visibleEnd = Math.min(
+    rows.length,
+    Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + OVERSCAN_ROWS,
+  );
+
+  const visibleRows = rows.slice(visibleStart, visibleEnd);
+  const topSpacerHeight = visibleStart * ROW_HEIGHT;
+  const bottomSpacerHeight = Math.max(
+    0,
+    (rows.length - visibleEnd) * ROW_HEIGHT,
+  );
+
   return (
     <div className="table-view-container">
       <div
@@ -175,28 +317,96 @@ export default function TableView({
           padding: "0.5rem 1rem",
         }}
       >
-        {rows.length > 0 ? (
-          <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
-            Page <strong style={{ color: "var(--text)" }}>{page + 1}</strong>
-            &nbsp;·&nbsp; Rows{" "}
-            <strong style={{ color: "var(--text)" }}>
-              {page * pageSize + 1}–{page * pageSize + rows.length}
-            </strong>
-          </span>
-        ) : (
-          <span />
-        )}
-        <button
-          className="export-csv-btn"
-          onClick={() => exportCSV(rows, columns)}
+        <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
+          Loaded <strong style={{ color: "var(--text)" }}>{rows.length}</strong>{" "}
+          rows
+          {hasNextPage ? " - scroll to load more" : " - end of results"}
+        </span>
+        <div
+          className={`dropdown-container${isExportOpen ? " open" : ""}`}
+          ref={exportRef}
         >
-          Export CSV ↓
-        </button>
+          <button
+            className="export-csv-btn dropdown-trigger"
+            onClick={() => setIsExportOpen(!isExportOpen)}
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded={isExportOpen}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              minWidth: "auto",
+            }}
+          >
+            <span>Export</span>
+            <svg
+              className="chevron"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          {isExportOpen && (
+            <div className="dropdown-menu" role="listbox" style={{ right: 0 }}>
+              <button
+                className="dropdown-item"
+                onClick={() => {
+                  exportCSV(rows, columns, getExportFilename(tableName, "csv"));
+                  setIsExportOpen(false);
+                }}
+                type="button"
+                style={{ textAlign: "left", width: "100%" }}
+              >
+                <span>Export as CSV (.csv)</span>
+              </button>
+              <button
+                className="dropdown-item"
+                onClick={() => {
+                  exportJSON(rows, getExportFilename(tableName, "json"));
+                  setIsExportOpen(false);
+                }}
+                type="button"
+                style={{ textAlign: "left", width: "100%" }}
+              >
+                <span>Export as JSON (.json)</span>
+              </button>
+              <button
+                className="dropdown-item"
+                onClick={() => {
+                  exportExcel(
+                    rows,
+                    columns,
+                    getExportFilename(tableName, "xlsx"),
+                  );
+                  setIsExportOpen(false);
+                }}
+                type="button"
+                style={{ textAlign: "left", width: "100%" }}
+              >
+                <span>Export as Excel (.xlsx)</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
       <div
         className="table-responsive-wrapper"
         ref={wrapperRef}
-        style={{ width: "100%", overflowX: "auto" }}
+        onScroll={handleScroll}
+        style={{
+          width: "100%",
+          maxHeight: "calc(100vh - 260px)",
+          overflow: "auto",
+        }}
       >
         <table
           className="data-table"
@@ -230,7 +440,7 @@ export default function TableView({
                       </span>
                     )}
                   </div>
-                  {/* Resize handle */}
+
                   <span
                     className="col-resize-handle"
                     onMouseDown={(e) => handleMouseDown(e, col)}
@@ -239,6 +449,7 @@ export default function TableView({
                 </th>
               ))}
             </tr>
+
             <tr className="filter-row">
               <th className="filter-cell-id">
                 <svg
@@ -254,6 +465,7 @@ export default function TableView({
                   <circle cx="11" cy="11" r="8" />
                 </svg>
               </th>
+
               {columns.map((col) => (
                 <th key={`filter-${col}`} className="filter-cell">
                   <input
@@ -274,64 +486,102 @@ export default function TableView({
               ))}
             </tr>
           </thead>
-          <tbody>
-            {rows.map((row, rowIdx) => (
-              <tr key={rowIdx}>
-                <td style={{ color: "var(--text-dim)", fontSize: "10px" }}>
-                  {(rowIdx + 1).toString().padStart(3, "0")}
-                </td>
-                {columns.map((col) => {
-                  const val = row[col];
 
-                  if (val === null || val === undefined) {
-                    return (
-                      <td key={col}>
-                        <span className="null-val">null</span>
-                      </td>
-                    );
-                  }
-                  if (typeof val === "object") {
-                    const fullJson = JSON.stringify(val);
-                    const summary = fullJson.substring(0, 50);
-                    const titleText = `Read-only preview\n\n${fullJson}`;
-                    return (
-                      <td key={col} className="json-cell" title={titleText}>
-                        <code
-                          dangerouslySetInnerHTML={{
-                            __html: `${escapeHtml(summary)}${fullJson.length >= 50 ? "..." : ""}`,
-                          }}
-                        />
-                      </td>
-                    );
-                  }
-                  const displayVal =
-                    maskSensitive && isSensitiveColumn(col)
-                      ? "*****"
-                      : String(val);
-                  return (
-                    <td
-                      key={col}
-                      title={
-                        maskSensitive && isSensitiveColumn(col)
-                          ? "Masked"
-                          : String(val)
-                      }
-                    >
-                      {displayVal}
-                    </td>
-                  );
-                })}
+          <tbody>
+            {topSpacerHeight > 0 && (
+              <tr aria-hidden="true">
+                <td
+                  colSpan={columns.length + 1}
+                  style={{
+                    height: `${topSpacerHeight}px`,
+                    padding: 0,
+                    border: 0,
+                  }}
+                />
               </tr>
-            ))}
+            )}
+
+            {visibleRows.map((row, visibleIdx) => {
+              const rowIdx = visibleStart + visibleIdx;
+
+              return (
+                <tr key={rowIdx} style={{ height: `${ROW_HEIGHT}px` }}>
+                  <td style={{ color: "var(--text-dim)", fontSize: "10px" }}>
+                    {(rowIdx + 1).toString().padStart(3, "0")}
+                  </td>
+
+                  {columns.map((col) => {
+                    const val = row[col];
+
+                    if (val === null || val === undefined) {
+                      return (
+                        <td key={col}>
+                          <span className="null-val">null</span>
+                        </td>
+                      );
+                    }
+
+                    if (typeof val === "object") {
+                      const fullJson = JSON.stringify(val);
+                      const summary = fullJson.substring(0, 50);
+                      const titleText = `Read-only preview\n\n${fullJson}`;
+
+                      return (
+                        <td key={col} className="json-cell" title={titleText}>
+                          <code
+                            dangerouslySetInnerHTML={{
+                              __html: `${escapeHtml(summary)}${
+                                fullJson.length >= 50 ? "..." : ""
+                              }`,
+                            }}
+                          />
+                        </td>
+                      );
+                    }
+
+                    const displayVal =
+                      maskSensitive && isSensitiveColumn(col)
+                        ? "*****"
+                        : String(val);
+
+                    return (
+                      <td
+                        key={col}
+                        title={
+                          maskSensitive && isSensitiveColumn(col)
+                            ? "Masked"
+                            : String(val)
+                        }
+                      >
+                        {displayVal}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+
+            {bottomSpacerHeight > 0 && (
+              <tr aria-hidden="true">
+                <td
+                  colSpan={columns.length + 1}
+                  style={{
+                    height: `${bottomSpacerHeight}px`,
+                    padding: 0,
+                    border: 0,
+                  }}
+                />
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-      {/* Pagination footer */}
+
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "center",
           padding: "0.6rem 1rem",
           borderTop: "1px solid var(--border)",
           background: "var(--surface)",
@@ -341,57 +591,13 @@ export default function TableView({
           flexShrink: 0,
         }}
       >
-        <button
-          className="icon-btn"
-          onClick={() => onPageChange?.(page - 1)}
-          disabled={page === 0}
-          type="button"
-          aria-label="Previous page"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 12px",
-            fontSize: "0.8rem",
-            opacity: page === 0 ? 0.35 : 1,
-            cursor: page === 0 ? "not-allowed" : "pointer",
-          }}
-        >
-          ← Previous
-        </button>
-
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem" }}>
-          {rows.length > 0 ? (
-            <>
-              Page <strong style={{ color: "var(--text)" }}>{page + 1}</strong>
-              &nbsp;·&nbsp; Rows{" "}
-              <strong style={{ color: "var(--text)" }}>
-                {page * pageSize + 1}–{page * pageSize + rows.length}
-              </strong>
-            </>
-          ) : (
-            "No records"
-          )}
+          {isLoadingMore
+            ? "Loading more rows..."
+            : hasNextPage
+              ? `Loaded ${rows.length} rows - scroll to load more`
+              : `Loaded ${rows.length} rows - end of results`}
         </span>
-
-        <button
-          className="icon-btn"
-          onClick={() => onPageChange?.(page + 1)}
-          disabled={!hasNextPage}
-          type="button"
-          aria-label="Next page"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 12px",
-            fontSize: "0.8rem",
-            opacity: !hasNextPage ? 0.35 : 1,
-            cursor: !hasNextPage ? "not-allowed" : "pointer",
-          }}
-        >
-          Next →
-        </button>
       </div>
     </div>
   );

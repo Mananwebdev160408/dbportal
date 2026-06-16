@@ -1,5 +1,5 @@
 import type { ViewMode, Theme, AppearanceMode } from "../App";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, ReactNode } from "react";
 import { LockIcon, UnlockIcon } from "./Icons";
 interface ToolbarProps {
   title: string;
@@ -23,6 +23,8 @@ interface ToolbarProps {
   rowLimit?: number;
   onLimitChange?: (limit: number) => void;
   isDocker?: boolean;
+  data?: Record<string, unknown>[];
+  currentTable?: string;
 }
 
 const SearchIcon = () => (
@@ -89,7 +91,35 @@ const ChevronIcon = () => (
     <path d="m6 9 6 6 6-6" />
   </svg>
 );
+const exportCsv = (rows: Record<string, unknown>[], filename: string) => {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(","),
+    ...rows.map((r) =>
+      headers.map((h) => JSON.stringify(r[h] ?? "")).join(","),
+    ),
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
+const exportJson = (rows: Record<string, unknown>[], filename: string) => {
+  if (!rows.length) return;
+  const json = JSON.stringify(rows, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 const SunIcon = () => (
   <svg
     width="15"
@@ -128,7 +158,7 @@ const MoonIcon = () => (
   </svg>
 );
 
-const ViewIcons: Record<ViewMode, JSX.Element> = {
+const ViewIcons: Record<ViewMode, ReactNode> = {
   table: (
     <svg
       viewBox="0 0 24 24"
@@ -229,9 +259,13 @@ export default function Toolbar({
   rowLimit = 200,
   onLimitChange,
   isDocker = false,
+  data = [] as Record<string, unknown>[],
+  currentTable = "export",
 }: ToolbarProps) {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const themeRef = useRef<HTMLDivElement>(null);
 
@@ -248,6 +282,12 @@ export default function Toolbar({
         !themeRef.current.contains(event.target as Node)
       ) {
         setIsThemeOpen(false);
+      }
+      if (
+        exportRef.current &&
+        !exportRef.current.contains(event.target as Node)
+      ) {
+        setIsExportOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -504,7 +544,56 @@ export default function Toolbar({
             </select>
           </div>
         )}
+        {!isDocker && data.length > 0 && (
+          <div
+            className={`dropdown-container${isExportOpen ? " open" : ""}`}
+            ref={exportRef}
+          >
+            <button
+              className="icon-btn dropdown-trigger"
+              onClick={() => setIsExportOpen(!isExportOpen)}
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isExportOpen}
+              style={{
+                height: 36,
+                padding: "0 12px",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <span>Export</span>
+              <ChevronIcon />
+            </button>
 
+            {isExportOpen && (
+              <div className="dropdown-menu" role="listbox">
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    const date = new Date().toISOString().split("T")[0];
+                    exportCsv(data, `${currentTable}_${date}.csv`);
+                    setIsExportOpen(false);
+                  }}
+                  type="button"
+                >
+                  <span>Export as CSV</span>
+                </button>
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    const date = new Date().toISOString().split("T")[0];
+                    exportJson(data, `${currentTable}_${date}.json`);
+                    setIsExportOpen(false);
+                  }}
+                  type="button"
+                >
+                  <span>Export as JSON</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         <button
           className="reload-btn"
           onClick={onReload}
