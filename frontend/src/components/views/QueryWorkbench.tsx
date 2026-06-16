@@ -847,15 +847,18 @@ export default function QueryWorkbench({
             </div>
           )}
         </div>
-{supportsStructured && (
+        {supportsStructured && (
           <VisualQueryBuilder
             tables={tables}
             columns={[]}
             onApply={(filter, col, lim) => {
-              setCollection(col)
-              setFilterText(JSON.stringify(filter, null, 2))
-              setLimitText(String(lim))
-              onStatus("Visual query applied — click Run Query to execute.", false)
+              setCollection(col);
+              setFilterText(JSON.stringify(filter, null, 2));
+              setLimitText(String(lim));
+              onStatus(
+                "Visual query applied — click Run Query to execute.",
+                false,
+              );
             }}
           />
         )}

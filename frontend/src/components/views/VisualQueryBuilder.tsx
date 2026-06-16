@@ -19,7 +19,11 @@ interface FilterRule {
 interface VisualQueryBuilderProps {
   tables: string[];
   columns: string[];
-  onApply: (filter: Record<string, unknown>, collection: string, limit: number) => void;
+  onApply: (
+    filter: Record<string, unknown>,
+    collection: string,
+    limit: number,
+  ) => void;
 }
 
 const OPERATORS: { value: Operator; label: string }[] = [
@@ -47,10 +51,14 @@ function buildMongoFilter(rules: FilterRule[]): Record<string, unknown> {
         filter[rule.field] = { $regex: rule.value, $options: "i" };
         break;
       case "greater_than":
-        filter[rule.field] = { $gt: isNaN(Number(rule.value)) ? rule.value : Number(rule.value) };
+        filter[rule.field] = {
+          $gt: isNaN(Number(rule.value)) ? rule.value : Number(rule.value),
+        };
         break;
       case "less_than":
-        filter[rule.field] = { $lt: isNaN(Number(rule.value)) ? rule.value : Number(rule.value) };
+        filter[rule.field] = {
+          $lt: isNaN(Number(rule.value)) ? rule.value : Number(rule.value),
+        };
         break;
       case "exists":
         filter[rule.field] = { $exists: true };
@@ -68,11 +76,11 @@ export default function VisualQueryBuilder({
   columns,
   onApply,
 }: VisualQueryBuilderProps) {
-  const [selectedTable, setSelectedTable] = useState(tables[0] || "")
+  const [selectedTable, setSelectedTable] = useState(tables[0] || "");
   const [rules, setRules] = useState<FilterRule[]>([
     { id: "1", field: "", operator: "equals", value: "" },
-  ])
-  const [limit, setLimit] = useState(25)
+  ]);
+  const [limit, setLimit] = useState(25);
 
   const addRule = () => {
     setRules((prev) => [
@@ -83,25 +91,23 @@ export default function VisualQueryBuilder({
         operator: "equals",
         value: "",
       },
-    ])
-  }
+    ]);
+  };
 
   const removeRule = (id: string) => {
-    setRules((prev) => prev.filter((r) => r.id !== id))
-  }
+    setRules((prev) => prev.filter((r) => r.id !== id));
+  };
 
   const updateRule = (id: string, patch: Partial<FilterRule>) => {
-    setRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...patch } : r))
-    )
-  }
+    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
 
   const handleApply = () => {
-    const filter = buildMongoFilter(rules.filter((r) => r.field))
-    onApply(filter, selectedTable, limit)
-  }
+    const filter = buildMongoFilter(rules.filter((r) => r.field));
+    onApply(filter, selectedTable, limit);
+  };
 
-  const noValue = (op: Operator) => op === "exists" || op === "not_exists"
+  const noValue = (op: Operator) => op === "exists" || op === "not_exists";
 
   return (
     <div className="query-help-card" style={{ marginBottom: "1rem" }}>
@@ -111,24 +117,47 @@ export default function VisualQueryBuilder({
 
       {/* Collection selector */}
       <div className="query-group" style={{ marginBottom: "0.75rem" }}>
-        <label style={{ fontSize: "0.75rem", opacity: 0.7 }}>Collection / Table</label>
+        <label style={{ fontSize: "0.75rem", opacity: 0.7 }}>
+          Collection / Table
+        </label>
         <select
           className="query-input"
           value={selectedTable}
           onChange={(e) => setSelectedTable(e.target.value)}
         >
           {tables.map((t) => (
-            <option key={t} value={t}>{t}</option>
+            <option key={t} value={t}>
+              {t}
+            </option>
           ))}
         </select>
       </div>
 
       {/* Filter rules */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "0.75rem" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.5rem",
+          marginBottom: "0.75rem",
+        }}
+      >
         {rules.map((rule, idx) => (
-          <div key={rule.id} style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+          <div
+            key={rule.id}
+            style={{
+              display: "flex",
+              gap: "6px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
             {idx > 0 && (
-              <span style={{ fontSize: "0.7rem", opacity: 0.5, minWidth: "24px" }}>AND</span>
+              <span
+                style={{ fontSize: "0.7rem", opacity: 0.5, minWidth: "24px" }}
+              >
+                AND
+              </span>
             )}
 
             {/* Field selector */}
@@ -140,7 +169,9 @@ export default function VisualQueryBuilder({
             >
               <option value="">Select field...</option>
               {columns.map((col) => (
-                <option key={col} value={col}>{col}</option>
+                <option key={col} value={col}>
+                  {col}
+                </option>
               ))}
             </select>
 
@@ -149,10 +180,14 @@ export default function VisualQueryBuilder({
               className="query-input"
               style={{ flex: 1, minWidth: "110px" }}
               value={rule.operator}
-              onChange={(e) => updateRule(rule.id, { operator: e.target.value as Operator })}
+              onChange={(e) =>
+                updateRule(rule.id, { operator: e.target.value as Operator })
+              }
             >
               {OPERATORS.map((op) => (
-                <option key={op.value} value={op.value}>{op.label}</option>
+                <option key={op.value} value={op.value}>
+                  {op.label}
+                </option>
               ))}
             </select>
 
@@ -183,7 +218,15 @@ export default function VisualQueryBuilder({
       </div>
 
       {/* Add rule + Limit */}
-      <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          alignItems: "center",
+          marginBottom: "0.75rem",
+          flexWrap: "wrap",
+        }}
+      >
         <button
           type="button"
           className="query-clear-btn secondary"
@@ -192,7 +235,14 @@ export default function VisualQueryBuilder({
           + Add Filter
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            marginLeft: "auto",
+          }}
+        >
           <label style={{ fontSize: "0.75rem", opacity: 0.7 }}>Limit</label>
           <input
             className="query-input"
@@ -214,5 +264,5 @@ export default function VisualQueryBuilder({
         ▶ Apply Query
       </button>
     </div>
-  )
+  );
 }
