@@ -68,7 +68,13 @@ export class PostgresDriver implements DatabaseDriver {
       connectionString: this.connectionString,
       connectionTimeoutMillis: DB_TIMEOUT_MS,
     });
-    await withTimeout(client.connect(), DB_TIMEOUT_MS);
+    try {
+      await withTimeout(client.connect(), DB_TIMEOUT_MS);
+    } catch (err) {
+      const detail =
+        err instanceof Error ? err.message : String(err);
+      throw new Error(`PostgreSQL connection failed: ${detail}`);
+    }
     this.client = client;
   }
 
