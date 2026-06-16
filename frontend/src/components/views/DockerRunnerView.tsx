@@ -139,6 +139,9 @@ export default function DockerRunnerView({
   ]);
   const [composeModalOpen, setComposeModalOpen] = useState(false);
   const [composeYaml, setComposeYaml] = useState("");
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importYaml, setImportYaml] = useState("");
+  const [importError, setImportError] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
   const [saveError, setSaveError] = useState(false);
 
@@ -385,7 +388,184 @@ export default function DockerRunnerView({
     });
     return yaml;
   };
+  const handleImportCompose = () => {
+    setImportError("");
+    try {
+      const lines = importYaml.split("\n");
+      const newConfigs: ContainerConfig[] = [];
+      let currentService: Partial<ContainerConfig> | null = null;
+      let inServices = false;
+      let inPorts = false;
+      let inEnv = false;
+      let inVolumes = false;
 
+      for (const rawLine of lines) {
+        const line = rawLine;
+        const trimmed = line.trimEnd();
+        const indent = line.length - line.trimStart().length;
+
+        if (trimmed.trim() === "services:") {
+          inServices = true;
+          continue;
+        }
+
+        if (
+          inServices &&
+          indent === 2 &&
+          trimmed.trim().endsWith(":") &&
+          !trimmed.trim().startsWith("-")
+        ) {
+          if (currentService?.imageName) {
+            newConfigs.push({
+              key: Math.random().toString(36).slice(2),
+              imageSearch: "",
+              searchResults: [],
+              isSearching: false,
+              showSearchDropdown: false,
+              tags: [],
+              isLoadingTags: false,
+              imageName: currentService.imageName || "",
+              selectedTag: "",
+              containerName: currentService.containerName || "",
+              ports: currentService.ports || [],
+              volumes: currentService.volumes || [],
+              env: currentService.env || [],
+              command: currentService.command || "",
+              tty: currentService.tty || false,
+            });
+          }
+          currentService = { ports: [], env: [], volumes: [] };
+          inPorts = false;
+          inEnv = false;
+          inVolumes = false;
+          continue;
+        }
+
+        if (!currentService) continue;
+
+        const t = trimmed.trim();
+
+        if (indent === 4) {
+          if (t.startsWith("image:")) {
+            currentService.imageName = t.replace("image:", "").trim();
+            inPorts = false;
+            inEnv = false;
+            inVolumes = false;
+          } else if (t.startsWith("container_name:")) {
+            currentService.containerName = t
+              .replace("container_name:", "")
+              .trim();
+            inPorts = false;
+            inEnv = false;
+            inVolumes = false;
+          } else if (t.startsWith("command:")) {
+            currentService.command = t.replace("command:", "").trim();
+            inPorts = false;
+            inEnv = false;
+            inVolumes = false;
+          } else if (t === "ports:") {
+            inPorts = true;
+            inEnv = false;
+            inVolumes = false;
+          } else if (t === "environment:") {
+            inEnv = true;
+            inPorts = false;
+            inVolumes = false;
+          } else if (t === "volumes:") {
+            inVolumes = true;
+            inPorts = false;
+            inEnv = false;
+          } else {
+            inPorts = false;
+            inEnv = false;
+            inVolumes = false;
+          }
+        }
+
+        if (indent === 6 && t.startsWith("-")) {
+          const val = t
+            .slice(1)
+            .trim()
+            .replace(/^["']|["']$/g, "");
+          if (inPorts) {
+            const parts = val.split(":");
+            if (parts.length >= 2) {
+              const proto = val.includes("/udp") ? "udp" : "tcp";
+              currentService.ports!.push({
+                host: parts[0],
+                container: parts[1].replace("/udp", "").replace("/tcp", ""),
+                protocol: proto,
+              });
+            }
+          } else if (inEnv) {
+            const eqIdx = val.indexOf("=");
+            if (eqIdx > -1) {
+              currentService.env!.push({
+                key: val.slice(0, eqIdx),
+                value: val.slice(eqIdx + 1),
+              });
+            }
+          } else if (inVolumes) {
+            const vParts = val.split(":");
+            if (vParts.length >= 2) {
+              currentService.volumes!.push({
+                hostPath: vParts[0],
+                containerPath: vParts[1],
+              });
+            }
+          }
+        }
+      }
+
+      // Push last service
+      if (currentService?.imageName) {
+        newConfigs.push({
+          key: Math.random().toString(36).slice(2),
+          imageSearch: "",
+          searchResults: [],
+          isSearching: false,
+          showSearchDropdown: false,
+          tags: [],
+          isLoadingTags: false,
+          imageName: currentService.imageName || "",
+          selectedTag: "",
+          containerName: currentService.containerName || "",
+          ports: currentService.ports || [],
+          volumes: currentService.volumes || [],
+          env: currentService.env || [],
+          command: currentService.command || "",
+          tty: currentService.tty || false,
+        });
+      }
+
+      if (newConfigs.length === 0) {
+        setImportError(
+          "No valid services found in the YAML. Make sure it has a 'services:' section with at least one image.",
+        );
+        return;
+      }
+
+      setConfigs(newConfigs);
+      setImportModalOpen(false);
+      setImportYaml("");
+      setImportError("");
+    } catch (err: any) {
+      setImportError(
+        "Failed to parse YAML: " + (err.message || "Unknown error"),
+      );
+    }
+  };
+
+  const handleImportFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setImportYaml((ev.target?.result as string) || "");
+      setImportError("");
+    };
+    reader.readAsText(file);
+  };
   const handleComposeClick = () => {
     const yaml = generateComposeYaml();
     setComposeYaml(yaml);
@@ -1349,6 +1529,28 @@ export default function DockerRunnerView({
         }}
       >
         <button
+          className="control-btn"
+          type="button"
+          onClick={() => {
+            setImportYaml("");
+            setImportError("");
+            setImportModalOpen(true);
+          }}
+          style={{
+            height: "42px",
+            padding: "0 24px",
+            fontSize: "0.85rem",
+            fontWeight: 700,
+            border: "1px solid var(--line-strong)",
+          }}
+        >
+          <FileCodeIcon
+            size={14}
+            style={{ marginRight: 7, verticalAlign: "middle" }}
+          />{" "}
+          Import Compose File
+        </button>
+        <button
           className="control-btn restart-btn"
           type="button"
           onClick={handleComposeClick}
@@ -1382,7 +1584,170 @@ export default function DockerRunnerView({
           <RocketIcon size={14} style={{ marginRight: 8 }} /> Launch Containers
         </button>
       </div>
-
+      {/* DOCKER COMPOSE IMPORT MODAL */}
+      {importModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.8)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+          }}
+        >
+          <div
+            className="metric-card"
+            style={{
+              width: "100%",
+              maxWidth: "680px",
+              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+              border: "1px solid var(--line-strong)",
+              background: "var(--surface)",
+              boxShadow: "var(--shadow-technical)",
+              borderRadius: "var(--radius-lg)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800 }}>
+                Import docker-compose.yml
+              </h3>
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(false)}
+                style={{
+                  background: "transparent",
+                  color: "var(--text-muted)",
+                  border: "none",
+                  fontSize: "1.4rem",
+                  cursor: "pointer",
+                }}
+              >
+                <CloseIcon size={16} />
+              </button>
+            </div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "0.85rem",
+                color: "var(--text-muted)",
+              }}
+            >
+              Paste your <code>docker-compose.yml</code> content below or upload
+              a file. Services will be loaded into the launcher.
+            </p>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <label
+                style={{
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  color: "var(--accent)",
+                  cursor: "pointer",
+                  padding: "6px 14px",
+                  border: "1px solid var(--accent)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                Upload File
+                <input
+                  type="file"
+                  accept=".yml,.yaml"
+                  onChange={handleImportFileUpload}
+                  style={{ display: "none" }}
+                />
+              </label>
+              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                or paste below
+              </span>
+            </div>
+            <textarea
+              value={importYaml}
+              onChange={(e) => {
+                setImportYaml(e.target.value);
+                setImportError("");
+              }}
+              placeholder={
+                "version: '3.8'\nservices:\n  app:\n    image: nginx\n    ports:\n      - \"80:80\""
+              }
+              style={{
+                width: "100%",
+                minHeight: "240px",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.82rem",
+                background: "var(--bg)",
+                color: "var(--accent)",
+                border: "1px solid var(--line)",
+                borderRadius: "var(--radius-sm)",
+                padding: "12px",
+                resize: "vertical",
+                boxSizing: "border-box",
+              }}
+            />
+            {importError && (
+              <div
+                style={{
+                  fontSize: "0.82rem",
+                  color: "var(--danger)",
+                  padding: "10px 14px",
+                  background: "rgba(255,69,58,0.05)",
+                  border: "1px solid rgba(255,69,58,0.2)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                {importError}
+              </div>
+            )}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "12px",
+              }}
+            >
+              <button
+                type="button"
+                className="control-btn stop-btn"
+                onClick={() => setImportModalOpen(false)}
+                style={{
+                  padding: "0 16px",
+                  height: "36px",
+                  fontSize: "0.82rem",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="control-btn start-btn"
+                onClick={handleImportCompose}
+                style={{
+                  padding: "0 20px",
+                  height: "36px",
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
+                }}
+              >
+                <RocketIcon size={13} style={{ marginRight: 6 }} /> Load
+                Services
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* DOCKER COMPOSE GENERATION MODAL */}
       {composeModalOpen && (
         <div
