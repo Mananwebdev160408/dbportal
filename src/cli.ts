@@ -9,6 +9,7 @@ import { rateLimit } from "express-rate-limit";
 import open from "open";
 import { DatabaseManager } from "./index.js";
 import { DockerService, ContainerLaunchConfig } from "./docker-service.js";
+import { isReadOnlySqlQuery } from "./query-safety.js";
 
 dotenv.config();
 
@@ -133,26 +134,6 @@ const isSqlDriver = (kind: string): boolean => {
 
 const isMongoDriver = (kind: string): boolean =>
   kind.toLowerCase().includes("mongo");
-
-const isReadOnlySqlQuery = (query: string): boolean => {
-  const normalized = query
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/--.*$/gm, " ")
-    .trim()
-    .toLowerCase();
-
-  // Read-only entry points we allow in this app.
-  const startsReadOnly =
-    /^(select|with|show|describe|desc|explain|pragma)\b/.test(normalized);
-  if (!startsReadOnly) {
-    return false;
-  }
-
-  // Block known mutating/privileged statements even if hidden in CTEs.
-  const forbidden =
-    /\b(insert|update|delete|drop|truncate|alter|create|replace|merge|grant|revoke|commit|rollback|savepoint|attach|detach)\b/;
-  return !forbidden.test(normalized);
-};
 
 const hasMutatingMongoStages = (pipeline: unknown): boolean => {
   if (!Array.isArray(pipeline)) {
@@ -628,6 +609,62 @@ const main = async () => {
       response.status(200).json(schema);
     } catch (error) {
       response.status(500).json({ error: toMessage(error) });
+    }
+  });
+
+  app.get("/api/global-search", async (request, response) => {
+    const dbId = String(request.query.dbId || "primary");
+    const search = String(request.query.query || "").trim();
+
+    if (!search) {
+      response.status(400).json({
+        error: "Search query is required.",
+      });
+      return;
+    }
+
+    try {
+      const conn = manager.getConnection(dbId);
+
+      const tables = await conn.getTables();
+
+      const results: {
+        table: string;
+        count: number;
+        rows: Record<string, unknown>[];
+      }[] = [];
+
+      for (const table of tables) {
+        try {
+          const rows = await conn.getTableData(table, 100);
+
+          const matches = rows.filter((row) =>
+            Object.values(row).some((value) =>
+              String(value).toLowerCase().includes(search.toLowerCase()),
+            ),
+          );
+
+          if (matches.length > 0) {
+            results.push({
+              table,
+              count: matches.length,
+              rows: matches.slice(0, 10),
+            });
+          }
+        } catch {
+          // Ignore table-level failures
+        }
+      }
+
+      response.status(200).json({
+        query: search,
+        totalTables: results.length,
+        results,
+      });
+    } catch (error) {
+      response.status(500).json({
+        error: toMessage(error),
+      });
     }
   });
 

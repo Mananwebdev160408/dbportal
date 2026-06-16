@@ -198,7 +198,17 @@ export default function Sidebar({
                 onClick={() => onDbChange(conn.id)}
                 type="button"
               >
-                <div className="indicator" />
+                <div
+                  className="indicator"
+                  style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    backgroundColor:
+                      conn.isAlive === false ? "#ef4444" : "#22c55e",
+                    flexShrink: 0,
+                  }}
+                />
                 <div className="conn-info">
                   <span className="name">{conn.name}</span>
                   <span className="kind">{conn.kind.toUpperCase()}</span>
