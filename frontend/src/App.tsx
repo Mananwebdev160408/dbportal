@@ -1,22 +1,34 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense, lazy } from "react";
 import Sidebar from "./components/Sidebar";
 import Toolbar from "./components/Toolbar";
 import EmptyState from "./components/EmptyState";
 import SkeletonTableLoader from "./components/SkeletonTableLoader";
-import OverviewView from "./components/views/OverviewView";
-import CommonDashboardView from "./components/views/CommonDashboardView";
-import TableView from "./components/views/TableView";
-import DocumentsView from "./components/views/DocumentsView";
-import JsonView from "./components/views/JsonView";
-import InspectorView from "./components/views/InspectorView";
-import QueryWorkbench from "./components/views/QueryWorkbench";
-import SchemaView from "./components/views/SchemaView";
 import DockerSidebar, { DockerContainerInfo } from "./components/DockerSidebar";
-import DockerDashboardView from "./components/views/DockerDashboardView";
-import DockerRunnerView from "./components/views/DockerRunnerView";
-import DockerImagesView from "./components/views/DockerImagesView";
-import DockerVolumesView from "./components/views/DockerVolumesView";
 import { AlertTriangleIcon } from "./components/Icons";
+import ConnectionStringBuilderModal from "./components/ConnectionStringBuilderModal";
+const OverviewView = lazy(() => import("./components/views/OverviewView"));
+const CommonDashboardView = lazy(
+  () => import("./components/views/CommonDashboardView"),
+);
+const TableView = lazy(() => import("./components/views/TableView"));
+const DocumentsView = lazy(() => import("./components/views/DocumentsView"));
+const JsonView = lazy(() => import("./components/views/JsonView"));
+const InspectorView = lazy(() => import("./components/views/InspectorView"));
+const QueryWorkbench = lazy(() => import("./components/views/QueryWorkbench"));
+const SchemaView = lazy(() => import("./components/views/SchemaView"));
+
+const DockerDashboardView = lazy(
+  () => import("./components/views/DockerDashboardView"),
+);
+const DockerRunnerView = lazy(
+  () => import("./components/views/DockerRunnerView"),
+);
+const DockerImagesView = lazy(
+  () => import("./components/views/DockerImagesView"),
+);
+const DockerVolumesView = lazy(
+  () => import("./components/views/DockerVolumesView"),
+);
 
 export type ViewMode = "table" | "documents" | "json" | "inspector";
 export type AppMode =
@@ -48,6 +60,7 @@ export interface DatabaseConnectionInfo {
   id: string;
   name: string;
   kind: string;
+  isAlive?: boolean;
 }
 
 export interface MultiDatabaseOverview {
@@ -97,6 +110,38 @@ export default function App() {
   const [status, setStatus] = useState("Connecting...");
   const [statusError, setStatusError] = useState(false);
   const [search, setSearch] = useState("");
+  const [globalResults, setGlobalResults] = useState<any[]>([]);
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+
+  useEffect(() => {
+    const runGlobalSearch = async () => {
+      if (!search.trim()) {
+        setGlobalResults([]);
+        return;
+      }
+
+      try {
+        setGlobalSearchLoading(true);
+
+        const res = await fetch(
+          `/api/global-search?query=${encodeURIComponent(search)}`,
+        );
+
+        const text = await res.text();
+        const payload = text ? JSON.parse(text) : {};
+
+        if (res.ok) {
+          setGlobalResults(payload.results || []);
+        }
+      } catch (err) {
+        console.error("Global search failed:", err);
+      } finally {
+        setGlobalSearchLoading(false);
+      }
+    };
+
+    runGlobalSearch();
+  }, [search]);
   const [reloadKey, setReloadKey] = useState(0);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -107,6 +152,9 @@ export default function App() {
   const [pageSize, setPageSize] = useState(200);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [writeMode, setWriteMode] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [showConnectionStringBuilder, setShowConnectionStringBuilder] =
+    useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = localStorage.getItem("dbportal-sidebar-width");
     return stored ? parseInt(stored, 10) : 240;
@@ -212,7 +260,19 @@ export default function App() {
           throw new Error(connPayload.error || "Failed to list connections.");
 
         const list = connPayload.connections || [];
-        setConnections(list);
+
+        // Check health for each connection
+        const withHealth = await Promise.all(
+          list.map(async (conn: DatabaseConnectionInfo) => {
+            try {
+              const res = await fetch(`/api/health?dbId=${conn.id}`);
+              return { ...conn, isAlive: res.ok };
+            } catch {
+              return { ...conn, isAlive: false };
+            }
+          }),
+        );
+        setConnections(withHealth);
 
         // Use primary or first available
         const initialId =
@@ -267,7 +327,19 @@ export default function App() {
       throw err;
     }
   };
-
+  const checkConnectionHealth = useCallback(async () => {
+    const updated = await Promise.all(
+      connections.map(async (conn) => {
+        try {
+          const res = await fetch(`/api/health?dbId=${conn.id}`);
+          return { ...conn, isAlive: res.ok };
+        } catch {
+          return { ...conn, isAlive: false };
+        }
+      }),
+    );
+    setConnections(updated);
+  }, [connections]);
   const loadOverview = useCallback(async () => {
     setAppMode("overview");
     setLoading(true);
@@ -346,56 +418,83 @@ export default function App() {
       sField?: string,
       sOrder?: "asc" | "desc",
       currentFilters?: Record<string, string>,
-      targetPage?: number,
+      targetPage = 0,
+      mode: "replace" | "append" = "replace",
+      targetPageSize = pageSize,
     ) => {
       const dbToUse = targetDbId || activeDbId;
+      const shouldAppend = mode === "append";
+
       if (targetDbId && targetDbId !== activeDbId) {
         setActiveDbId(targetDbId);
         await loadDatabaseMetadata(targetDbId);
       }
 
-      const resolvedPage = targetPage ?? 0;
-
       setAppMode("table");
       setCurrentTable(name);
-      setData([]);
-      setLoading(true);
       setError("");
 
+      if (shouldAppend) {
+        setLoadingMore(true);
+      } else {
+        setData([]);
+        setLoading(true);
+      }
+
       try {
-        const offset = resolvedPage * pageSize;
-        let url = `/api/data/${encodeURIComponent(name)}?dbId=${dbToUse}&limit=${pageSize}&offset=${offset}`;
+        const offset = targetPage * targetPageSize;
+        let url = `/api/data/${encodeURIComponent(
+          name,
+        )}?dbId=${dbToUse}&limit=${targetPageSize}&offset=${offset}`;
+
         if (sField) {
-          url += `&sortBy=${encodeURIComponent(sField)}&sortOrder=${sOrder || "asc"}`;
+          url += `&sortBy=${encodeURIComponent(sField)}&sortOrder=${
+            sOrder || "asc"
+          }`;
         }
+
         if (currentFilters && Object.keys(currentFilters).length > 0) {
           url += `&filters=${encodeURIComponent(JSON.stringify(currentFilters))}`;
         }
 
         const res = await fetch(url);
         const payload = await res.json();
-        if (!res.ok)
+
+        if (!res.ok) {
           throw new Error(payload.error || "Failed to load table data.");
+        }
+
         const rows: Record<string, unknown>[] = payload.data || [];
-        setData(rows);
-        setPage(resolvedPage);
-        setHasNextPage(rows.length === pageSize);
-        const startRow = offset + 1;
-        const endRow = offset + rows.length;
+        const loadedCount = shouldAppend
+          ? data.length + rows.length
+          : rows.length;
+
+        setData((prev) => (shouldAppend ? [...prev, ...rows] : rows));
+        setPage(targetPage);
+        setHasNextPage(rows.length === targetPageSize);
+
         showStatus(
           rows.length > 0
-            ? `Page ${resolvedPage + 1} · Rows ${startRow}–${endRow}`
-            : "No records found",
+            ? `Loaded ${loadedCount} rows${
+                rows.length === targetPageSize ? " - scroll for more" : ""
+              }`
+            : shouldAppend
+              ? "No more records found"
+              : "No records found",
         );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         showStatus(msg, true);
         setError(msg);
       } finally {
-        setLoading(false);
+        if (shouldAppend) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
       }
     },
-    [activeDbId, pageSize],
+    [activeDbId, data.length, pageSize, showStatus],
   );
 
   const openQueryWorkspace = useCallback(
@@ -469,7 +568,17 @@ export default function App() {
     } else if (appMode === "overview") {
       loadOverview();
     } else if (currentTable) {
-      loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, 0);
+      setData([]);
+      setPage(0);
+      loadTable(
+        currentTable,
+        activeDbId,
+        sortBy,
+        sortOrder,
+        filters,
+        0,
+        "replace",
+      );
     } else if (appMode === "schema") {
       setSchemaReloadKey((k) => k + 1);
     }
@@ -478,10 +587,57 @@ export default function App() {
   const handleLimitChange = (newLimit: number) => {
     setPageSize(newLimit);
     setPage(0);
+    setData([]);
+
     if (appMode === "table" && currentTable) {
-      loadTable(currentTable, activeDbId, sortBy, sortOrder, filters, 0);
+      loadTable(
+        currentTable,
+        activeDbId,
+        sortBy,
+        sortOrder,
+        filters,
+        0,
+        "replace",
+        newLimit,
+      );
     }
   };
+
+  const loadMoreRows = useCallback(() => {
+    if (
+      loading ||
+      loadingMore ||
+      !hasNextPage ||
+      !currentTable ||
+      appMode !== "table"
+    ) {
+      return;
+    }
+
+    loadTable(
+      currentTable,
+      activeDbId,
+      sortBy,
+      sortOrder,
+      filters,
+      page + 1,
+      "append",
+      pageSize,
+    );
+  }, [
+    activeDbId,
+    appMode,
+    currentTable,
+    filters,
+    hasNextPage,
+    loadTable,
+    loading,
+    loadingMore,
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  ]);
 
   const filteredData =
     appMode === "table" && search.trim()
@@ -520,6 +676,14 @@ export default function App() {
           />
           <p className="error-msg">Failed to connect to the backend.</p>
           <p style={{ opacity: 0.6, fontSize: "0.85rem" }}>{error}</p>
+          <button
+            className="reload-btn"
+            style={{ marginTop: "16px" }}
+            onClick={() => setShowConnectionStringBuilder(true)}
+            type="button"
+          >
+            Open Connection Builder
+          </button>
         </EmptyState>
       );
     }
@@ -533,6 +697,7 @@ export default function App() {
           onQueryClick={openQueryWorkspace}
           onSchemaClick={openSchemaVisualizer}
           onTableClick={loadTable}
+          onOpenConnectionBuilder={() => setShowConnectionStringBuilder(true)}
         />
       );
     }
@@ -568,23 +733,39 @@ export default function App() {
         );
       return (
         <TableView
+          tableName={currentTable}
           rows={data}
           maskSensitive={maskSensitive}
           sortBy={sortBy}
           sortOrder={sortOrder}
           filters={filters}
-          page={page}
-          pageSize={pageSize}
           hasNextPage={hasNextPage}
+          isLoadingMore={loadingMore}
+          onLoadMore={loadMoreRows}
           onSort={(field) => {
             const nextOrder =
               sortBy === field && sortOrder === "asc" ? "desc" : "asc";
+
             setSortBy(field);
             setSortOrder(nextOrder);
-            loadTable(currentTable, activeDbId, field, nextOrder, filters, 0);
+            setPage(0);
+            setData([]);
+
+            loadTable(
+              currentTable,
+              activeDbId,
+              field,
+              nextOrder,
+              filters,
+              0,
+              "replace",
+            );
           }}
           onFilterChange={(newFilters) => {
             setFilters(newFilters);
+            setPage(0);
+            setData([]);
+
             loadTable(
               currentTable,
               activeDbId,
@@ -592,16 +773,7 @@ export default function App() {
               sortOrder,
               newFilters,
               0,
-            );
-          }}
-          onPageChange={(newPage) => {
-            loadTable(
-              currentTable,
-              activeDbId,
-              sortBy,
-              sortOrder,
-              filters,
-              newPage,
+              "replace",
             );
           }}
         />
@@ -677,7 +849,7 @@ export default function App() {
             mode={mode}
             viewMode={viewMode}
             search=""
-            searchDisabled={true}
+            searchDisabled={false}
             reloadDisabled={loading}
             viewDisabled={true}
             status={status}
@@ -694,54 +866,63 @@ export default function App() {
             isDocker={true}
           />
           <div className="data-container">
-            {loading ? (
-              <EmptyState>
-                <div className="loading-pulse" />
-                <p>Connecting to Docker...</p>
-              </EmptyState>
-            ) : selectedContainerId === "__runner__" ? (
-              <DockerRunnerView
-                onRefreshSidebar={() => {
-                  fetch("/api/docker/containers")
-                    .then((res) => res.json())
-                    .then((data) => {
-                      setContainersList(data.containers || []);
-                    });
-                }}
-                onStatusChange={showStatus}
-              />
-            ) : selectedContainerId === "__images__" ? (
-              <DockerImagesView onStatusChange={showStatus} />
-            ) : selectedContainerId === "__volumes__" ? (
-              <DockerVolumesView onStatusChange={showStatus} />
-            ) : (
-              <DockerDashboardView
-                key={dockerRefreshKey}
-                containerId={selectedContainerId}
-                containers={containers}
-                onStatusChange={showStatus}
-                onRefresh={() => {
-                  fetch("/api/docker/containers")
-                    .then((res) => res.json())
-                    .then((data) => {
-                      setContainersList(data.containers || []);
-                    });
-                }}
-                onDeleted={() => {
-                  fetch("/api/docker/containers")
-                    .then((res) => res.json())
-                    .then((data) => {
-                      const list = data.containers || [];
-                      setContainersList(list);
-                      if (list.length > 0) {
-                        setSelectedContainerId(list[0].id);
-                      } else {
-                        setSelectedContainerId("");
-                      }
-                    });
-                }}
-              />
-            )}
+            <Suspense
+              fallback={
+                <EmptyState>
+                  <div className="loading-pulse" />
+                  <p>Loading Docker view...</p>
+                </EmptyState>
+              }
+            >
+              {loading ? (
+                <EmptyState>
+                  <div className="loading-pulse" />
+                  <p>Connecting to Docker...</p>
+                </EmptyState>
+              ) : selectedContainerId === "__runner__" ? (
+                <DockerRunnerView
+                  onRefreshSidebar={() => {
+                    fetch("/api/docker/containers")
+                      .then((res) => res.json())
+                      .then((data) => {
+                        setContainersList(data.containers || []);
+                      });
+                  }}
+                  onStatusChange={showStatus}
+                />
+              ) : selectedContainerId === "__images__" ? (
+                <DockerImagesView onStatusChange={showStatus} />
+              ) : selectedContainerId === "__volumes__" ? (
+                <DockerVolumesView onStatusChange={showStatus} />
+              ) : (
+                <DockerDashboardView
+                  key={dockerRefreshKey}
+                  containerId={selectedContainerId}
+                  containers={containers}
+                  onStatusChange={showStatus}
+                  onRefresh={() => {
+                    fetch("/api/docker/containers")
+                      .then((res) => res.json())
+                      .then((data) => {
+                        setContainersList(data.containers || []);
+                      });
+                  }}
+                  onDeleted={() => {
+                    fetch("/api/docker/containers")
+                      .then((res) => res.json())
+                      .then((data) => {
+                        const list = data.containers || [];
+                        setContainersList(list);
+                        if (list.length > 0) {
+                          setSelectedContainerId(list[0].id);
+                        } else {
+                          setSelectedContainerId("");
+                        }
+                      });
+                  }}
+                />
+              )}
+            </Suspense>
           </div>
         </main>
       </div>
@@ -775,6 +956,7 @@ export default function App() {
         onQueryClick={openQueryWorkspace}
         onSchemaClick={openSchemaVisualizer}
         onDbChange={switchDatabase}
+        onOpenConnectionBuilder={() => setShowConnectionStringBuilder(true)}
       />
       <div className="sidebar-resizer" onMouseDown={handleSidebarMouseDown} />
       <main className="main-area">
@@ -820,7 +1002,7 @@ export default function App() {
           mode={mode}
           viewMode={viewMode}
           search={search}
-          searchDisabled={appMode !== "table"}
+          searchDisabled={false}
           reloadDisabled={loading || appMode === "query"}
           viewDisabled={appMode !== "table"}
           status={status}
@@ -834,9 +1016,80 @@ export default function App() {
           onMaskToggle={() => setMaskSensitive((v) => !v)}
           rowLimit={pageSize}
           onLimitChange={handleLimitChange}
+          data={filteredData}
+          currentTable={currentTable}
         />
-        <div className="data-container">{renderContent()}</div>
+        <div className="data-container">
+          {search.trim() && (
+            <div
+              style={{
+                padding: "12px",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              <h3>Global Search Results</h3>
+
+              {globalSearchLoading ? (
+                <p>Searching...</p>
+              ) : globalResults.length === 0 ? (
+                <p>No matches found.</p>
+              ) : (
+                globalResults.map((result) => (
+                  <div
+                    key={result.table}
+                    onClick={() => loadTable(result.table)}
+                    style={{
+                      marginBottom: "12px",
+                      padding: "8px",
+                      border: "1px solid var(--border)",
+                      borderRadius: "6px",
+                    }}
+                  >
+                    <strong>{result.table}</strong>
+                    <p>{result.count} matches</p>
+
+                    {result.rows?.map((row: any, idx: number) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: "8px",
+                          marginTop: "6px",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          background: "rgba(255,255,255,0.02)",
+                          fontSize: "12px",
+                        }}
+                      >
+                        {Object.entries(row).map(([key, value]) => (
+                          <div key={key}>
+                            <strong>{key}:</strong> {String(value)}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          <Suspense
+            fallback={
+              <EmptyState>
+                <div className="loading-pulse" />
+                <p>Loading view...</p>
+              </EmptyState>
+            }
+          >
+            {renderContent()}
+          </Suspense>
+        </div>
       </main>
+      {showConnectionStringBuilder && (
+        <ConnectionStringBuilderModal
+          onClose={() => setShowConnectionStringBuilder(false)}
+        />
+      )}
     </div>
   );
 }
