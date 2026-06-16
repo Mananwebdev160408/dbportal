@@ -4,6 +4,7 @@ import type {
   DatabaseConnectionInfo,
   DriverCapabilities,
 } from "../App";
+import { StarIcon } from "./Icons";
 
 interface TableWithCount {
   name: string;
@@ -24,6 +25,8 @@ interface SidebarProps {
   onSchemaClick: () => void;
   onTableClick: (name: string) => void;
   onDbChange: (id: string) => void;
+  pinnedTables: string[];
+  onTogglePin: (name: string) => void;
   onOpenConnectionBuilder: () => void;
 }
 
@@ -140,12 +143,26 @@ export default function Sidebar({
   onTableClick,
   onDbChange,
   tableCounts = {},
+  pinnedTables = [],
+  onTogglePin,
   onOpenConnectionBuilder,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredTables = tables.filter((t) =>
     t.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const currentDbPinned = tables.filter((t) =>
+    pinnedTables.includes(`${activeDbId}:${t}`),
+  );
+
+  const filteredPinned = currentDbPinned.filter((t) =>
+    t.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const currentDbUnpinned = filteredTables.filter(
+    (t) => !pinnedTables.includes(`${activeDbId}:${t}`),
   );
 
   return (
@@ -299,42 +316,180 @@ export default function Sidebar({
             <span className="count-badge">{tables.length}</span>
           </div>
 
+          {filteredPinned.length > 0 && (
+            <>
+              <div
+                className="section-label-row pinned-label-row"
+                style={{ marginTop: "12px", marginBottom: "6px" }}
+              >
+                <span
+                  className="section-label"
+                  style={{
+                    fontSize: "10px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    opacity: 0.8,
+                    paddingLeft: 0,
+                    borderLeft: "none",
+                  }}
+                >
+                  📌 Pinned Tables
+                </span>
+                <span className="count-badge">{filteredPinned.length}</span>
+              </div>
+              <div
+                className="pinned-table-list"
+                style={{ display: "grid", gap: "2px", marginBottom: "12px" }}
+              >
+                {filteredPinned.map((name) => (
+                  <div
+                    key={`pinned-${name}`}
+                    className={`table-item${activeTable === name && appMode === "table" ? " active" : ""}`}
+                    onClick={() => onTableClick(name)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        onTableClick(name);
+                      }
+                    }}
+                    title={name}
+                    style={{
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <TableIcon />
+                    <span style={{ marginRight: "auto" }}>{name}</span>
+
+                    {tableCounts[name] !== undefined && (
+                      <span
+                        style={{
+                          marginLeft: "8px",
+                          marginRight: "6px",
+                          fontSize: "0.7rem",
+                          fontWeight: 600,
+                          background: "var(--accent, #6366f1)",
+                          color: "#fff",
+                          borderRadius: "999px",
+                          padding: "1px 7px",
+                          minWidth: "20px",
+                          textAlign: "center",
+                          opacity: 0.85,
+                        }}
+                      >
+                        {tableCounts[name] > 9999 ? "9999+" : tableCounts[name]}
+                      </span>
+                    )}
+
+                    <button
+                      className="pin-btn pinned"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTogglePin(name);
+                      }}
+                      type="button"
+                      aria-label="Unpin table"
+                    >
+                      <StarIcon filled={true} size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div
+                className="section-divider"
+                style={{ margin: "8px 0 12px" }}
+              />
+            </>
+          )}
+
+          {filteredPinned.length > 0 && currentDbUnpinned.length > 0 && (
+            <div
+              className="section-label-row"
+              style={{ marginTop: "4px", marginBottom: "6px" }}
+            >
+              <span
+                className="section-label"
+                style={{
+                  fontSize: "10px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  opacity: 0.8,
+                  paddingLeft: 0,
+                  borderLeft: "none",
+                }}
+              >
+                Tables
+              </span>
+              <span className="count-badge">{currentDbUnpinned.length}</span>
+            </div>
+          )}
+
           <div className="table-list">
-            {filteredTables.length === 0 && (
+            {currentDbUnpinned.length === 0 && (
               <div className="list-empty-state">
                 {searchQuery ? "No matches" : "No tables detected"}
               </div>
             )}
-            {filteredTables.map((name) => (
-              <button
-                key={name}
-                className={`table-item${activeTable === name && appMode === "table" ? " active" : ""}`}
-                onClick={() => onTableClick(name)}
-                type="button"
-                title={name}
-              >
-                <TableIcon />
-                <span>{name}</span>
-                {tableCounts[name] !== undefined && (
-                  <span
-                    style={{
-                      marginLeft: "auto",
-                      fontSize: "0.7rem",
-                      fontWeight: 600,
-                      background: "var(--accent, #6366f1)",
-                      color: "#fff",
-                      borderRadius: "999px",
-                      padding: "1px 7px",
-                      minWidth: "20px",
-                      textAlign: "center",
-                      opacity: 0.85,
+            {currentDbUnpinned.map((name) => {
+              const isPinned = pinnedTables.includes(`${activeDbId}:${name}`);
+              return (
+                <div
+                  key={name}
+                  className={`table-item${activeTable === name && appMode === "table" ? " active" : ""}`}
+                  onClick={() => onTableClick(name)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      onTableClick(name);
+                    }
+                  }}
+                  title={name}
+                  style={{
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <TableIcon />
+                  <span style={{ marginRight: "auto" }}>{name}</span>
+
+                  {tableCounts[name] !== undefined && (
+                    <span
+                      style={{
+                        marginLeft: "8px",
+                        marginRight: "6px",
+                        fontSize: "0.7rem",
+                        fontWeight: 600,
+                        background: "var(--accent, #6366f1)",
+                        color: "#fff",
+                        borderRadius: "999px",
+                        padding: "1px 7px",
+                        minWidth: "20px",
+                        textAlign: "center",
+                        opacity: 0.85,
+                      }}
+                    >
+                      {tableCounts[name] > 9999 ? "9999+" : tableCounts[name]}
+                    </span>
+                  )}
+
+                  <button
+                    className={`pin-btn${isPinned ? " pinned" : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTogglePin(name);
                     }}
+                    type="button"
+                    aria-label={isPinned ? "Unpin table" : "Pin table"}
                   >
-                    {tableCounts[name] > 9999 ? "9999+" : tableCounts[name]}
-                  </span>
-                )}
-              </button>
-            ))}
+                    <StarIcon filled={isPinned} size={13} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
