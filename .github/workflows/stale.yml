@@ -7,7 +7,7 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v9
+      - uses: actions/stale@v10
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           stale-issue-message: 'Hey there! This issue has been inactive for 7 days. Are you still working on this? If not, please let us know so we can re-assign it to another contributor. If there is no activity in the next 3 days, it will be marked as stale.'
