@@ -581,7 +581,6 @@ select {
 
 .data-table th {
   position: sticky;
-  top: 0;
   background: var(--surface);
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -593,8 +592,18 @@ select {
   padding: 12px 20px;
   border-bottom: 1px solid var(--line-strong);
   border-right: 1px solid var(--line);
-  z-index: 10;
   white-space: nowrap;
+  line-height: 14px;
+}
+
+.data-table thead tr:first-child th {
+  top: 0;
+  z-index: 12;
+}
+
+.data-table thead tr.filter-row th {
+  top: 39px;
+  z-index: 11;
 }
 
 .data-table td {

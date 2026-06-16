@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import net from "node:net";
 import dotenv from "dotenv";
 import express from "express";
-import { rateLimit } from "express-rate-limit";
+// Rate limiting import removed
 import open from "open";
 import { DatabaseManager } from "./index.js";
 import { DockerService, ContainerLaunchConfig } from "./docker-service.js";
@@ -273,14 +273,7 @@ const main = async () => {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
 
-  const limiter = rateLimit({
-    windowMs: 60 * 1000,
-    limit: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many requests, please try again later." },
-  });
-  app.use("/api", limiter);
+  // Rate limiting disabled
 
   // Serve the built React app
   app.use(express.static(frontendDist));
@@ -784,8 +777,16 @@ const main = async () => {
     }
   });
 
-  // SPA fallback — serve index.html for any unmatched route
+  // SPA fallback — serve index.html for any unmatched route, except for API and static assets
   app.use((request, response) => {
+    if (
+      request.path.startsWith("/api/") ||
+      request.path.startsWith("/assets/") ||
+      path.extname(request.path)
+    ) {
+      response.status(404).json({ error: "Not found" });
+      return;
+    }
     response.sendFile(path.join(frontendDist, "index.html"));
   });
 
