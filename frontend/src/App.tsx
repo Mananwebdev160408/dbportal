@@ -117,13 +117,14 @@ export default function App() {
   const [globalResults, setGlobalResults] = useState<any[]>([]);
   const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
 
+  // FIX 1: Added 300ms debounce to prevent API call on every keystroke
   useEffect(() => {
-    const runGlobalSearch = async () => {
-      if (!search.trim()) {
-        setGlobalResults([]);
-        return;
-      }
+    if (!search.trim()) {
+      setGlobalResults([]);
+      return;
+    }
 
+    const timer = setTimeout(async () => {
       try {
         setGlobalSearchLoading(true);
 
@@ -142,10 +143,11 @@ export default function App() {
       } finally {
         setGlobalSearchLoading(false);
       }
-    };
+    }, 300);
 
-    runGlobalSearch();
+    return () => clearTimeout(timer);
   }, [search]);
+
   const [reloadKey, setReloadKey] = useState(0);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -159,9 +161,15 @@ export default function App() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [showConnectionStringBuilder, setShowConnectionStringBuilder] =
     useState(false);
+
+  // FIX 2: Validate and clamp sidebar width loaded from localStorage
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = localStorage.getItem("dbportal-sidebar-width");
-    return stored ? parseInt(stored, 10) : 240;
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!isNaN(parsed)) return Math.max(180, Math.min(480, parsed));
+    }
+    return 240;
   });
 
   const handleSidebarMouseDown = useCallback(
@@ -345,6 +353,7 @@ export default function App() {
       throw err;
     }
   };
+
   const checkConnectionHealth = useCallback(async () => {
     const updated = await Promise.all(
       connections.map(async (conn) => {
@@ -358,6 +367,7 @@ export default function App() {
     );
     setConnections(updated);
   }, [connections]);
+
   const loadOverview = useCallback(async () => {
     setAppMode("overview");
     setLoading(true);
@@ -405,7 +415,6 @@ export default function App() {
     setLoading(true);
     try {
       await loadDatabaseMetadata(dbId);
-      // Preserve query/schema mode; only reset to overview when leaving a specific table
       setAppMode((prev) => (prev === "table" ? "overview" : prev));
       showStatus(`Switched to ${dbId}`);
     } catch (err: unknown) {
@@ -980,8 +989,11 @@ export default function App() {
       />
       <div className="sidebar-resizer" onMouseDown={handleSidebarMouseDown} />
       <main className="main-area">
+        {/* FIX 3: Added role="alert" and aria-live so screen readers announce write mode */}
         {writeMode && (
           <div
+            role="alert"
+            aria-live="assertive"
             style={{
               background: "#7c2d12",
               color: "#fef3c7",
@@ -999,6 +1011,7 @@ export default function App() {
             allowed. Use with caution.
           </div>
         )}
+
         <Toolbar
           title={
             appMode === "common"
@@ -1053,14 +1066,23 @@ export default function App() {
                 <p>No matches found.</p>
               ) : (
                 globalResults.map((result) => (
+                  // FIX 4: Added role, tabIndex, onKeyDown for keyboard accessibility
                   <div
                     key={result.table}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => loadTable(result.table)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        loadTable(result.table);
+                      }
+                    }}
                     style={{
                       marginBottom: "12px",
                       padding: "8px",
                       border: "1px solid var(--border)",
                       borderRadius: "6px",
+                      cursor: "pointer",
                     }}
                   >
                     <strong>{result.table}</strong>
