@@ -311,6 +311,7 @@ export default function Toolbar({
               aria-haspopup="listbox"
               aria-expanded={isViewOpen}
               disabled={viewDisabled}
+              aria-label="Switch view mode"
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div
@@ -360,6 +361,7 @@ export default function Toolbar({
             aria-haspopup="listbox"
             aria-expanded={isThemeOpen}
             style={{ minWidth: 160 }}
+            aria-label="Change theme"
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div

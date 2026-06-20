@@ -161,7 +161,8 @@ export default function App() {
     useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = localStorage.getItem("dbportal-sidebar-width");
-    return stored ? parseInt(stored, 10) : 240;
+    const parsed = stored ? parseInt(stored, 10) : 240;
+    return isNaN(parsed) ? 240 : Math.max(180, Math.min(480, parsed));
   });
 
   const handleSidebarMouseDown = useCallback(
@@ -318,6 +319,9 @@ export default function App() {
       }
     };
     init();
+
+    const healthInterval = setInterval(checkConnectionHealth, 30000);
+    return () => clearInterval(healthInterval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -982,6 +986,7 @@ export default function App() {
       <main className="main-area">
         {writeMode && (
           <div
+            role="alert"
             style={{
               background: "#7c2d12",
               color: "#fef3c7",
@@ -1055,12 +1060,21 @@ export default function App() {
                 globalResults.map((result) => (
                   <div
                     key={result.table}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => loadTable(result.table)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        loadTable(result.table);
+                      }
+                    }}
                     style={{
                       marginBottom: "12px",
                       padding: "8px",
                       border: "1px solid var(--border)",
                       borderRadius: "6px",
+                      cursor: "pointer",
                     }}
                   >
                     <strong>{result.table}</strong>
