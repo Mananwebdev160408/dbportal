@@ -118,15 +118,16 @@ export default function App() {
   const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
 
   useEffect(() => {
-    const runGlobalSearch = async () => {
-      if (!search.trim()) {
-        setGlobalResults([]);
-        return;
-      }
+    if (!search.trim()) {
+      setGlobalResults([]);
+      setGlobalSearchLoading(false);
+      return;
+    }
 
+    setGlobalSearchLoading(true);
+
+    const timerId = setTimeout(async () => {
       try {
-        setGlobalSearchLoading(true);
-
         const res = await fetch(
           `/api/global-search?query=${encodeURIComponent(search)}`,
         );
@@ -142,9 +143,9 @@ export default function App() {
       } finally {
         setGlobalSearchLoading(false);
       }
-    };
+    }, 300);
 
-    runGlobalSearch();
+    return () => clearTimeout(timerId);
   }, [search]);
   const [reloadKey, setReloadKey] = useState(0);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
