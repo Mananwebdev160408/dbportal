@@ -1080,12 +1080,22 @@ export default function App() {
                 globalResults.map((result) => (
                   <div
                     key={result.table}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => loadTable(result.table)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        loadTable(result.table);
+                      }
+                    }}
+                    aria-label={`Open table ${result.table} — ${result.count} matches`}
                     style={{
                       marginBottom: "12px",
                       padding: "8px",
                       border: "1px solid var(--border)",
                       borderRadius: "6px",
+                      cursor: "pointer",
                     }}
                   >
                     <strong>{result.table}</strong>
