@@ -1007,6 +1007,9 @@ export default function App() {
       <main className="main-area">
         {writeMode && (
           <div
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
             style={{
               background: "#7c2d12",
               color: "#fef3c7",
@@ -1019,7 +1022,11 @@ export default function App() {
               borderBottom: "1px solid #b45309",
             }}
           >
-            <AlertTriangleIcon size={15} style={{ color: "#fbbf24" }} />
+            <AlertTriangleIcon
+              size={15}
+              style={{ color: "#fbbf24" }}
+              aria-hidden="true"
+            />
             ⚠️ Write mode enabled — INSERT, UPDATE, and DELETE operations are
             allowed. Use with caution.
           </div>
