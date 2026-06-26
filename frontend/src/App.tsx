@@ -358,6 +358,31 @@ export default function App() {
     );
     setConnections(updated);
   }, [connections]);
+
+  // Poll health every 30 s so sidebar dots stay accurate after initial load.
+  // The effect re-runs whenever `connections` changes (i.e. after the first
+  // health check populates the list), so the interval always closes over the
+  // latest snapshot — no stale-closure issues.
+  useEffect(() => {
+    if (isDockerMode || connections.length === 0) return;
+
+    const intervalId = setInterval(async () => {
+      const updated = await Promise.all(
+        connections.map(async (conn) => {
+          try {
+            const res = await fetch(`/api/health?dbId=${conn.id}`);
+            return { ...conn, isAlive: res.ok };
+          } catch {
+            return { ...conn, isAlive: false };
+          }
+        }),
+      );
+      setConnections(updated);
+    }, 30_000);
+
+    return () => clearInterval(intervalId);
+  }, [connections, isDockerMode]);
+
   const loadOverview = useCallback(async () => {
     setAppMode("overview");
     setLoading(true);
