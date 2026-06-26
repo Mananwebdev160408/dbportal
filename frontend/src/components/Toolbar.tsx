@@ -310,10 +310,12 @@ export default function Toolbar({
               type="button"
               aria-haspopup="listbox"
               aria-expanded={isViewOpen}
+              aria-label={`View mode: ${ViewLabels[viewMode]}. Click to change`}
               disabled={viewDisabled}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div
+                  aria-hidden="true"
                   style={{
                     width: 16,
                     height: 16,
@@ -326,7 +328,9 @@ export default function Toolbar({
                 </div>
                 <span>{ViewLabels[viewMode]}</span>
               </div>
-              <ChevronIcon />
+              <span aria-hidden="true">
+                <ChevronIcon />
+              </span>
             </button>
 
             {isViewOpen && (
@@ -340,7 +344,7 @@ export default function Toolbar({
                     role="option"
                     aria-selected={viewMode === v}
                   >
-                    {ViewIcons[v]}
+                    <span aria-hidden="true">{ViewIcons[v]}</span>
                     <span>{ViewLabels[v]}</span>
                   </button>
                 ))}
@@ -359,10 +363,12 @@ export default function Toolbar({
             type="button"
             aria-haspopup="listbox"
             aria-expanded={isThemeOpen}
+            aria-label={`Theme: ${ThemeLabels[theme]}. Click to change`}
             style={{ minWidth: 160 }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div
+                aria-hidden="true"
                 style={{
                   width: 8,
                   height: 8,
@@ -380,7 +386,9 @@ export default function Toolbar({
                 {ThemeLabels[theme].toUpperCase()}
               </span>
             </div>
-            <ChevronIcon />
+            <span aria-hidden="true">
+              <ChevronIcon />
+            </span>
           </button>
 
           {isThemeOpen && (
@@ -395,6 +403,7 @@ export default function Toolbar({
                   aria-selected={theme === t}
                 >
                   <div
+                    aria-hidden="true"
                     style={{
                       width: 8,
                       height: 8,
