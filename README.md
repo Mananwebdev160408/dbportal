@@ -285,11 +285,9 @@ npm run db:docker
 
 ### Develop from this repository
 
+First, install the dependencies:
 ```bash
 npm install
-npm run dev
-npm run dev:ui
-npm run build
 ```
 
 ---
