@@ -14,12 +14,12 @@ jobs:
       contents: read
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Required to scan full commit history
 
       - name: GitGuardian Scan
-        uses: GitGuardian/ggshield-action@v1.51.0 # Pinning a stable version of ggshield-action
+        uses: GitGuardian/ggshield-action@v1.52.2 # Pinning a stable version of ggshield-action
         env:
           GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
           GITHUB_PUSH_BASE_SHA: ${{ github.event.base }}
