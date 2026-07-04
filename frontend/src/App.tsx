@@ -358,6 +358,31 @@ export default function App() {
     );
     setConnections(updated);
   }, [connections]);
+
+  // Poll health every 30 s so sidebar dots stay accurate after initial load.
+  // The effect re-runs whenever `connections` changes (i.e. after the first
+  // health check populates the list), so the interval always closes over the
+  // latest snapshot — no stale-closure issues.
+  useEffect(() => {
+    if (isDockerMode || connections.length === 0) return;
+
+    const intervalId = setInterval(async () => {
+      const updated = await Promise.all(
+        connections.map(async (conn) => {
+          try {
+            const res = await fetch(`/api/health?dbId=${conn.id}`);
+            return { ...conn, isAlive: res.ok };
+          } catch {
+            return { ...conn, isAlive: false };
+          }
+        }),
+      );
+      setConnections(updated);
+    }, 30_000);
+
+    return () => clearInterval(intervalId);
+  }, [connections, isDockerMode]);
+
   const loadOverview = useCallback(async () => {
     setAppMode("overview");
     setLoading(true);
@@ -982,6 +1007,9 @@ export default function App() {
       <main className="main-area">
         {writeMode && (
           <div
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
             style={{
               background: "#7c2d12",
               color: "#fef3c7",
@@ -994,7 +1022,11 @@ export default function App() {
               borderBottom: "1px solid #b45309",
             }}
           >
-            <AlertTriangleIcon size={15} style={{ color: "#fbbf24" }} />
+            <AlertTriangleIcon
+              size={15}
+              style={{ color: "#fbbf24" }}
+              aria-hidden="true"
+            />
             ⚠️ Write mode enabled — INSERT, UPDATE, and DELETE operations are
             allowed. Use with caution.
           </div>
@@ -1055,12 +1087,22 @@ export default function App() {
                 globalResults.map((result) => (
                   <div
                     key={result.table}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => loadTable(result.table)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        loadTable(result.table);
+                      }
+                    }}
+                    aria-label={`Open table ${result.table} — ${result.count} matches`}
                     style={{
                       marginBottom: "12px",
                       padding: "8px",
                       border: "1px solid var(--border)",
                       borderRadius: "6px",
+                      cursor: "pointer",
                     }}
                   >
                     <strong>{result.table}</strong>
