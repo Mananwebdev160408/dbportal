@@ -431,7 +431,6 @@ export default function TableView({
                     cursor: "pointer",
                     width: `${getColWidth(col)}px`,
                     minWidth: `${MIN_COL_WIDTH}px`,
-                    position: "relative",
                     userSelect: "none",
                   }}
                 >
