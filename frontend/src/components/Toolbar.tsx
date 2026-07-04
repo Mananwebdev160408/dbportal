@@ -312,6 +312,7 @@ export default function Toolbar({
               aria-expanded={isViewOpen}
               aria-label={`View mode: ${ViewLabels[viewMode]}. Click to change`}
               disabled={viewDisabled}
+              aria-label="Toggle view mode"
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div
@@ -365,6 +366,7 @@ export default function Toolbar({
             aria-expanded={isThemeOpen}
             aria-label={`Theme: ${ThemeLabels[theme]}. Click to change`}
             style={{ minWidth: 160 }}
+            aria-label="Toggle theme switcher"
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div
