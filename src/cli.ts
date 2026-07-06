@@ -10,6 +10,10 @@ import open from "open";
 import { DatabaseManager } from "./index.js";
 import { DockerService, ContainerLaunchConfig } from "./docker-service.js";
 import { isReadOnlySqlQuery } from "./query-safety.js";
+import {
+  registerConnectionStringForRedaction,
+  sanitizeErrorMessage,
+} from "./error-sanitizer.js";
 
 dotenv.config();
 
@@ -27,12 +31,14 @@ interface CliOptions {
   write: boolean;
 }
 
+// Some database drivers echo the raw connection string, or a fragment of
+// it, inside their error messages (e.g. when a password contains an
+// unescaped "@" and URL parsing fails). Every error surfaced to a console
+// log or an API response goes through toMessage(), so credentials are
+// scrubbed here rather than at each individual call site.
 const toMessage = (error: unknown): string => {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Unknown error";
+  const message = error instanceof Error ? error.message : "Unknown error";
+  return sanitizeErrorMessage(message);
 };
 
 const parseLimit = (value: unknown): number => {
@@ -253,6 +259,10 @@ const main = async () => {
       process.exitCode = 1;
       return;
     }
+  }
+
+  for (const item of urls) {
+    registerConnectionStringForRedaction(item.url);
   }
 
   const manager = new DatabaseManager();
@@ -680,8 +690,7 @@ const main = async () => {
       ? String(request.query.sortBy)
       : undefined;
     const sortOrder = (request.query.sortOrder === "desc" ? "desc" : "asc") as
-      | "asc"
-      | "desc";
+      "asc" | "desc";
 
     let filters: Record<string, string> = {};
     if (request.query.filters) {
