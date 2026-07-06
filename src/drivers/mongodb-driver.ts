@@ -19,6 +19,7 @@ type MongoDatabase = {
       };
     };
   };
+  command: (command: Record<string, unknown>) => Promise<unknown>;
 };
 
 type MongoClientLike = {
@@ -176,6 +177,11 @@ export class MongoDriver implements DatabaseDriver {
     await this.client.close();
     this.client = null;
     this.database = null;
+  }
+
+  async ping(): Promise<void> {
+    const db = await this.getDatabase();
+    await db.command({ ping: 1 });
   }
 
   private resolveDatabaseName(urlString: string): string {
