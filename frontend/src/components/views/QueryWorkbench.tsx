@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import EmptyState from "../EmptyState";
 import VisualQueryBuilder from "./VisualQueryBuilder";
+import SqlQueryBuilder from "./SqlQueryBuilder";
 import TableView from "./TableView";
 import JsonView from "./JsonView";
 import type { DriverCapabilities } from "../../App";
@@ -186,6 +187,15 @@ export default function QueryWorkbench({
       ),
     );
   };
+  const [showSqlBuilder, setShowSqlBuilder] = useState(() => {
+    return localStorage.getItem("dbportal-sql-builder-visible") === "true";
+  });
+  useEffect(() => {
+    localStorage.setItem(
+      "dbportal-sql-builder-visible",
+      String(showSqlBuilder),
+    );
+  }, [showSqlBuilder]);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [panelWidth, setPanelWidth] = useState(() => {
@@ -969,6 +979,41 @@ export default function QueryWorkbench({
               </div>
             </div>
           </>
+        )}
+
+        {supportsRaw && (
+          <div className="query-group">
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label>Query Builder</label>
+              <button
+                type="button"
+                className="query-example-btn"
+                onClick={() => setShowSqlBuilder((prev) => !prev)}
+              >
+                {showSqlBuilder ? "Hide Builder" : "Show Builder"}
+              </button>
+            </div>
+            {showSqlBuilder && (
+              <SqlQueryBuilder
+                dbId={dbId}
+                dbType={dbType}
+                tables={tables}
+                onApply={(sql) => {
+                  setRawQuery(sql);
+                  onStatus(
+                    "Query inserted into editor — click Run Query to execute.",
+                    false,
+                  );
+                }}
+              />
+            )}
+          </div>
         )}
 
         {supportsRaw && (
