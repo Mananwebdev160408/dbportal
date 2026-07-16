@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import EmptyState from "../EmptyState";
 import VisualQueryBuilder from "./VisualQueryBuilder";
 import SqlQueryBuilder from "./SqlQueryBuilder";
@@ -41,6 +47,8 @@ interface QueryHistoryEntry {
 
 const HISTORY_KEY_PREFIX = "dbportal-query-history";
 const BOOKMARK_KEY_PREFIX = "dbportal-query-bookmarks";
+const FAVORITE_KEY_PREFIX = "dbportal-query-favorites";
+const UNGROUPED_FOLDER = "Ungrouped";
 
 interface BookmarkEntry {
   id: string;
@@ -49,6 +57,60 @@ interface BookmarkEntry {
   payload: string;
   createdAt: number;
 }
+
+interface FavoriteEntry {
+  id: string;
+  name: string;
+  connectionId: string;
+  folder: string;
+  tags: string[];
+  mode: "raw" | "structured";
+  payload: string;
+  createdAt: number;
+}
+
+const loadFavorites = (
+  favoriteKey: string,
+  legacyBookmarkKey: string,
+  connectionId: string,
+): FavoriteEntry[] => {
+  try {
+    const raw = localStorage.getItem(favoriteKey);
+    if (raw) {
+      const parsed = JSON.parse(raw) as FavoriteEntry[];
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch {
+    // fall through to migration below
+  }
+
+  // Migrate legacy flat bookmarks (no folders/tags) the first time this
+  // connection is opened after the favorites feature shipped, so existing
+  // saved queries aren't silently lost.
+  try {
+    const legacyRaw = localStorage.getItem(legacyBookmarkKey);
+    const legacyEntries = legacyRaw
+      ? (JSON.parse(legacyRaw) as BookmarkEntry[])
+      : [];
+    if (!Array.isArray(legacyEntries) || legacyEntries.length === 0) {
+      return [];
+    }
+    const migrated: FavoriteEntry[] = legacyEntries.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      connectionId,
+      folder: UNGROUPED_FOLDER,
+      tags: [],
+      mode: entry.mode,
+      payload: entry.payload,
+      createdAt: entry.createdAt,
+    }));
+    localStorage.setItem(favoriteKey, JSON.stringify(migrated));
+    return migrated;
+  } catch {
+    return [];
+  }
+};
 
 const parseJsonObject = (
   label: string,
@@ -256,19 +318,55 @@ export default function QueryWorkbench({
   });
   const [selectedHistoryEntry, setSelectedHistoryEntry] =
     useState<QueryHistoryEntry | null>(null);
-  const bookmarkKey = `${BOOKMARK_KEY_PREFIX}:${dbType}:${dbId}`;
-  const [bookmarks, setBookmarks] = useState<BookmarkEntry[]>(() => {
-    try {
-      const raw = localStorage.getItem(
-        `${BOOKMARK_KEY_PREFIX}:${dbType}:${dbId}`,
-      );
-      const parsed = raw ? (JSON.parse(raw) as BookmarkEntry[]) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
+  const favoriteKey = `${FAVORITE_KEY_PREFIX}:${dbType}:${dbId}`;
+  const legacyBookmarkKey = `${BOOKMARK_KEY_PREFIX}:${dbType}:${dbId}`;
+  const [favorites, setFavorites] = useState<FavoriteEntry[]>(() =>
+    loadFavorites(favoriteKey, legacyBookmarkKey, dbId),
+  );
+  const [favoriteName, setFavoriteName] = useState("");
+  const [favoriteFolder, setFavoriteFolder] = useState("");
+  const [favoriteTags, setFavoriteTags] = useState("");
+  const [favoriteSearch, setFavoriteSearch] = useState("");
+  const [runRequestId, setRunRequestId] = useState(0);
+  const favoriteImportInputRef = useRef<HTMLInputElement>(null);
+
+  const existingFolders = useMemo(
+    () =>
+      Array.from(
+        new Set(favorites.map((f) => f.folder).filter(Boolean)),
+      ).sort(),
+    [favorites],
+  );
+
+  const filteredFavorites = useMemo(() => {
+    const query = favoriteSearch.trim().toLowerCase();
+    if (!query) return favorites;
+    return favorites.filter(
+      (f) =>
+        f.name.toLowerCase().includes(query) ||
+        f.tags.some((t) => t.toLowerCase().includes(query)) ||
+        f.payload.toLowerCase().includes(query),
+    );
+  }, [favorites, favoriteSearch]);
+
+  const favoritesByFolder = useMemo(() => {
+    const groups = new Map<string, FavoriteEntry[]>();
+    for (const entry of filteredFavorites) {
+      const folder = entry.folder || UNGROUPED_FOLDER;
+      const list = groups.get(folder) ?? [];
+      list.push(entry);
+      groups.set(folder, list);
     }
-  });
-  const [bookmarkName, setBookmarkName] = useState("");
+    const folderNames = Array.from(groups.keys()).sort((a, b) => {
+      if (a === UNGROUPED_FOLDER) return 1;
+      if (b === UNGROUPED_FOLDER) return -1;
+      return a.localeCompare(b);
+    });
+    return folderNames.map((folder) => ({
+      folder,
+      entries: groups.get(folder) ?? [],
+    }));
+  }, [filteredFavorites]);
 
   const supportsStructured = capabilities.structuredQuery;
   const supportsRaw = capabilities.rawQuery;
@@ -599,6 +697,17 @@ export default function QueryWorkbench({
     }
   };
 
+  // "Run immediately" on a favorite loads its state via loadFavorite() and
+  // bumps this counter; runQuery() reads from the freshly-committed state
+  // once the effect fires, avoiding the stale-closure issue that would
+  // happen from calling runQuery() synchronously right after the setters.
+  useEffect(() => {
+    if (runRequestId > 0) {
+      runQuery();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runRequestId]);
+
   const applyHistory = (entry: QueryHistoryEntry) => {
     if (entry.mode === "raw") {
       setRawQuery(entry.payload);
@@ -621,10 +730,15 @@ export default function QueryWorkbench({
     }
   };
 
-  const saveBookmark = () => {
-    const name = bookmarkName.trim();
+  const persistFavorites = (next: FavoriteEntry[]) => {
+    setFavorites(next);
+    localStorage.setItem(favoriteKey, JSON.stringify(next));
+  };
+
+  const saveFavorite = () => {
+    const name = favoriteName.trim();
     if (!name) {
-      onStatus("Please enter a name for the bookmark.", true);
+      onStatus("Please enter a name for the favorite.", true);
       return;
     }
 
@@ -646,38 +760,44 @@ export default function QueryWorkbench({
           : activeTab.rawQuery.trim();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Invalid query";
-      onStatus(`Cannot bookmark: ${msg}`, true);
+      onStatus(`Cannot save favorite: ${msg}`, true);
       return;
     }
 
     if (!payload) {
-      onStatus("Nothing to bookmark — query is empty.", true);
+      onStatus("Nothing to save — query is empty.", true);
       return;
     }
 
-    const item: BookmarkEntry = {
+    const tags = favoriteTags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    const item: FavoriteEntry = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name,
+      connectionId: dbId,
+      folder: favoriteFolder.trim() || UNGROUPED_FOLDER,
+      tags,
       mode: supportsStructured && !supportsRaw ? "structured" : "raw",
       payload,
       createdAt: Date.now(),
     };
 
-    const next = [item, ...bookmarks];
-    setBookmarks(next);
-    localStorage.setItem(bookmarkKey, JSON.stringify(next));
-    setBookmarkName("");
-    onStatus(`Bookmark "${name}" saved!`, false);
+    persistFavorites([item, ...favorites]);
+    setFavoriteName("");
+    setFavoriteFolder("");
+    setFavoriteTags("");
+    onStatus(`Favorite "${name}" saved!`, false);
   };
 
-  const deleteBookmark = (id: string) => {
-    const next = bookmarks.filter((b) => b.id !== id);
-    setBookmarks(next);
-    localStorage.setItem(bookmarkKey, JSON.stringify(next));
-    onStatus("Bookmark deleted.", false);
+  const deleteFavorite = (id: string) => {
+    persistFavorites(favorites.filter((f) => f.id !== id));
+    onStatus("Favorite deleted.", false);
   };
 
-  const loadBookmark = (entry: BookmarkEntry) => {
+  const loadFavorite = (entry: FavoriteEntry) => {
     if (entry.mode === "raw") {
       setRawQuery(entry.payload);
     } else {
@@ -693,10 +813,75 @@ export default function QueryWorkbench({
         setSortText(parsed.sort ? JSON.stringify(parsed.sort, null, 2) : "");
         setLimitText(String(parsed.limit ?? 100));
       } catch {
-        setRunError("Bookmark cannot be parsed.");
+        setRunError("Favorite cannot be parsed.");
       }
     }
-    onStatus(`Bookmark "${entry.name}" loaded!`, false);
+    onStatus(`Favorite "${entry.name}" loaded!`, false);
+  };
+
+  const runFavoriteImmediately = (entry: FavoriteEntry) => {
+    loadFavorite(entry);
+    setRunRequestId((id) => id + 1);
+  };
+
+  const exportFavorites = () => {
+    if (favorites.length === 0) {
+      onStatus("No favorites to export.", true);
+      return;
+    }
+    const blob = new Blob([JSON.stringify(favorites, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `dbportal-favorites-${dbId}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    onStatus("Favorites exported.", false);
+  };
+
+  const importFavorites = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as FavoriteEntry[];
+      if (!Array.isArray(parsed)) {
+        throw new Error("File does not contain a favorites array.");
+      }
+
+      const existingKeys = new Set(
+        favorites.map((f) => `${f.name}::${f.connectionId}`),
+      );
+      const incoming = parsed.filter(
+        (f) =>
+          f &&
+          typeof f.name === "string" &&
+          typeof f.payload === "string" &&
+          !existingKeys.has(`${f.name}::${f.connectionId ?? dbId}`),
+      );
+
+      if (incoming.length === 0) {
+        onStatus("Nothing new to import — all entries already exist.", false);
+        return;
+      }
+
+      const normalized: FavoriteEntry[] = incoming.map((f) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: f.name,
+        connectionId: f.connectionId ?? dbId,
+        folder: f.folder || UNGROUPED_FOLDER,
+        tags: Array.isArray(f.tags) ? f.tags : [],
+        mode: f.mode === "structured" ? "structured" : "raw",
+        payload: f.payload,
+        createdAt: f.createdAt ?? Date.now(),
+      }));
+
+      persistFavorites([...normalized, ...favorites]);
+      onStatus(`Imported ${normalized.length} favorite(s).`, false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Invalid favorites file";
+      onStatus(`Import failed: ${msg}`, true);
+    }
   };
 
   const resetQueryEditor = () => {
@@ -1120,72 +1305,171 @@ export default function QueryWorkbench({
 
         {runError && <p className="query-error">{runError}</p>}
 
-        {/* Bookmarks */}
+        {/* Favorites */}
         <div className="query-history">
-          <div className="query-history-title">Bookmarks</div>
-          <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div className="query-history-title">Favorites</div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                type="button"
+                className="query-example-btn"
+                onClick={exportFavorites}
+              >
+                Export
+              </button>
+              <button
+                type="button"
+                className="query-example-btn"
+                onClick={() => favoriteImportInputRef.current?.click()}
+              >
+                Import
+              </button>
+              <input
+                ref={favoriteImportInputRef}
+                type="file"
+                accept="application/json"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) importFavorites(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
             <input
               type="text"
               className="query-input"
-              placeholder="Bookmark name..."
-              value={bookmarkName}
-              onChange={(e) => setBookmarkName(e.target.value)}
+              placeholder="Name..."
+              value={favoriteName}
+              onChange={(e) => setFavoriteName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") saveBookmark();
+                if (e.key === "Enter") saveFavorite();
               }}
+              style={{ flex: 1 }}
+            />
+            <input
+              type="text"
+              className="query-input"
+              placeholder="Folder (optional)"
+              value={favoriteFolder}
+              onChange={(e) => setFavoriteFolder(e.target.value)}
+              list="favorite-folder-options"
+              style={{ flex: 1 }}
+            />
+            <datalist id="favorite-folder-options">
+              {existingFolders.map((folder) => (
+                <option key={folder} value={folder} />
+              ))}
+            </datalist>
+            <input
+              type="text"
+              className="query-input"
+              placeholder="Tags (comma separated)"
+              value={favoriteTags}
+              onChange={(e) => setFavoriteTags(e.target.value)}
               style={{ flex: 1 }}
             />
             <button
               type="button"
               className="query-run-btn"
-              onClick={saveBookmark}
+              onClick={saveFavorite}
             >
               Save
             </button>
           </div>
-          {bookmarks.length === 0 ? (
-            <p className="query-history-empty">No bookmarks yet.</p>
+
+          <input
+            type="text"
+            className="query-input"
+            placeholder="Search favorites by name, tag, or query text..."
+            value={favoriteSearch}
+            onChange={(e) => setFavoriteSearch(e.target.value)}
+            style={{ marginTop: "8px" }}
+            aria-label="Search favorites"
+          />
+
+          {favorites.length === 0 ? (
+            <p className="query-history-empty">No favorites yet.</p>
+          ) : filteredFavorites.length === 0 ? (
+            <p className="query-history-empty">
+              No favorites match "{favoriteSearch}".
+            </p>
           ) : (
-            <div className="query-history-list">
-              {bookmarks.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="query-history-item"
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <button
-                    type="button"
-                    style={{
-                      flex: 1,
-                      textAlign: "left",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                    }}
-                    onClick={() => loadBookmark(entry)}
-                  >
-                    <span className="query-history-mode">
-                      {entry.mode === "raw" ? "SQL" : "Structured"}
-                    </span>
-                    <strong style={{ marginLeft: "6px" }}>{entry.name}</strong>
-                    <code style={{ display: "block" }}>
-                      {entry.payload.length > 80
-                        ? `${entry.payload.slice(0, 80)}...`
-                        : entry.payload}
-                    </code>
-                  </button>
-                  <button
-                    type="button"
-                    className="query-clear-btn"
-                    style={{ flexShrink: 0 }}
-                    onClick={() => deleteBookmark(entry.id)}
-                  >
-                    Delete
-                  </button>
+            favoritesByFolder.map(({ folder, entries }) => (
+              <div key={folder} className="query-favorite-folder">
+                <div className="query-favorite-folder-title">{folder}</div>
+                <div className="query-history-list">
+                  {entries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="query-history-item"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                      onDoubleClick={() => loadFavorite(entry)}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span className="query-history-mode">
+                          {entry.mode === "raw" ? "SQL" : "Structured"}
+                        </span>
+                        <strong style={{ marginLeft: "6px" }}>
+                          {entry.name}
+                        </strong>
+                        {entry.tags.length > 0 && (
+                          <span style={{ marginLeft: "6px" }}>
+                            {entry.tags.map((tag) => (
+                              <span key={tag} className="query-favorite-tag">
+                                {tag}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        <code style={{ display: "block" }}>
+                          {entry.payload.length > 80
+                            ? `${entry.payload.slice(0, 80)}...`
+                            : entry.payload}
+                        </code>
+                      </div>
+                      <button
+                        type="button"
+                        className="query-clear-btn"
+                        style={{ flexShrink: 0 }}
+                        onClick={() => loadFavorite(entry)}
+                      >
+                        Load
+                      </button>
+                      <button
+                        type="button"
+                        className="query-clear-btn"
+                        style={{ flexShrink: 0 }}
+                        onClick={() => runFavoriteImmediately(entry)}
+                      >
+                        Run
+                      </button>
+                      <button
+                        type="button"
+                        className="query-clear-btn"
+                        style={{ flexShrink: 0 }}
+                        onClick={() => deleteFavorite(entry.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))
           )}
         </div>
 

@@ -1489,6 +1489,29 @@ select {
   letter-spacing: 0.08em;
 }
 
+.query-favorite-folder {
+  margin-top: 10px;
+}
+
+.query-favorite-folder-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.query-favorite-tag {
+  display: inline-block;
+  background: var(--line);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.68rem;
+  margin-right: 4px;
+}
+
 .query-result-panel {
   display: grid;
   grid-template-rows: auto 1fr;
