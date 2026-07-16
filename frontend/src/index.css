@@ -1382,6 +1382,50 @@ select {
   cursor: not-allowed;
 }
 
+.query-builder {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--bg);
+}
+
+.query-builder-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.query-builder-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.query-builder-condition-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.query-builder-preview {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text);
+  margin: 0;
+}
+
 .query-clear-btn {
   background: var(--line);
   color: var(--text);
