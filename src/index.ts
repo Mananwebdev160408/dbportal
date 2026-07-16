@@ -89,7 +89,11 @@ const registerBuiltInDrivers = (): void => {
 registerBuiltInDrivers();
 
 export type ConnectionHealthStatus =
-  "healthy" | "degraded" | "slow" | "unreachable" | "unknown";
+  | "healthy"
+  | "degraded"
+  | "slow"
+  | "unreachable"
+  | "unknown";
 
 export interface ConnectionHealth {
   status: ConnectionHealthStatus;
