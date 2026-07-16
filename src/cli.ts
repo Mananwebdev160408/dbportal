@@ -730,7 +730,8 @@ const main = async () => {
       ? String(request.query.sortBy)
       : undefined;
     const sortOrder = (request.query.sortOrder === "desc" ? "desc" : "asc") as
-      "asc" | "desc";
+      | "asc"
+      | "desc";
 
     let filters: Record<string, string> = {};
     if (request.query.filters) {

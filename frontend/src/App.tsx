@@ -32,7 +32,12 @@ const DockerVolumesView = lazy(
 
 export type ViewMode = "table" | "documents" | "json" | "inspector";
 export type AppMode =
-  "common" | "overview" | "table" | "query" | "schema" | "docker";
+  | "common"
+  | "overview"
+  | "table"
+  | "query"
+  | "schema"
+  | "docker";
 
 export interface DriverCapabilities {
   rawQuery: boolean;

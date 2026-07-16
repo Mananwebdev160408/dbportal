@@ -19,7 +19,15 @@ interface DatabaseSchema {
 }
 
 type SqlOperator =
-  "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE" | "IS NULL" | "IS NOT NULL";
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | ">="
+  | "<="
+  | "LIKE"
+  | "IS NULL"
+  | "IS NOT NULL";
 
 const OPERATORS: SqlOperator[] = [
   "=",
