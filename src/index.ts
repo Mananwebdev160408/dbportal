@@ -88,6 +88,27 @@ const registerBuiltInDrivers = (): void => {
 
 registerBuiltInDrivers();
 
+export type ConnectionHealthStatus =
+  "healthy" | "degraded" | "slow" | "unreachable" | "unknown";
+
+export interface ConnectionHealth {
+  status: ConnectionHealthStatus;
+  latencyMs: number | null;
+  lastCheckedAt: string | null;
+  error: string | null;
+}
+
+// Thresholds match the health monitor spec: <100ms healthy, 100-500ms
+// degraded, >500ms slow, ping failure/timeout unreachable.
+const HEALTHY_LATENCY_MS = 100;
+const DEGRADED_LATENCY_MS = 500;
+
+const classifyLatency = (latencyMs: number): ConnectionHealthStatus => {
+  if (latencyMs < HEALTHY_LATENCY_MS) return "healthy";
+  if (latencyMs <= DEGRADED_LATENCY_MS) return "degraded";
+  return "slow";
+};
+
 export interface TableOverview {
   name: string;
   count: number;
@@ -106,6 +127,12 @@ export class DatabaseConnection {
   private readonly databaseKind: SupportedDatabase;
   private readonly id: string;
   private readonly name: string;
+  private lastHealth: ConnectionHealth = {
+    status: "unknown",
+    latencyMs: null,
+    lastCheckedAt: null,
+    error: null,
+  };
 
   constructor(id: string, databaseUrl: string) {
     if (!databaseUrl) {
@@ -209,6 +236,44 @@ export class DatabaseConnection {
     }
   }
 
+  /**
+   * Runs a lightweight liveness check against this connection and records
+   * the result. Used by the background health monitor and exposed to the
+   * frontend via GET /api/health so status dots reflect real latency
+   * instead of only whether the last arbitrary request happened to succeed.
+   */
+  async checkHealth(): Promise<ConnectionHealth> {
+    const start = performance.now();
+    try {
+      if (this.driver.ping) {
+        await this.driver.ping();
+      } else {
+        // Fallback for drivers without a native ping: any successful read
+        // proves the connection is alive.
+        await this.driver.getTables();
+      }
+      const latencyMs = Math.round(performance.now() - start);
+      this.lastHealth = {
+        status: classifyLatency(latencyMs),
+        latencyMs,
+        lastCheckedAt: new Date().toISOString(),
+        error: null,
+      };
+    } catch (err) {
+      this.lastHealth = {
+        status: "unreachable",
+        latencyMs: null,
+        lastCheckedAt: new Date().toISOString(),
+        error: err instanceof Error ? err.message : "Unknown error",
+      };
+    }
+    return this.lastHealth;
+  }
+
+  getLastHealth(): ConnectionHealth {
+    return this.lastHealth;
+  }
+
   private createDriver(urlString: string): {
     driver: DatabaseDriver;
     kind: SupportedDatabase;
@@ -239,6 +304,7 @@ export interface MultiDatabaseOverview {
 
 export class DatabaseManager {
   private readonly connections = new Map<string, DatabaseConnection>();
+  private healthMonitorTimer: ReturnType<typeof setInterval> | null = null;
 
   addConnection(id: string, url: string): DatabaseConnection {
     const conn = new DatabaseConnection(id, url);
@@ -261,6 +327,7 @@ export class DatabaseManager {
   }
 
   async closeAll(): Promise<void> {
+    this.stopHealthMonitor();
     await Promise.all(this.listConnections().map((c) => c.close()));
   }
 
@@ -278,5 +345,37 @@ export class DatabaseManager {
       totalTables: overviews.reduce((s, o) => s + o.totalTables, 0),
       databases: overviews,
     };
+  }
+
+  /** Runs a health check against every connection without throwing. */
+  async checkAllHealth(): Promise<void> {
+    await Promise.all(
+      this.listConnections().map((conn) =>
+        conn.checkHealth().catch(() => {
+          // checkHealth() already catches driver errors internally and
+          // records them on the connection; this guards Promise.all against
+          // anything unexpected so one bad connection can't block the rest.
+        }),
+      ),
+    );
+  }
+
+  /**
+   * Starts background health polling on the given interval. Safe to call
+   * multiple times, only one timer is ever active per manager instance.
+   */
+  startHealthMonitor(intervalMs: number): void {
+    this.stopHealthMonitor();
+    this.healthMonitorTimer = setInterval(() => {
+      void this.checkAllHealth();
+    }, intervalMs);
+    this.healthMonitorTimer.unref?.();
+  }
+
+  stopHealthMonitor(): void {
+    if (this.healthMonitorTimer) {
+      clearInterval(this.healthMonitorTimer);
+      this.healthMonitorTimer = null;
+    }
   }
 }

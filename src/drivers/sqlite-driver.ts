@@ -183,6 +183,11 @@ export class SqliteDriver implements DatabaseDriver {
     this.db = null;
   }
 
+  async ping(): Promise<void> {
+    const db = await this.getDb();
+    await db.get("SELECT 1");
+  }
+
   private async getDb(): Promise<SqliteDatabase> {
     if (!this.db) {
       await this.connect();

@@ -65,4 +65,10 @@ export interface DatabaseDriver {
   getSchema(): Promise<DatabaseSchema>;
   query?(query: DriverQueryInput): Promise<QueryResult>;
   close?(): Promise<void>;
+  /**
+   * Lightweight liveness check used by the connection health monitor.
+   * Resolves once the round trip completes, rejects if unreachable.
+   * Drivers without a native ping fall back to a minimal read query.
+   */
+  ping?(): Promise<void>;
 }

@@ -21,6 +21,7 @@ type RedisClient = {
   zCard: (key: string) => Promise<number>;
   xLen: (key: string) => Promise<number>;
   ttl: (key: string) => Promise<number>;
+  ping: () => Promise<string>;
 };
 
 export class RedisDriver implements DatabaseDriver {
@@ -131,6 +132,11 @@ export class RedisDriver implements DatabaseDriver {
     if (!this.client) return;
     await this.client.quit();
     this.client = null;
+  }
+
+  async ping(): Promise<void> {
+    const client = await this.getClient();
+    await client.ping();
   }
 
   private async getClient(): Promise<RedisClient> {

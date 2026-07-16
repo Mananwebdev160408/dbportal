@@ -278,6 +278,11 @@ export class PostgresDriver implements DatabaseDriver {
     this.client = null;
   }
 
+  async ping(): Promise<void> {
+    const client = await this.getClient();
+    await withTimeout(client.query("SELECT 1"), DB_TIMEOUT_MS);
+  }
+
   private async getClient() {
     if (!this.client) {
       await this.connect();

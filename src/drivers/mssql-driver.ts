@@ -233,6 +233,11 @@ export class MsSqlDriver implements DatabaseDriver {
     this.pool = null;
   }
 
+  async ping(): Promise<void> {
+    const pool = await this.getPool();
+    await pool.request().query("SELECT 1");
+  }
+
   private async getPool(): Promise<SqlConnection> {
     if (!this.pool) {
       await this.connect();

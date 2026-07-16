@@ -1,10 +1,40 @@
 import { useState } from "react";
 import type {
   AppMode,
+  ConnectionHealth,
+  ConnectionHealthStatus,
   DatabaseConnectionInfo,
   DriverCapabilities,
 } from "../App";
 import { StarIcon } from "./Icons";
+
+const HEALTH_STATUS_COLORS: Record<ConnectionHealthStatus, string> = {
+  healthy: "#22c55e",
+  degraded: "#eab308",
+  slow: "#f97316",
+  unreachable: "#ef4444",
+  unknown: "#9ca3af",
+};
+
+const healthStatusColor = (health?: ConnectionHealth): string =>
+  HEALTH_STATUS_COLORS[health?.status ?? "unknown"];
+
+const formatHealthTooltip = (health?: ConnectionHealth): string => {
+  if (!health || health.status === "unknown") {
+    return "Never checked";
+  }
+
+  const lastChecked = health.lastCheckedAt
+    ? new Date(health.lastCheckedAt).toLocaleTimeString()
+    : "never";
+
+  if (health.status === "unreachable") {
+    const reason = health.error ? `: ${health.error}` : "";
+    return `Unreachable${reason}\nLast checked: ${lastChecked}`;
+  }
+
+  return `Latency: ${health.latencyMs}ms\nLast checked: ${lastChecked}`;
+};
 
 interface TableWithCount {
   name: string;
@@ -217,12 +247,13 @@ export default function Sidebar({
               >
                 <div
                   className="indicator"
+                  title={formatHealthTooltip(conn.health)}
+                  aria-label={formatHealthTooltip(conn.health)}
                   style={{
                     width: "8px",
                     height: "8px",
                     borderRadius: "50%",
-                    backgroundColor:
-                      conn.isAlive === false ? "#ef4444" : "#22c55e",
+                    backgroundColor: healthStatusColor(conn.health),
                     flexShrink: 0,
                   }}
                 />

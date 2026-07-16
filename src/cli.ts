@@ -50,6 +50,20 @@ const parseLimit = (value: unknown): number => {
   return Math.min(parsed, 500);
 };
 
+const DEFAULT_HEALTH_CHECK_INTERVAL_MS = 60_000;
+const MIN_HEALTH_CHECK_INTERVAL_MS = 5_000;
+
+const isHealthCheckEnabled = (): boolean =>
+  process.env.HEALTH_CHECK_ENABLED?.trim().toLowerCase() !== "false";
+
+const parseHealthCheckIntervalMs = (): number => {
+  const raw = Number.parseInt(process.env.HEALTH_CHECK_INTERVAL_MS ?? "", 10);
+  if (!Number.isFinite(raw) || raw < MIN_HEALTH_CHECK_INTERVAL_MS) {
+    return DEFAULT_HEALTH_CHECK_INTERVAL_MS;
+  }
+  return raw;
+};
+
 const parsePortOption = (value: string | undefined, source: string): number => {
   if (!value) {
     throw new Error(source + " requires a port value.");
@@ -278,6 +292,13 @@ const main = async () => {
       process.exitCode = 1;
       return;
     }
+
+    if (isHealthCheckEnabled()) {
+      // Run once immediately so status dots are populated on first paint,
+      // then keep polling in the background without blocking the server.
+      void manager.checkAllHealth();
+      manager.startHealthMonitor(parseHealthCheckIntervalMs());
+    }
   }
 
   const app = express();
@@ -292,6 +313,10 @@ const main = async () => {
     response.status(200).json({
       mode: options.docker ? "docker" : "database",
       writeMode: options.write,
+      healthCheck: {
+        enabled: !options.docker && isHealthCheckEnabled(),
+        intervalMs: parseHealthCheckIntervalMs(),
+      },
     });
   });
 
@@ -302,6 +327,21 @@ const main = async () => {
       kind: c.getKind(),
     }));
     response.status(200).json({ connections: list });
+  });
+
+  app.get("/api/health", (request, response) => {
+    if (options.docker) {
+      response.status(400).json({ error: "Docker mode is not enabled." });
+      return;
+    }
+
+    const dbId = String(request.query.dbId || "primary");
+    try {
+      const conn = manager.getConnection(dbId);
+      response.status(200).json(conn.getLastHealth());
+    } catch (error) {
+      response.status(404).json({ error: toMessage(error) });
+    }
   });
 
   // Docker Routes (only active in dockerMode)
@@ -690,8 +730,7 @@ const main = async () => {
       ? String(request.query.sortBy)
       : undefined;
     const sortOrder = (request.query.sortOrder === "desc" ? "desc" : "asc") as
-      | "asc"
-      | "desc";
+      "asc" | "desc";
 
     let filters: Record<string, string> = {};
     if (request.query.filters) {

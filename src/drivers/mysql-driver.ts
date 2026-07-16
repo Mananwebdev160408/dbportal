@@ -211,6 +211,11 @@ export class MySqlDriver implements DatabaseDriver {
     this.connection = null;
   }
 
+  async ping(): Promise<void> {
+    const connection = await this.getConnection();
+    await connection.execute("SELECT 1");
+  }
+
   private async getConnection(): Promise<MySqlConnection> {
     if (!this.connection) {
       await this.connect();

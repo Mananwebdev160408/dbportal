@@ -32,12 +32,7 @@ const DockerVolumesView = lazy(
 
 export type ViewMode = "table" | "documents" | "json" | "inspector";
 export type AppMode =
-  | "common"
-  | "overview"
-  | "table"
-  | "query"
-  | "schema"
-  | "docker";
+  "common" | "overview" | "table" | "query" | "schema" | "docker";
 
 export interface DriverCapabilities {
   rawQuery: boolean;
@@ -56,11 +51,27 @@ export interface DatabaseOverview {
   tables: TableOverview[];
 }
 
+export type ConnectionHealthStatus =
+  "healthy" | "degraded" | "slow" | "unreachable" | "unknown";
+
+export interface ConnectionHealth {
+  status: ConnectionHealthStatus;
+  latencyMs: number | null;
+  lastCheckedAt: string | null;
+  error: string | null;
+}
+
 export interface DatabaseConnectionInfo {
   id: string;
   name: string;
   kind: string;
   isAlive?: boolean;
+  health?: ConnectionHealth;
+}
+
+export interface HealthCheckConfig {
+  enabled: boolean;
+  intervalMs: number;
 }
 
 export interface MultiDatabaseOverview {
@@ -85,10 +96,34 @@ const getPreferredMode = (): AppearanceMode => {
   return "dark";
 };
 
+const withConnectionHealth = async (
+  conn: DatabaseConnectionInfo,
+): Promise<DatabaseConnectionInfo> => {
+  try {
+    const res = await fetch(`/api/health?dbId=${conn.id}`);
+    const health: ConnectionHealth = await res.json();
+    return { ...conn, isAlive: health.status !== "unreachable", health };
+  } catch {
+    return {
+      ...conn,
+      isAlive: false,
+      health: {
+        status: "unreachable",
+        latencyMs: null,
+        lastCheckedAt: null,
+        error: "Unable to reach the server.",
+      },
+    };
+  }
+};
+
 export default function App() {
   const [theme, setTheme] = useState<Theme>(getPreferredTheme);
   const [mode, setMode] = useState<AppearanceMode>(getPreferredMode);
   const [connections, setConnections] = useState<DatabaseConnectionInfo[]>([]);
+  const [healthCheckConfig, setHealthCheckConfig] = useState<HealthCheckConfig>(
+    { enabled: true, intervalMs: 60_000 },
+  );
   const [activeDbId, setActiveDbId] = useState<string>("primary");
   const [pinnedTables, setPinnedTables] = useState<string[]>(() => {
     const stored = localStorage.getItem("dbportal-pinned-tables");
@@ -256,6 +291,12 @@ export default function App() {
         if (configPayload.writeMode) {
           setWriteMode(true);
         }
+        if (configPayload.healthCheck) {
+          setHealthCheckConfig({
+            enabled: Boolean(configPayload.healthCheck.enabled),
+            intervalMs: configPayload.healthCheck.intervalMs ?? 60_000,
+          });
+        }
         if (configPayload.mode === "docker") {
           setIsDockerMode(true);
           setAppMode("docker");
@@ -283,14 +324,9 @@ export default function App() {
 
         // Check health for each connection
         const withHealth = await Promise.all(
-          list.map(async (conn: DatabaseConnectionInfo) => {
-            try {
-              const res = await fetch(`/api/health?dbId=${conn.id}`);
-              return { ...conn, isAlive: res.ok };
-            } catch {
-              return { ...conn, isAlive: false };
-            }
-          }),
+          list.map((conn: DatabaseConnectionInfo) =>
+            withConnectionHealth(conn),
+          ),
         );
         setConnections(withHealth);
 
@@ -349,41 +385,31 @@ export default function App() {
   };
   const checkConnectionHealth = useCallback(async () => {
     const updated = await Promise.all(
-      connections.map(async (conn) => {
-        try {
-          const res = await fetch(`/api/health?dbId=${conn.id}`);
-          return { ...conn, isAlive: res.ok };
-        } catch {
-          return { ...conn, isAlive: false };
-        }
-      }),
+      connections.map((conn) => withConnectionHealth(conn)),
     );
     setConnections(updated);
   }, [connections]);
 
-  // Poll health every 30 s so sidebar dots stay accurate after initial load.
+  // Poll health on the server-configured interval (default 60s, see
+  // /api/config) so sidebar status dots stay accurate after initial load.
   // The effect re-runs whenever `connections` changes (i.e. after the first
   // health check populates the list), so the interval always closes over the
-  // latest snapshot — no stale-closure issues.
+  // latest snapshot — no stale-closure issues. Disabled entirely when the
+  // backend reports health checking as off, per the "can be disabled
+  // globally" requirement.
   useEffect(() => {
-    if (isDockerMode || connections.length === 0) return;
+    if (isDockerMode || connections.length === 0 || !healthCheckConfig.enabled)
+      return;
 
     const intervalId = setInterval(async () => {
       const updated = await Promise.all(
-        connections.map(async (conn) => {
-          try {
-            const res = await fetch(`/api/health?dbId=${conn.id}`);
-            return { ...conn, isAlive: res.ok };
-          } catch {
-            return { ...conn, isAlive: false };
-          }
-        }),
+        connections.map((conn) => withConnectionHealth(conn)),
       );
       setConnections(updated);
-    }, 30_000);
+    }, healthCheckConfig.intervalMs);
 
     return () => clearInterval(intervalId);
-  }, [connections, isDockerMode]);
+  }, [connections, isDockerMode, healthCheckConfig]);
 
   const loadOverview = useCallback(async () => {
     setAppMode("overview");
