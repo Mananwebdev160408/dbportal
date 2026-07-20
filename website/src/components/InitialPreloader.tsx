@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import DbPortalLogo from './DbPortalLogo';
 
 interface InitialPreloaderProps {
   onComplete?: () => void;
@@ -10,34 +9,39 @@ interface InitialPreloaderProps {
 
 export default function InitialPreloader({ onComplete }: InitialPreloaderProps) {
   const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState('Initializing dbportal engine...');
+  const [isZooming, setIsZooming] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const steps = [
-      { p: 25, text: 'Binding loopback 127.0.0.1:4444...' },
-      { p: 60, text: 'Inspecting PostgreSQL, Mongo & Docker drivers...' },
-      { p: 90, text: 'Enforcing read-only execution safety...' },
-      { p: 100, text: 'Engine Ready.' },
-    ];
+    let startTimestamp: number | null = null;
+    const duration = 1600; // Smooth 1.6s progress fill
 
-    let currentStep = 0;
-    const interval = setInterval(() => {
-      if (currentStep < steps.length) {
-        setProgress(steps[currentStep].p);
-        setStatusText(steps[currentStep].text);
-        currentStep++;
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const elapsed = timestamp - startTimestamp;
+      const pct = Math.min(Math.floor((elapsed / duration) * 100), 100);
+
+      setProgress(pct);
+
+      if (pct < 100) {
+        requestAnimationFrame(step);
       } else {
-        clearInterval(interval);
+        setIsZooming(true);
         setTimeout(() => {
           setIsLoading(false);
           if (onComplete) onComplete();
-        }, 250);
+        }, 500);
       }
-    }, 160);
+    };
 
-    return () => clearInterval(interval);
+    const animFrame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animFrame);
   }, [onComplete]);
+
+  // SVG Gauge dimensions clearly outside the central logo
+  const radius = 80;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
     <AnimatePresence>
@@ -46,45 +50,100 @@ export default function InitialPreloader({ onComplete }: InitialPreloaderProps) 
           initial={{ opacity: 1 }}
           exit={{
             opacity: 0,
-            scale: 1.04,
-            filter: 'blur(8px)',
-            transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+            transition: { duration: 0.35, ease: 'easeOut' },
           }}
-          className="fixed inset-0 z-[100] bg-[#080a11] flex flex-col items-center justify-center pointer-events-auto selection:bg-rose-500/30 text-white font-sans"
+          className="fixed inset-0 z-[100] bg-[#080a11] flex flex-col items-center justify-center pointer-events-auto selection:bg-rose-500/30 text-white font-sans overflow-hidden transform-gpu"
         >
-          {/* Central Logo with Glowing Keyhole Pulse */}
-          <div className="relative mb-8 flex flex-col items-center">
-            <motion.div
-              animate={{
-                scale: [0.97, 1.03, 0.97],
-                opacity: [0.85, 1, 0.85],
-              }}
-              transition={{
-                duration: 1.8,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-              className="relative"
-            >
-              <DbPortalLogo className="w-20 h-20 sm:w-24 sm:h-24 drop-shadow-[0_0_45px_rgba(244,63,94,0.7)]" />
-            </motion.div>
-          </div>
+          {/* Crimson Laser Beam Ambient Glow behind Keyhole */}
+          <motion.div
+            animate={
+              isZooming
+                ? { scale: [1, 20], opacity: [0.8, 0] }
+                : { opacity: [0.6, 0.9, 0.6], scale: [0.95, 1.05, 0.95] }
+            }
+            transition={
+              isZooming
+                ? { duration: 0.5, ease: [0.7, 0, 0.1, 1] }
+                : { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
+            }
+            className="absolute w-64 h-64 rounded-full bg-[radial-gradient(circle,rgba(244,63,94,0.6)_0%,rgba(244,63,94,0.15)_50%,transparent_75%)] pointer-events-none transform-gpu"
+          />
 
-          {/* Minimalist Progress Line */}
-          <div className="w-64 sm:w-80 h-[2.5px] bg-white/10 rounded-full overflow-hidden mb-5 relative">
-            <motion.div
-              className="h-full bg-gradient-to-r from-rose-700 via-rose-500 to-rose-300 shadow-[0_0_14px_rgba(244,63,94,0.9)]"
-              style={{ width: `${progress}%` }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-            />
-          </div>
+          {/* Central 3D Keyhole Iris & Gauge Ring Wrapper */}
+          <motion.div
+            animate={
+              isZooming
+                ? {
+                    scale: 28,
+                    opacity: [1, 0.85, 0],
+                  }
+                : { scale: 1, opacity: 1 }
+            }
+            transition={{
+              duration: 0.55,
+              ease: [0.7, 0, 0.1, 1],
+            }}
+            className="relative w-56 h-56 sm:w-64 sm:h-64 flex items-center justify-center pointer-events-none transform-gpu will-change-transform"
+          >
+            {/* 1. Large Circular Gauge Ring (Outside Logo Boundary) */}
+            <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none overflow-visible z-20">
+              <circle
+                cx="50%"
+                cy="50%"
+                r={radius}
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.12)"
+                strokeWidth="4"
+              />
+              <circle
+                cx="50%"
+                cy="50%"
+                r={radius}
+                fill="none"
+                stroke="url(#laserGradient)"
+                strokeWidth="4"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                className="transition-all duration-75 ease-out filter drop-shadow-[0_0_15px_rgba(244,63,94,0.95)]"
+              />
+              <defs>
+                <linearGradient id="laserGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#9f1239" />
+                  <stop offset="50%" stopColor="#f43f5e" />
+                  <stop offset="100%" stopColor="#fb7185" />
+                </linearGradient>
+              </defs>
+            </svg>
 
-          {/* Monospace System Boot Status Line */}
-          <div className="flex items-center gap-2 font-mono text-xs text-slate-400 h-6">
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            <span className="text-rose-300 font-semibold">{statusText}</span>
-            <span className="text-slate-500 font-bold ml-1">{progress}%</span>
-          </div>
+            {/* 2. Central Keyhole Logo Iris */}
+            <div className="relative z-10 p-4 rounded-2xl bg-[#0e1320] border border-rose-500/40 shadow-[0_0_40px_rgba(244,63,94,0.5)] flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="dbportal keyhole iris logo"
+                className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_25px_rgba(244,63,94,0.9)]"
+              />
+            </div>
+          </motion.div>
+
+          {/* Numeric Percentage & Status Indicator */}
+          <motion.div
+            animate={isZooming ? { opacity: 0, y: 15 } : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.18 }}
+            className="flex flex-col items-center gap-2 font-mono mt-6 z-30"
+          >
+            <div className="text-3xl sm:text-4xl font-black text-white tracking-widest flex items-center gap-1">
+              <span className="text-rose-400">{progress}</span>
+              <span className="text-rose-500 text-xl">%</span>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              <span className="text-rose-300 font-semibold">
+                {progress < 100 ? 'Charging Keyhole Iris...' : 'Passing Through Keyhole...'}
+              </span>
+            </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
