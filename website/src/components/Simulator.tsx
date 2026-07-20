@@ -174,7 +174,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
         {simMode === 'db' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[500px]">
             {/* Sidebar */}
-            <aside className="lg:col-span-3 bg-[#080a11] border-b lg:border-b-0 lg:border-r border-[#1e2638] p-4 space-y-4 font-mono">
+            <aside className="lg:col-span-3 bg-[#080a11]/15 border-b lg:border-b-0 lg:border-r border-[#1e2638]/60 p-4 space-y-4 font-mono backdrop-blur-sm">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   <span>Fleets (4)</span>
@@ -280,7 +280,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
             </aside>
 
             {/* Main Area */}
-            <main className="lg:col-span-9 p-5 flex flex-col justify-between bg-[#0b0e17] space-y-4">
+            <main className="lg:col-span-9 p-5 flex flex-col justify-between bg-[#0b0e17]/15 space-y-4">
               <div className="flex items-center justify-between border-b border-[#1e2638] pb-3 font-mono text-xs">
                 <div className="flex items-center gap-2">
                   <button
@@ -319,9 +319,9 @@ export default function Simulator({ onToast }: SimulatorProps) {
 
               {/* View 1: Data Table */}
               {dbTab === 'data' && (
-                <div className="overflow-x-auto rounded-lg border border-[#1e2638] bg-[#080a11]">
+                <div className="overflow-x-auto rounded-lg border border-[#1e2638]/60 bg-[#080a11]/15 backdrop-blur-sm">
                   <table className="w-full text-left text-xs font-mono">
-                    <thead className="bg-[#0e121e] border-b border-[#1e2638] text-slate-300">
+                    <thead className="bg-[#0e121e]/40 border-b border-[#1e2638]/60 text-slate-300">
                       <tr>
                         <th className="p-3">id</th>
                         <th className="p-3">col_1</th>
@@ -360,15 +360,15 @@ export default function Simulator({ onToast }: SimulatorProps) {
 
               {/* View 2: ER Schema */}
               {dbTab === 'schema' && (
-                <div className="p-4 rounded-lg border border-[#1e2638] bg-[#080a11] min-h-[280px] flex flex-col items-center justify-center relative">
+                <div className="p-4 rounded-lg border border-[#1e2638]/60 bg-[#080a11]/15 backdrop-blur-sm min-h-[280px] flex flex-col items-center justify-center relative">
                   <div className="text-xs text-slate-400 mb-2 font-mono">Relational Entity-Relationship Diagram</div>
                   <svg className="w-full h-64" viewBox="0 0 600 220" fill="none">
                     <path d="M160 80 C 230 80, 230 140, 300 140" stroke="#f43f5e" strokeWidth="2" strokeDasharray="4 4" className="animate-dash" />
                     <path d="M440 140 C 490 140, 490 80, 540 80" stroke="#f43f5e" strokeWidth="2" />
 
                     <g transform="translate(40, 30)">
-                      <rect width="120" height="90" rx="6" fill="#0e121e" stroke="#f43f5e" strokeWidth="1.5" />
-                      <rect width="120" height="24" rx="6" fill="#141a2b" />
+                      <rect width="120" height="90" rx="6" fill="rgba(14,18,30,0.7)" stroke="#f43f5e" strokeWidth="1.5" />
+                      <rect width="120" height="24" rx="6" fill="rgba(20,26,43,0.75)" />
                       <text x="12" y="16" fill="#fb7185" fontFamily="monospace" fontSize="11" fontWeight="bold">users</text>
                       <text x="12" y="42" fill="#94a3b8" fontFamily="monospace" fontSize="9">🔑 id (PK)</text>
                       <text x="12" y="58" fill="#94a3b8" fontFamily="monospace" fontSize="9">email</text>
@@ -376,8 +376,8 @@ export default function Simulator({ onToast }: SimulatorProps) {
                     </g>
 
                     <g transform="translate(260, 90)">
-                      <rect width="130" height="105" rx="6" fill="#0e121e" stroke="#f43f5e" strokeWidth="1.5" />
-                      <rect width="130" height="24" rx="6" fill="#141a2b" />
+                      <rect width="130" height="105" rx="6" fill="rgba(14,18,30,0.7)" stroke="#f43f5e" strokeWidth="1.5" />
+                      <rect width="130" height="24" rx="6" fill="rgba(20,26,43,0.75)" />
                       <text x="12" y="16" fill="#fb7185" fontFamily="monospace" fontSize="11" fontWeight="bold">orders</text>
                       <text x="12" y="42" fill="#94a3b8" fontFamily="monospace" fontSize="9">🔑 id (PK)</text>
                       <text x="12" y="58" fill="#fb7185" fontFamily="monospace" fontSize="9">🔗 user_id (FK)</text>
@@ -386,8 +386,8 @@ export default function Simulator({ onToast }: SimulatorProps) {
                     </g>
 
                     <g transform="translate(460, 30)">
-                      <rect width="120" height="90" rx="6" fill="#0e121e" stroke="#f43f5e" strokeWidth="1.5" />
-                      <rect width="120" height="24" rx="6" fill="#141a2b" />
+                      <rect width="120" height="90" rx="6" fill="rgba(14,18,30,0.7)" stroke="#f43f5e" strokeWidth="1.5" />
+                      <rect width="120" height="24" rx="6" fill="rgba(20,26,43,0.75)" />
                       <text x="12" y="16" fill="#fb7185" fontFamily="monospace" fontSize="11" fontWeight="bold">products</text>
                       <text x="12" y="42" fill="#94a3b8" fontFamily="monospace" fontSize="9">🔑 id (PK)</text>
                       <text x="12" y="58" fill="#94a3b8" fontFamily="monospace" fontSize="9">title</text>
@@ -400,8 +400,8 @@ export default function Simulator({ onToast }: SimulatorProps) {
               {/* View 3: SQL Workspace */}
               {dbTab === 'query' && (
                 <div className="space-y-3 font-mono">
-                  <div className="bg-[#080a11] border border-[#1e2638] rounded-lg p-3 text-xs space-y-2">
-                    <div className="flex items-center justify-between text-slate-400 border-b border-[#1e2638] pb-2">
+                  <div className="bg-[#080a11]/15 border border-[#1e2638]/50 rounded-lg p-3 text-xs space-y-2 backdrop-blur-sm">
+                    <div className="flex items-center justify-between text-slate-400 border-b border-[#1e2638]/50 pb-2">
                       <span>Read-Only Query Workspace</span>
                       <button
                         onClick={handleRunSql}
@@ -413,11 +413,11 @@ export default function Simulator({ onToast }: SimulatorProps) {
                     <textarea
                       value={sqlQuery}
                       onChange={(e) => setSqlQuery(e.target.value)}
-                      className="w-full bg-[#0e121e] p-3 rounded border border-[#1e2638] text-rose-300 focus:outline-none focus:border-rose-500/50 resize-none font-mono text-xs"
+                      className="w-full bg-[#0e121e]/20 p-3 rounded border border-[#1e2638]/50 text-rose-300 focus:outline-none focus:border-rose-500/50 resize-none font-mono text-xs"
                       rows={3}
                     />
                   </div>
-                  <div className="bg-[#080a11] rounded-lg p-3 border border-[#1e2638] text-xs text-rose-300">
+                  <div className="bg-[#080a11]/15 rounded-lg p-3 border border-[#1e2638]/50 text-xs text-rose-300 backdrop-blur-sm">
                     {queryOutput}
                   </div>
                 </div>
@@ -433,9 +433,9 @@ export default function Simulator({ onToast }: SimulatorProps) {
 
         {/* DOCKER MODE */}
         {simMode === 'docker' && (
-          <div className="p-6 space-y-6 bg-[#080a11]">
+          <div className="p-6 space-y-6 bg-transparent">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono">
-              <div className="bg-[#0e121e] border border-[#1e2638] rounded-lg p-3">
+              <div className="bg-[#0e121e]/15 border border-[#1e2638]/50 rounded-lg p-3 backdrop-blur-sm">
                 <div className="text-xs text-slate-400">Active Containers</div>
                 <div className="text-2xl font-bold text-rose-400 mt-1 flex items-center justify-between">
                   <span>{containers.filter((c) => c.status === 'Running').length} Active</span>
@@ -443,7 +443,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                 </div>
               </div>
 
-              <div className="bg-[#0e121e] border border-[#1e2638] rounded-lg p-3">
+              <div className="bg-[#0e121e]/15 border border-[#1e2638]/50 rounded-lg p-3 backdrop-blur-sm">
                 <div className="text-xs text-slate-400">CPU Usage</div>
                 <div className="text-2xl font-bold text-rose-300 mt-1 flex items-center justify-between">
                   <span>{cpuUsage}</span>
@@ -451,7 +451,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                 </div>
               </div>
 
-              <div className="bg-[#0e121e] border border-[#1e2638] rounded-lg p-3">
+              <div className="bg-[#0e121e]/15 border border-[#1e2638]/50 rounded-lg p-3 backdrop-blur-sm">
                 <div className="text-xs text-slate-400">RAM Footprint</div>
                 <div className="text-2xl font-bold text-rose-300 mt-1 flex items-center justify-between">
                   <span>342 MB</span>
@@ -459,7 +459,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                 </div>
               </div>
 
-              <div className="bg-[#0e121e] border border-[#1e2638] rounded-lg p-3">
+              <div className="bg-[#0e121e]/15 border border-[#1e2638]/50 rounded-lg p-3 backdrop-blur-sm">
                 <div className="text-xs text-slate-400">Images & Volumes</div>
                 <div className="text-2xl font-bold text-slate-200 mt-1 flex items-center justify-between">
                   <span>6 Volumes</span>
@@ -468,8 +468,8 @@ export default function Simulator({ onToast }: SimulatorProps) {
               </div>
             </div>
 
-            <div className="bg-[#0e121e] border border-[#1e2638] rounded-lg overflow-hidden font-mono">
-              <div className="p-4 bg-[#141a2b] border-b border-[#1e2638] flex items-center justify-between">
+            <div className="bg-[#0e121e]/15 border border-[#1e2638]/50 rounded-lg overflow-hidden font-mono backdrop-blur-sm">
+              <div className="p-4 bg-[#141a2b]/20 border-b border-[#1e2638]/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <IconBox size={16} stroke={1.75} className="text-rose-400" />
                   <span className="font-bold text-sm text-white">Docker Daemon Manager</span>
@@ -484,7 +484,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                   </button>
                   <button
                     onClick={() => onToast('Exported clean docker-compose.yml!')}
-                    className="px-3.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 border border-[#1e2638] font-bold transition flex items-center gap-1.5"
+                    className="px-3.5 py-1.5 rounded bg-[#080a11]/60 hover:bg-[#080a11]/85 text-slate-200 border border-[#1e2638]/60 font-bold transition flex items-center gap-1.5"
                   >
                     <IconCode size={15} stroke={1.75} className="text-rose-400" /> Export Compose
                   </button>
@@ -494,7 +494,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
               <div className="overflow-x-auto">
 
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#080a11] border-b border-[#1e2638] text-slate-400">
+                  <thead className="bg-[#080a11]/20 border-b border-[#1e2638]/50 text-slate-400">
                     <tr>
                       <th className="p-3">Container</th>
                       <th className="p-3">Image</th>

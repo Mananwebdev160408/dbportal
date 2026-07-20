@@ -50,7 +50,7 @@ export default function Faq() {
           return (
             <div
               key={f.q}
-              className="tech-card rounded-xl overflow-hidden border border-[#1e2638] bg-[#0c101c]"
+              className="tech-card rounded-xl overflow-hidden border border-[#1e2638]/50"
             >
               <button
                 onClick={() => setOpenIdx(isOpen ? null : idx)}
@@ -70,7 +70,7 @@ export default function Faq() {
               </button>
 
               {isOpen && (
-                <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-[#1e2638] bg-[#080a11] font-sans">
+                <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-[#1e2638]/50 bg-[#080a11]/40 font-sans">
                   {f.a}
                 </div>
               )}

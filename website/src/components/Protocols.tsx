@@ -88,14 +88,14 @@ export default function Protocols({ onToast }: ProtocolsProps) {
               <div className="text-[11px] text-slate-400 mb-3">
                 Protocols: <code className="text-slate-200">{d.protocol}</code>
               </div>
-              <div className="bg-[#080a11] p-3 rounded-lg border border-[#1e2638] text-xs text-slate-300 break-all select-all">
+              <div className="bg-[#080a11]/30 p-3 rounded-lg border border-[#1e2638]/50 text-xs text-slate-300 break-all select-all">
                 {d.example}
               </div>
             </div>
 
             <button
               onClick={() => handleCopy(d.example, idx)}
-              className="w-full py-2.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#1e2638] hover:border-rose-500/40 text-xs transition flex items-center justify-center gap-2 font-sans font-medium"
+              className="w-full py-2.5 rounded bg-[#080a11]/45 hover:bg-[#080a11]/70 text-slate-300 border border-[#1e2638]/60 hover:border-rose-500/40 text-xs transition flex items-center justify-center gap-2 font-sans font-medium"
             >
               {copiedIdx === idx ? <IconCheck className="w-4 h-4 text-rose-400" stroke={2} /> : <IconCopy className="w-4 h-4 text-slate-400" stroke={1.8} />}
               <span>{copiedIdx === idx ? 'Copied' : 'Copy Connection String'}</span>

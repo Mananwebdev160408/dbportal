@@ -104,7 +104,7 @@ export default function CliBuilder({ onToast }: CliBuilderProps) {
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
                 placeholder="4444 (Default)"
-                className="w-full bg-[#080a11] border border-[#1e2638] rounded-lg px-4 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500/50 font-mono"
+                className="w-full bg-[#080a11]/20 border border-[#1e2638]/60 rounded-lg px-4 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500/50 font-mono"
               />
             </div>
 
@@ -119,11 +119,11 @@ export default function CliBuilder({ onToast }: CliBuilderProps) {
                     value={envFile}
                     onChange={(e) => setEnvFile(e.target.value)}
                     placeholder=".env"
-                    className="w-full bg-[#080a11] border border-[#1e2638] rounded-lg px-4 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500/50 font-mono"
+                    className="w-full bg-[#080a11]/20 border border-[#1e2638]/60 rounded-lg px-4 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500/50 font-mono"
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-3.5 bg-[#080a11] border border-[#1e2638] rounded-lg">
+                <div className="flex items-center justify-between p-3.5 bg-[#080a11]/15 border border-[#1e2638]/50 rounded-lg">
                   <div className="text-xs">
                     <div className="font-bold text-slate-200">Enforce Read-Only Safety</div>
                     <div className="text-[10px] text-slate-400">Block destructive SQL queries</div>
@@ -140,7 +140,7 @@ export default function CliBuilder({ onToast }: CliBuilderProps) {
           </div>
 
           {/* Generated Command Output */}
-          <div className="bg-[#080a11] border border-[#1e2638] rounded-xl p-6 flex flex-col justify-between">
+          <div className="bg-[#080a11]/15 border border-[#1e2638]/50 rounded-xl p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between text-xs text-slate-400 mb-3 border-b border-[#1e2638] pb-2">
                 <span className="flex items-center gap-2 font-semibold text-slate-300">
@@ -148,7 +148,7 @@ export default function CliBuilder({ onToast }: CliBuilderProps) {
                 </span>
                 <span className="text-rose-400 text-[10px] font-bold">READY</span>
               </div>
-              <div className="text-sm font-bold text-rose-300 bg-[#0e121e] p-4 rounded-lg border border-[#1e2638] break-all select-all">
+              <div className="text-sm font-bold text-rose-300 bg-[#0e121e]/20 p-4 rounded-lg border border-[#1e2638]/50 break-all select-all">
                 {command}
               </div>
             </div>

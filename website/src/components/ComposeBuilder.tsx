@@ -104,7 +104,7 @@ ${envString}    restart: unless-stopped`;
                     className={`p-3 rounded-xl border text-left transition ${
                       selectedPreset === key
                         ? 'bg-rose-500/15 border-rose-500/40 text-rose-300 font-bold shadow-md'
-                        : 'bg-slate-900 border-[#1e2638] text-slate-400 hover:text-slate-200'
+                        : 'bg-[#0e121e]/30 border-[#1e2638]/50 text-slate-400 hover:text-slate-200 hover:bg-[#0e121e]/50'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -127,11 +127,11 @@ ${envString}    restart: unless-stopped`;
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
                 placeholder={curr.defaultPort}
-                className="w-full bg-[#080a11] border border-[#1e2638] rounded-lg px-4 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500/50 font-mono"
+                className="w-full bg-[#080a11]/20 border border-[#1e2638]/60 rounded-lg px-4 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500/50 font-mono"
               />
             </div>
 
-            <div className="bg-[#080a11] p-3.5 rounded-lg border border-[#1e2638] text-xs space-y-2">
+            <div className="bg-[#080a11]/15 p-3.5 rounded-lg border border-[#1e2638]/50 text-xs space-y-2">
               <span className="font-bold text-slate-300">Environment Defaults:</span>
               <div className="space-y-1">
                 {curr.env.map((e) => (
@@ -145,7 +145,7 @@ ${envString}    restart: unless-stopped`;
           </div>
 
           {/* Code Block Exporter */}
-          <div className="bg-[#080a11] border border-[#1e2638] rounded-xl p-6 flex flex-col justify-between">
+          <div className="bg-[#080a11]/15 border border-[#1e2638]/50 rounded-xl p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between text-xs text-slate-400 mb-3 border-b border-[#1e2638] pb-2">
                 <span className="flex items-center gap-2 text-rose-300 font-semibold">
@@ -154,7 +154,7 @@ ${envString}    restart: unless-stopped`;
 
                 <span className="text-rose-400 text-[10px] font-bold">VALID YML</span>
               </div>
-              <pre className="text-xs text-rose-300 bg-[#0e121e] p-4 rounded-lg border border-[#1e2638] overflow-x-auto whitespace-pre font-mono leading-relaxed select-all">
+              <pre className="text-xs text-rose-300 bg-[#0e121e]/20 p-4 rounded-lg border border-[#1e2638]/50 overflow-x-auto whitespace-pre font-mono leading-relaxed select-all">
                 {generateComposeYml()}
               </pre>
             </div>

@@ -10,9 +10,9 @@ export default function ComparisonMatrix() {
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[#1e2638] bg-[#0b0e17]">
+      <div className="overflow-x-auto rounded-xl border border-[#1e2638]/50 bg-[#0b0e17]/30 backdrop-blur-md">
         <table className="w-full text-left text-xs sm:text-sm">
-          <thead className="bg-[#0e121e] border-b border-[#1e2638] text-slate-300 font-mono">
+          <thead className="bg-[#0e121e]/40 border-b border-[#1e2638]/50 text-slate-300 font-mono">
             <tr>
               <th className="p-4 font-sans">Feature</th>
               <th className="p-4 text-rose-400 bg-rose-950/30 border-x border-rose-500/30 font-bold">dbportal</th>

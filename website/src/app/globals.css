@@ -26,71 +26,116 @@ body {
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 
-/* Glassmorphism Design System */
+/* Glassmorphism Design System with Sharded Glass Look */
 .glass-panel {
-  background: rgba(14, 18, 30, 0.65);
+  position: relative;
+  background: linear-gradient(135deg, rgba(14, 20, 36, 0.2) 0%, rgba(8, 10, 17, 0.35) 100%),
+              linear-gradient(225deg, rgba(255, 255, 255, 0.015) 0%, transparent 40%),
+              linear-gradient(45deg, rgba(244, 63, 94, 0.02) 0%, transparent 60%);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 30px 60px -15px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+/* Glass Shards / Faceted Overlay using pseudo-elements */
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(115deg, transparent 44%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.12) 46%, rgba(255, 255, 255, 0.02) 47%, transparent 49%),
+    linear-gradient(205deg, transparent 48%, rgba(255, 255, 255, 0.03) 49%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.02) 51%, transparent 52%),
+    linear-gradient(155deg, transparent 38%, rgba(244, 63, 94, 0.04) 39%, rgba(244, 63, 94, 0.08) 40%, rgba(244, 63, 94, 0.02) 41%, transparent 43%);
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.75;
+  z-index: 0;
+  transition: opacity 0.5s ease;
 }
 
 .glass-card {
-  background: rgba(14, 18, 30, 0.55);
+  position: relative;
+  background: linear-gradient(135deg, rgba(14, 20, 36, 0.1) 0%, rgba(8, 10, 17, 0.2) 100%),
+              linear-gradient(60deg, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 15px 35px -10px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
   border-radius: 1rem;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(120deg, transparent 40%, rgba(255, 255, 255, 0.03) 42%, rgba(255, 255, 255, 0.08) 44%, rgba(255, 255, 255, 0.02) 46%, transparent 48%),
+    linear-gradient(210deg, transparent 46%, rgba(255, 255, 255, 0.02) 48%, rgba(255, 255, 255, 0.07) 50%, rgba(255, 255, 255, 0.01) 52%, transparent 54%);
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.6;
+  z-index: 0;
 }
 
 .glass-card:hover {
-  background: rgba(20, 26, 42, 0.75);
+  background: linear-gradient(135deg, rgba(20, 26, 42, 0.2) 0%, rgba(14, 18, 30, 0.35) 100%);
   border-color: rgba(244, 63, 94, 0.35);
   border-top-color: rgba(251, 113, 133, 0.45);
-  box-shadow: 0 15px 35px -5px rgba(244, 63, 94, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
+  box-shadow: 
+    0 20px 45px -10px rgba(244, 63, 94, 0.2), 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-3px);
 }
 
 .tech-card {
-  background: rgba(14, 18, 30, 0.55);
+  position: relative;
+  background: linear-gradient(135deg, rgba(14, 20, 36, 0.1) 0%, rgba(8, 10, 17, 0.2) 100%),
+              linear-gradient(110deg, rgba(255, 255, 255, 0.015) 0%, transparent 40%);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1rem;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
 }
 
 .tech-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(244, 63, 94, 0.08),
-    transparent
-  );
-  transition: left 0.7s ease;
+  inset: 0;
+  background: 
+    linear-gradient(130deg, transparent 42%, rgba(255, 255, 255, 0.03) 44%, rgba(255, 255, 255, 0.06) 46%, rgba(255, 255, 255, 0.01) 48%, transparent 50%),
+    linear-gradient(80deg, transparent 48%, rgba(255, 255, 255, 0.02) 49%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.01) 51%, transparent 52%),
+    linear-gradient(90deg, transparent, rgba(244, 63, 94, 0.08), transparent);
+  background-size: 100% 100%, 100% 100%, 200% 100%;
+  background-position: 0 0, 0 0, -100% 0;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.6;
+  z-index: 0;
+  transition: background-position 0.8s ease;
 }
 
 .tech-card:hover::before {
-  left: 100%;
+  background-position: 0 0, 0 0, 100% 0;
 }
 
 .tech-card:hover {
   border-color: rgba(244, 63, 94, 0.4);
   border-top-color: rgba(251, 113, 133, 0.5);
-  background: rgba(20, 26, 42, 0.8);
+  background: linear-gradient(135deg, rgba(20, 26, 42, 0.2) 0%, rgba(14, 18, 30, 0.35) 100%);
   box-shadow: 0 14px 40px -10px rgba(244, 63, 94, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
   transform: translateY(-4px) scale(1.01);
 }

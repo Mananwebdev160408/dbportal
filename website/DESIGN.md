@@ -27,7 +27,8 @@
 
 ## Anti-AI Rules
 
-- NO decorative glassmorphic background blurs.
+- Use premium "sharded glass" panels & cards (using layered linear-gradients for angled reflections/facets & high blur backdrop-filter: blur(16px-24px)) to integrate components beautifully with the background glows.
+- NO plain/flat solid background panels for components (ensure sub-containers and overlays are semi-transparent rgba to allow the backdrop blur to shine through).
 - NO gradient text clips.
 - NO side-stripe colored card borders.
 - NO generic rounded 32px template cards (strict 12px panel radii).
