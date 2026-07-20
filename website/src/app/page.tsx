@@ -71,6 +71,15 @@ export default function Home() {
 
       {/* 4. Background Ambient Radial Lighting Effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        {/* Subtle Banner Background Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-top opacity-[0.2] pointer-events-none"
+          style={{
+            backgroundImage: 'url(/banner.jpg)',
+            maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 90%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 90%)',
+          }}
+        />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[radial-gradient(ellipse_at_top,rgba(244,63,94,0.15),transparent_70%)]" />
         <div className="absolute top-[40%] right-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(244,63,94,0.06),transparent_65%)]" />
         <div className="absolute bottom-[20%] left-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(244,63,94,0.08),transparent_65%)]" />
