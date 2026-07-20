@@ -62,14 +62,39 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-top: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 1rem;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tech-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(244, 63, 94, 0.08),
+    transparent
+  );
+  transition: left 0.7s ease;
+}
+
+.tech-card:hover::before {
+  left: 100%;
 }
 
 .tech-card:hover {
-  border-color: rgba(244, 63, 94, 0.3);
-  background: rgba(20, 26, 42, 0.75);
-  transform: translateY(-2px);
+  border-color: rgba(244, 63, 94, 0.4);
+  border-top-color: rgba(251, 113, 133, 0.5);
+  background: rgba(20, 26, 42, 0.8);
+  box-shadow: 0 14px 40px -10px rgba(244, 63, 94, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-4px) scale(1.01);
 }
+
 
 /* Bottom Command Dock Styling */
 .dock-item {

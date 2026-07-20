@@ -13,6 +13,7 @@ import Faq from '@/components/Faq';
 import Community from '@/components/Community';
 import BottomDock from '@/components/BottomDock';
 import ScrollConvergingBackground from '@/components/ScrollConvergingBackground';
+import CursorGlowAndScrollProgress from '@/components/CursorGlowAndScrollProgress';
 
 interface ToastItem {
   id: number;
@@ -32,8 +33,12 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen bg-[#080a11] text-slate-100 selection:bg-rose-500/30 selection:text-rose-200">
+      {/* Top Progress Bar & Mouse Cursor Light Beam */}
+      <CursorGlowAndScrollProgress />
+
       {/* Scroll-Reactive Converging 3D Background Artwork */}
       <ScrollConvergingBackground />
+
 
       {/* Background Ambient Radial Lighting Effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
