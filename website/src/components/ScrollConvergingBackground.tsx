@@ -61,7 +61,7 @@ export default function ScrollConvergingBackground() {
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-perspective-container">
       {/* 1. TOP LEFT CRIMSON LOGO (Upper Left) */}
       <div
-        className="absolute left-[3vw] sm:left-[6vw] top-[12vh] w-48 sm:w-60 md:w-[280px] transition-transform duration-75 ease-out pointer-events-auto group"
+        className="hidden lg:block absolute left-[3vw] sm:left-[6vw] top-[12vh] w-48 sm:w-60 md:w-[280px] transition-transform duration-75 ease-out pointer-events-auto group"
         style={{
           transformOrigin: 'left center',
           transform: `perspective(1000px) translateX(${inwardLeftVw}vw) translateZ(${depthZ}px) scale(${scaleSingularity}) rotateY(${rotYLeft}deg) rotateX(${8 * (1 - progress)}deg)`,
@@ -77,7 +77,7 @@ export default function ScrollConvergingBackground() {
 
       {/* 2. TOP RIGHT ER SCHEMA VISUALIZER (Upper Right) */}
       <div
-        className="absolute right-[3vw] sm:right-[6vw] top-[12vh] w-52 sm:w-72 md:w-[360px] transition-transform duration-75 ease-out pointer-events-auto group"
+        className="hidden lg:block absolute right-[3vw] sm:right-[6vw] top-[12vh] w-52 sm:w-72 md:w-[360px] transition-transform duration-75 ease-out pointer-events-auto group"
         style={{
           transformOrigin: 'right center',
           transform: `perspective(1000px) translateX(${inwardRightVw}vw) translateZ(${depthZ}px) scale(${scaleSingularity}) rotateY(${rotYRight}deg) rotateX(${8 * (1 - progress)}deg)`,
@@ -93,7 +93,7 @@ export default function ScrollConvergingBackground() {
 
       {/* 3. LOWER LEFT TABLE INSPECTOR (Lower Left - Spaced 44vh below upper left) */}
       <div
-        className="absolute left-[3vw] sm:left-[6vw] top-[56vh] w-52 sm:w-72 md:w-[350px] transition-transform duration-75 ease-out pointer-events-auto group"
+        className="hidden lg:block absolute left-[3vw] sm:left-[6vw] top-[56vh] w-52 sm:w-72 md:w-[350px] transition-transform duration-75 ease-out pointer-events-auto group"
         style={{
           transformOrigin: 'left center',
           transform: `perspective(1000px) translateX(${inwardLeftVw * 1.05}vw) translateZ(${depthZ}px) scale(${scaleSingularity}) rotateY(${rotYLeft}deg)`,
@@ -109,7 +109,7 @@ export default function ScrollConvergingBackground() {
 
       {/* 4. LOWER RIGHT DOCKER CONTAINER INSPECTOR (Lower Right - Spaced 44vh below upper right) */}
       <div
-        className="absolute right-[3vw] sm:right-[6vw] top-[56vh] w-52 sm:w-72 md:w-[350px] transition-transform duration-75 ease-out pointer-events-auto group"
+        className="hidden lg:block absolute right-[3vw] sm:right-[6vw] top-[56vh] w-52 sm:w-72 md:w-[350px] transition-transform duration-75 ease-out pointer-events-auto group"
         style={{
           transformOrigin: 'right center',
           transform: `perspective(1000px) translateX(${inwardRightVw * 1.05}vw) translateZ(${depthZ}px) scale(${scaleSingularity}) rotateY(${rotYRight}deg)`,

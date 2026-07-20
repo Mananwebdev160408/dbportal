@@ -90,7 +90,7 @@ export default function Home() {
       </div>
 
       {/* 6. Main Lazy-Loaded Page Sections */}
-      <main className="relative z-10 space-y-28 pt-12 pb-36">
+      <main className="relative z-10 space-y-16 sm:space-y-28 pt-12 pb-36">
         <Hero onToast={addToast} />
         <Simulator onToast={addToast} />
         <Protocols onToast={addToast} />

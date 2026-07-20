@@ -1,13 +1,15 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface InitialPreloaderProps {
   onComplete?: () => void;
 }
 
-export default function InitialPreloader({ onComplete }: InitialPreloaderProps) {
+export default function InitialPreloader({
+  onComplete,
+}: InitialPreloaderProps) {
   const [progress, setProgress] = useState(0);
   const [isZooming, setIsZooming] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +52,7 @@ export default function InitialPreloader({ onComplete }: InitialPreloaderProps) 
           initial={{ opacity: 1 }}
           exit={{
             opacity: 0,
-            transition: { duration: 0.35, ease: 'easeOut' },
+            transition: { duration: 0.35, ease: "easeOut" },
           }}
           className="fixed inset-0 z-[100] bg-[#080a11] flex flex-col items-center justify-center pointer-events-auto selection:bg-rose-500/30 text-white font-sans overflow-hidden transform-gpu"
         >
@@ -64,7 +66,7 @@ export default function InitialPreloader({ onComplete }: InitialPreloaderProps) 
             transition={
               isZooming
                 ? { duration: 0.5, ease: [0.7, 0, 0.1, 1] }
-                : { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
+                : { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
             }
             className="absolute w-64 h-64 rounded-full bg-[radial-gradient(circle,rgba(244,63,94,0.6)_0%,rgba(244,63,94,0.15)_50%,transparent_75%)] pointer-events-none transform-gpu"
           />
@@ -108,7 +110,13 @@ export default function InitialPreloader({ onComplete }: InitialPreloaderProps) 
                 className="transition-all duration-75 ease-out filter drop-shadow-[0_0_15px_rgba(244,63,94,0.95)]"
               />
               <defs>
-                <linearGradient id="laserGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <linearGradient
+                  id="laserGradient"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="0%"
+                >
                   <stop offset="0%" stopColor="#9f1239" />
                   <stop offset="50%" stopColor="#f43f5e" />
                   <stop offset="100%" stopColor="#fb7185" />
@@ -117,11 +125,11 @@ export default function InitialPreloader({ onComplete }: InitialPreloaderProps) 
             </svg>
 
             {/* 2. Central Keyhole Logo Iris */}
-            <div className="relative z-10 p-4 rounded-2xl bg-[#0e1320] border border-rose-500/40 shadow-[0_0_40px_rgba(244,63,94,0.5)] flex items-center justify-center">
+            <div className="relative z-10 flex items-center justify-center">
               <img
                 src="/logo.png"
                 alt="dbportal keyhole iris logo"
-                className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_25px_rgba(244,63,94,0.9)]"
+                className="w-28 h-28 sm:w-32 sm:h-32 object-contain drop-shadow-[0_0_35px_rgba(244,63,94,0.95)]"
               />
             </div>
           </motion.div>
@@ -140,7 +148,9 @@ export default function InitialPreloader({ onComplete }: InitialPreloaderProps) 
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
               <span className="text-rose-300 font-semibold">
-                {progress < 100 ? 'Charging Keyhole Iris...' : 'Passing Through Keyhole...'}
+                {progress < 100
+                  ? "Charging Keyhole Iris..."
+                  : "Passing Through Keyhole..."}
               </span>
             </div>
           </motion.div>

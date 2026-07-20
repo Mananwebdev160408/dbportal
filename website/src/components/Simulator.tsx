@@ -174,84 +174,86 @@ export default function Simulator({ onToast }: SimulatorProps) {
         {simMode === 'db' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[500px]">
             {/* Sidebar */}
-            <aside className="lg:col-span-3 bg-[#080a11] border-r border-[#1e2638] p-4 space-y-4 font-mono">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                <span>Fleets (4)</span>
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-              </div>
+            <aside className="lg:col-span-3 bg-[#080a11] border-b lg:border-b-0 lg:border-r border-[#1e2638] p-4 space-y-4 font-mono">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span>Fleets (4)</span>
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                </div>
 
-              <div className="space-y-1 text-xs">
-                <button
-                  onClick={() => setActiveDb('postgres')}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition ${
-                    activeDb === 'postgres'
-                      ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
-                      : 'bg-slate-900/40 hover:bg-slate-800 border border-[#1e2638] text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <IconDatabase size={16} stroke={1.75} className="text-rose-400" />
-                    <div>
-                      <div className="font-bold text-white">production_pg</div>
-                      <div className="text-[10px] text-slate-400">PostgreSQL 16</div>
+                <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto scrollbar-none pb-1 lg:pb-0 text-xs whitespace-nowrap">
+                  <button
+                    onClick={() => setActiveDb('postgres')}
+                    className={`shrink-0 w-auto lg:w-full flex items-center justify-between gap-4 p-2.5 rounded-lg text-left transition ${
+                      activeDb === 'postgres'
+                        ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
+                        : 'bg-slate-900/40 hover:bg-slate-800 border border-[#1e2638] text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <IconDatabase size={16} stroke={1.75} className="text-rose-400" />
+                      <div>
+                        <div className="font-bold text-white">production_pg</div>
+                        <div className="text-[10px] text-slate-400">PostgreSQL 16</div>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">Read-only</span>
-                </button>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">Read-only</span>
+                  </button>
 
-                <button
-                  onClick={() => setActiveDb('mongo')}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition ${
-                    activeDb === 'mongo'
-                      ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
-                      : 'bg-slate-900/40 hover:bg-slate-800 border border-[#1e2638] text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <IconLayoutGrid size={16} stroke={1.75} className="text-rose-400" />
-                    <div>
-                      <div className="font-bold text-slate-200">user_analytics</div>
-                      <div className="text-[10px] text-slate-500">MongoDB 7</div>
+                  <button
+                    onClick={() => setActiveDb('mongo')}
+                    className={`shrink-0 w-auto lg:w-full flex items-center justify-between gap-4 p-2.5 rounded-lg text-left transition ${
+                      activeDb === 'mongo'
+                        ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
+                        : 'bg-slate-900/40 hover:bg-slate-800 border border-[#1e2638] text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <IconLayoutGrid size={16} stroke={1.75} className="text-rose-400" />
+                      <div>
+                        <div className="font-bold text-slate-200">user_analytics</div>
+                        <div className="text-[10px] text-slate-500">MongoDB 7</div>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">Doc</span>
-                </button>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">Doc</span>
+                  </button>
 
-                <button
-                  onClick={() => setActiveDb('mysql')}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition ${
-                    activeDb === 'mysql'
-                      ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
-                      : 'bg-slate-900/40 hover:bg-slate-800 border border-[#1e2638] text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <IconDatabase size={16} stroke={1.75} className="text-rose-400" />
-                    <div>
-                      <div className="font-bold text-slate-200">store_ecommerce</div>
-                      <div className="text-[10px] text-slate-500">MySQL 8</div>
+                  <button
+                    onClick={() => setActiveDb('mysql')}
+                    className={`shrink-0 w-auto lg:w-full flex items-center justify-between gap-4 p-2.5 rounded-lg text-left transition ${
+                      activeDb === 'mysql'
+                        ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
+                        : 'bg-slate-900/40 hover:bg-slate-800 border border-[#1e2638] text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <IconDatabase size={16} stroke={1.75} className="text-rose-400" />
+                      <div>
+                        <div className="font-bold text-slate-200">store_ecommerce</div>
+                        <div className="text-[10px] text-slate-500">MySQL 8</div>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">Read-only</span>
-                </button>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">Read-only</span>
+                  </button>
 
-                <button
-                  onClick={() => setActiveDb('redis')}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition ${
-                    activeDb === 'redis'
-                      ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
-                      : 'bg-slate-900/40 hover:bg-slate-800 border border-[#1e2638] text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <IconBolt size={16} stroke={1.75} className="text-rose-400" />
-                    <div>
-                      <div className="font-bold text-slate-200">cache_fleet</div>
-                      <div className="text-[10px] text-slate-500">Redis 7</div>
+                  <button
+                    onClick={() => setActiveDb('redis')}
+                    className={`shrink-0 w-auto lg:w-full flex items-center justify-between gap-4 p-2.5 rounded-lg text-left transition ${
+                      activeDb === 'redis'
+                        ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
+                        : 'bg-slate-900/40 hover:bg-slate-800 border border-[#1e2638] text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <IconBolt size={16} stroke={1.75} className="text-rose-400" />
+                      <div>
+                        <div className="font-bold text-slate-200">cache_fleet</div>
+                        <div className="text-[10px] text-slate-500">Redis 7</div>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">K-V</span>
-                </button>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">K-V</span>
+                  </button>
+                </div>
               </div>
 
               {/* Table List */}
@@ -259,11 +261,11 @@ export default function Simulator({ onToast }: SimulatorProps) {
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   Tables in <span className="text-rose-300 lowercase">{currentDb.name}</span>
                 </div>
-                <div className="space-y-1 text-xs">
+                <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto scrollbar-none pb-1 lg:pb-0 text-xs whitespace-nowrap">
                   {currentDb.tables.map((t, idx) => (
                     <button
                       key={t}
-                      className={`w-full flex items-center justify-between p-2 rounded transition ${
+                      className={`shrink-0 w-auto lg:w-full flex items-center justify-between gap-4 p-2 rounded transition ${
                         idx === 0
                           ? 'bg-slate-800 text-rose-300 border border-rose-500/30 font-bold'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
