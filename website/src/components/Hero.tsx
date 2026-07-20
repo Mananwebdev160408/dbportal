@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import {
   IconShieldCheck,
   IconWifiOff,
@@ -10,21 +10,19 @@ import {
   IconSparkles,
   IconDatabase,
   IconBrandNpm,
-} from '@tabler/icons-react';
+} from "@tabler/icons-react";
 
 interface HeroProps {
   onToast: (msg: string) => void;
 }
 
-
-
 export default function Hero({ onToast }: HeroProps) {
-  const [activeTab, setActiveTab] = useState<'npx' | 'docker'>('npx');
+  const [activeTab, setActiveTab] = useState<"npx" | "docker">("npx");
   const [copied, setCopied] = useState(false);
 
   const getCommand = () => {
-    if (activeTab === 'npx') return 'npx dbportal';
-    return 'npx dbportal --docker';
+    if (activeTab === "npx") return "npx dbportal";
+    return "npx dbportal --docker";
   };
 
   const handleCopy = () => {
@@ -36,9 +34,11 @@ export default function Hero({ onToast }: HeroProps) {
   };
 
   return (
-    <section id="hero" className="relative pt-8 sm:pt-14 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-center scroll-mt-24">
+    <section
+      id="hero"
+      className="relative pt-8 sm:pt-14 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-center scroll-mt-24"
+    >
       {/* Top Status Badges */}
-
 
       <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
         <a
@@ -58,15 +58,17 @@ export default function Hero({ onToast }: HeroProps) {
         </div>
       </div>
 
-
       {/* Main Headline */}
       <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-[1.08] mb-6 max-w-4xl mx-auto font-sans">
-        Single-Command <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 via-rose-300 to-rose-200">Database Explorer</span> & Docker Manager
+        Single-Command <span className="text-rose-400">Database Explorer</span>{" "}
+        & Docker Manager
       </h1>
 
       {/* Subtitle */}
       <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed mb-10 font-sans">
-        Stop wrestling with heavy desktop clients. Inspect PostgreSQL, Mongo, MySQL, SQLite, Redis & Docker containers directly in your browser — zero config, 100% local, read-only safe.
+        Stop wrestling with heavy desktop clients. Inspect PostgreSQL, Mongo,
+        MySQL, SQLite, Redis & Docker containers directly in your browser — zero
+        config, 100% local, read-only safe.
       </p>
 
       {/* Glassmorphic Launcher & Command Showcase */}
@@ -79,28 +81,32 @@ export default function Hero({ onToast }: HeroProps) {
             </div>
 
             <div>
-              <h3 className="font-bold text-white text-sm font-sans">Quick Launcher</h3>
-              <p className="text-xs text-slate-400 font-sans">Run locally in any project directory</p>
+              <h3 className="font-bold text-white text-sm font-sans">
+                Quick Launcher
+              </h3>
+              <p className="text-xs text-slate-400 font-sans">
+                Run locally in any project directory
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 bg-[#080a11]/60 p-1 rounded-xl border border-white/10 backdrop-blur-md font-mono text-xs">
             <button
-              onClick={() => setActiveTab('npx')}
+              onClick={() => setActiveTab("npx")}
               className={`px-3.5 py-1.5 rounded-lg transition ${
-                activeTab === 'npx'
-                  ? 'bg-rose-500/25 text-rose-200 font-bold border border-rose-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                activeTab === "npx"
+                  ? "bg-rose-500/25 text-rose-200 font-bold border border-rose-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
               npx dbportal
             </button>
             <button
-              onClick={() => setActiveTab('docker')}
+              onClick={() => setActiveTab("docker")}
               className={`px-3.5 py-1.5 rounded-lg transition ${
-                activeTab === 'docker'
-                  ? 'bg-rose-500/25 text-rose-200 font-bold border border-rose-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                activeTab === "docker"
+                  ? "bg-rose-500/25 text-rose-200 font-bold border border-rose-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
               npx dbportal --docker
@@ -108,20 +114,25 @@ export default function Hero({ onToast }: HeroProps) {
           </div>
         </div>
 
-
         {/* Command Box */}
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-[#080a11]/80 backdrop-blur-xl p-4 rounded-xl border border-white/10 gap-3">
             <div className="flex items-center gap-3 font-mono text-sm sm:text-base">
               <span className="text-rose-400 font-bold">$</span>
-              <span className="text-white font-semibold select-all tracking-wide">{getCommand()}</span>
+              <span className="text-white font-semibold select-all tracking-wide">
+                {getCommand()}
+              </span>
             </div>
             <button
               onClick={handleCopy}
               className="px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white border border-rose-400/40 text-xs font-sans font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20"
             >
-              {copied ? <IconCheck size={16} stroke={2} className="text-white" /> : <IconCopy size={16} stroke={1.75} className="text-white" />}
-              <span>{copied ? 'Copied!' : 'Copy Command'}</span>
+              {copied ? (
+                <IconCheck size={16} stroke={2} className="text-white" />
+              ) : (
+                <IconCopy size={16} stroke={1.75} className="text-white" />
+              )}
+              <span>{copied ? "Copied!" : "Copy Command"}</span>
             </button>
           </div>
 
@@ -132,8 +143,12 @@ export default function Hero({ onToast }: HeroProps) {
                 <IconDatabase size={18} stroke={1.75} />
               </div>
               <div className="text-left font-sans">
-                <div className="text-xs font-bold text-white">Auto .env Fleet</div>
-                <div className="text-[11px] text-slate-400">PG, Mongo, MySQL, Redis</div>
+                <div className="text-xs font-bold text-white">
+                  Auto .env Fleet
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  PG, Mongo, MySQL, Redis
+                </div>
               </div>
             </div>
 
@@ -142,8 +157,12 @@ export default function Hero({ onToast }: HeroProps) {
                 <IconShieldCheck size={18} stroke={1.75} />
               </div>
               <div className="text-left font-sans">
-                <div className="text-xs font-bold text-white">Read-Only Safe</div>
-                <div className="text-[11px] text-slate-400">Zero mutation risk</div>
+                <div className="text-xs font-bold text-white">
+                  Read-Only Safe
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  Zero mutation risk
+                </div>
               </div>
             </div>
 
@@ -152,20 +171,17 @@ export default function Hero({ onToast }: HeroProps) {
                 <IconWifiOff size={18} stroke={1.75} />
               </div>
               <div className="text-left font-sans">
-                <div className="text-xs font-bold text-white">100% Localhost</div>
-                <div className="text-[11px] text-slate-400">Bound to 127.0.0.1:4444</div>
+                <div className="text-xs font-bold text-white">
+                  100% Localhost
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  Bound to 127.0.0.1:4444
+                </div>
               </div>
             </div>
-
-
-
-
-
           </div>
         </div>
       </div>
     </section>
   );
 }
-
-
