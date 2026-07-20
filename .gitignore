@@ -51,3 +51,4 @@ skills-lock.json
 scratch_*.js
 scratch_*.ts
 debug_*.js
+.impeccable/
