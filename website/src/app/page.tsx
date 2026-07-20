@@ -12,6 +12,7 @@ import ComparisonMatrix from '@/components/ComparisonMatrix';
 import Faq from '@/components/Faq';
 import Community from '@/components/Community';
 import BottomDock from '@/components/BottomDock';
+import ScrollConvergingBackground from '@/components/ScrollConvergingBackground';
 
 interface ToastItem {
   id: number;
@@ -31,8 +32,12 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen bg-[#080a11] text-slate-100 selection:bg-rose-500/30 selection:text-rose-200">
+      {/* Scroll-Reactive Converging 3D Background Artwork */}
+      <ScrollConvergingBackground />
+
       {/* Background Ambient Radial Lighting Effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[radial-gradient(ellipse_at_top,rgba(244,63,94,0.15),transparent_70%)]" />
         <div className="absolute top-[40%] right-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(99,102,241,0.08),transparent_65%)]" />
         <div className="absolute bottom-[20%] left-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(244,63,94,0.08),transparent_65%)]" />

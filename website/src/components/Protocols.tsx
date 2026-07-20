@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Database, Copy, Check, ExternalLink } from 'lucide-react';
+import { IconDatabase, IconCopy, IconCheck } from '@tabler/icons-react';
 
 interface ProtocolsProps {
   onToast: (msg: string) => void;
@@ -13,45 +13,45 @@ export default function Protocols({ onToast }: ProtocolsProps) {
   const drivers = [
     {
       name: 'PostgreSQL & CockroachDB',
-      protocol: 'postgres://, postgresql://, cockroachdb://',
-      example: 'postgres://user:password@localhost:5432/my_database',
-      badge: 'Relational',
-      color: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10',
+      protocol: 'postgresql:// / postgres://',
+      example: 'postgresql://postgres:secret@localhost:5432/production_db',
+      badge: 'Native Pool',
+      color: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
     },
     {
-      name: 'MongoDB',
-      protocol: 'mongodb://, mongodb+srv://',
-      example: 'mongodb://root:secret@localhost:27017/analytics_db',
-      badge: 'Document',
-      color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+      name: 'MongoDB Driver',
+      protocol: 'mongodb:// / mongodb+srv://',
+      example: 'mongodb://root:pass@127.0.0.1:27017/analytics_db',
+      badge: 'BSON Engine',
+      color: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
     },
     {
       name: 'MySQL & MariaDB',
-      protocol: 'mysql://, mariadb://',
-      example: 'mysql://root:password@localhost:3306/ecommerce',
-      badge: 'Relational',
-      color: 'text-sky-400 border-sky-500/30 bg-sky-500/10',
+      protocol: 'mysql:// / mysql2://',
+      example: 'mysql://admin:password@localhost:3306/ecommerce_db',
+      badge: 'Binary Stream',
+      color: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
     },
     {
-      name: 'SQLite',
-      protocol: 'sqlite:',
-      example: 'sqlite:./data/local_dev.db',
-      badge: 'File-based',
-      color: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+      name: 'SQLite 3 (Embedded)',
+      protocol: 'sqlite: / sqlite3:',
+      example: 'sqlite://./data/application.sqlite3',
+      badge: 'Zero Server',
+      color: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
     },
     {
-      name: 'Redis',
-      protocol: 'redis://, rediss://',
-      example: 'redis://:secretpass@localhost:6379/0',
+      name: 'Redis K-V Store',
+      protocol: 'redis:// / rediss://',
+      example: 'redis://:session_secret@127.0.0.1:6379/0',
       badge: 'In-Memory',
-      color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
+      color: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
     },
     {
-      name: 'SQL Server (MSSQL)',
-      protocol: 'mssql://',
+      name: 'Microsoft SQL Server',
+      protocol: 'mssql:// / sqlserver://',
       example: 'mssql://sa:StrongPass123@localhost:1433/enterprise_db',
-      badge: 'Enterprise',
-      color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10',
+      badge: 'T-SQL Pool',
+      color: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
     },
   ];
 
@@ -75,13 +75,13 @@ export default function Protocols({ onToast }: ProtocolsProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
         {drivers.map((d, idx) => (
-          <div key={d.name} className="tech-card p-5 flex flex-col justify-between space-y-4">
+          <div key={d.name} className="tech-card p-5 sm:p-6 flex flex-col justify-between space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-white text-sm font-sans flex items-center gap-2">
-                  <Database className="w-4 h-4 text-rose-400" /> {d.name}
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-bold text-white text-sm sm:text-base font-sans flex items-center gap-2.5">
+                  <IconDatabase className="w-5 h-5 text-rose-400" stroke={1.8} /> {d.name}
                 </span>
-                <span className={`text-[10px] px-2 py-0.5 rounded border ${d.color}`}>
+                <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${d.color}`}>
                   {d.badge}
                 </span>
               </div>
@@ -95,9 +95,9 @@ export default function Protocols({ onToast }: ProtocolsProps) {
 
             <button
               onClick={() => handleCopy(d.example, idx)}
-              className="w-full py-2 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#1e2638] hover:border-rose-500/40 text-xs transition flex items-center justify-center gap-1.5 font-sans font-medium"
+              className="w-full py-2.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#1e2638] hover:border-rose-500/40 text-xs transition flex items-center justify-center gap-2 font-sans font-medium"
             >
-              {copiedIdx === idx ? <Check className="w-3.5 h-3.5 text-rose-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+              {copiedIdx === idx ? <IconCheck className="w-4 h-4 text-rose-400" stroke={2} /> : <IconCopy className="w-4 h-4 text-slate-400" stroke={1.8} />}
               <span>{copiedIdx === idx ? 'Copied' : 'Copy Connection String'}</span>
             </button>
           </div>
@@ -106,4 +106,3 @@ export default function Protocols({ onToast }: ProtocolsProps) {
     </section>
   );
 }
-

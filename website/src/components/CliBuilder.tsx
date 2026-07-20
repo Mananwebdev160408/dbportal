@@ -1,89 +1,106 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Check, Terminal } from 'lucide-react';
+import { IconCopy, IconCheck, IconTerminal2 } from '@tabler/icons-react';
 
 interface CliBuilderProps {
   onToast: (msg: string) => void;
 }
 
 export default function CliBuilder({ onToast }: CliBuilderProps) {
-  const [mode, setMode] = useState<'npx' | 'install' | 'docker'>('npx');
+  const [mode, setMode] = useState<'npx' | 'docker'>('npx');
   const [port, setPort] = useState('');
+  const [envFile, setEnvFile] = useState('.env');
+  const [readOnly, setReadOnly] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  let command = 'npx dbportal';
-  if (mode === 'install') command = 'npm i -g dbportal && dbportal';
-  if (mode === 'docker') command = 'npx dbportal --docker';
-  if (port.trim()) command += ` --port ${port.trim()}`;
+  const getGeneratedCommand = () => {
+    if (mode === 'docker') {
+      let cmd = 'npx dbportal --docker';
+      if (port.trim()) cmd += ` --port ${port.trim()}`;
+      return cmd;
+    }
+
+    let cmd = 'npx dbportal';
+    const flags: string[] = [];
+
+    if (port.trim() && port.trim() !== '4444') {
+      flags.push(`--port ${port.trim()}`);
+    }
+    if (envFile.trim() && envFile.trim() !== '.env') {
+      flags.push(`--env ${envFile.trim()}`);
+    }
+    if (readOnly) {
+      flags.push('--read-only');
+    }
+
+    if (flags.length > 0) {
+      cmd += ' ' + flags.join(' ');
+    }
+    return cmd;
+  };
+
+  const command = getGeneratedCommand();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(command);
     setCopied(true);
-    onToast(`Copied command: "${command}"`);
+    onToast(`Copied "${command}" to clipboard!`);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <section id="quickstart" className="px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto scroll-mt-24">
-      <div className="glass-panel border border-white/10 border-t-white/20 rounded-2xl p-8 sm:p-12 shadow-2xl">
+      <div className="glass-panel border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl">
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 font-sans">
-            CLI Command Builder & Setup Guide
+            Interactive CLI Command Builder
           </h2>
           <p className="text-slate-400 text-sm font-sans">
-            Generate custom startup commands or install globally via npm
+            Tailor startup parameters, port bindings, and connection flags visually.
           </p>
         </div>
 
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 font-mono">
-          {/* Options Form */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-mono">
+          {/* Options Panel */}
           <div className="space-y-5">
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Execution Target
+                Execution Mode
               </label>
-              <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 <button
                   onClick={() => setMode('npx')}
-                  className={`p-2.5 rounded-lg border text-center transition ${
+                  className={`p-3 rounded-lg border text-left font-mono transition ${
                     mode === 'npx'
                       ? 'bg-rose-500/15 border-rose-500/40 text-rose-300 font-bold'
                       : 'bg-slate-900 border-[#1e2638] text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  npx
+                  <div className="font-bold text-white mb-0.5">npx dbportal</div>
+                  <div className="text-[10px] text-slate-500">Auto .env explorer</div>
                 </button>
-                <button
-                  onClick={() => setMode('install')}
-                  className={`p-2.5 rounded-lg border text-center transition ${
-                    mode === 'install'
-                      ? 'bg-rose-500/15 border-rose-500/40 text-rose-300 font-bold'
-                      : 'bg-slate-900 border-[#1e2638] text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  global install
-                </button>
+
                 <button
                   onClick={() => setMode('docker')}
-                  className={`p-2.5 rounded-lg border text-center transition ${
+                  className={`p-3 rounded-lg border text-left font-mono transition ${
                     mode === 'docker'
                       ? 'bg-rose-500/15 border-rose-500/40 text-rose-300 font-bold'
                       : 'bg-slate-900 border-[#1e2638] text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  --docker
+                  <div className="font-bold text-white mb-0.5">--docker</div>
+                  <div className="text-[10px] text-slate-500">Docker Daemon GUI</div>
                 </button>
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Custom Port Flag (--port)
+                Custom Web GUI Port
               </label>
               <input
-                type="number"
+                type="text"
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
                 placeholder="4444 (Default)"
@@ -91,20 +108,43 @@ export default function CliBuilder({ onToast }: CliBuilderProps) {
               />
             </div>
 
-            <div className="bg-[#080a11] p-3.5 rounded-lg border border-[#1e2638] text-xs space-y-1.5 text-slate-300 font-sans">
-              <span className="font-bold text-rose-400 font-mono">📁 .env Setup:</span>
-              <p className="text-slate-400 text-[11px] leading-relaxed">
-                Add <code className="text-rose-300 font-mono">DATABASE_URL="postgres://user:pass@localhost:5432/db"</code> in your project directory. Supports up to 10 numbered URLs (<code className="text-rose-300 font-mono">DATABASE_URL_1</code> to <code className="text-rose-300 font-mono">DATABASE_URL_10</code>).
-              </p>
-            </div>
+            {mode === 'npx' && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                    Environment File Path
+                  </label>
+                  <input
+                    type="text"
+                    value={envFile}
+                    onChange={(e) => setEnvFile(e.target.value)}
+                    placeholder=".env"
+                    className="w-full bg-[#080a11] border border-[#1e2638] rounded-lg px-4 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500/50 font-mono"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3.5 bg-[#080a11] border border-[#1e2638] rounded-lg">
+                  <div className="text-xs">
+                    <div className="font-bold text-slate-200">Enforce Read-Only Safety</div>
+                    <div className="text-[10px] text-slate-400">Block destructive SQL queries</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={readOnly}
+                    onChange={(e) => setReadOnly(e.target.checked)}
+                    className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Generated Command Output */}
           <div className="bg-[#080a11] border border-[#1e2638] rounded-xl p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between text-xs text-slate-400 mb-3 border-b border-[#1e2638] pb-2">
-                <span className="flex items-center gap-1.5 font-semibold text-slate-300">
-                  <Terminal className="w-3.5 h-3.5 text-rose-400" /> Shell Command
+                <span className="flex items-center gap-2 font-semibold text-slate-300">
+                  <IconTerminal2 className="w-5 h-5 text-rose-400" stroke={1.8} /> Shell Command
                 </span>
                 <span className="text-rose-400 text-[10px] font-bold">READY</span>
               </div>
@@ -118,7 +158,7 @@ export default function CliBuilder({ onToast }: CliBuilderProps) {
                 onClick={handleCopy}
                 className="w-full py-3 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs tracking-wide transition flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20"
               >
-                {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
+                {copied ? <IconCheck className="w-4 h-4 text-white" stroke={2} /> : <IconCopy className="w-4 h-4 text-white" stroke={2} />}
                 <span>{copied ? 'Copied to Clipboard!' : 'Copy Command'}</span>
               </button>
               <p className="text-[11px] text-slate-500 text-center font-mono">
@@ -131,4 +171,3 @@ export default function CliBuilder({ onToast }: CliBuilderProps) {
     </section>
   );
 }
-

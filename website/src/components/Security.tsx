@@ -1,42 +1,49 @@
-import { ShieldCheck, WifiOff, Lock, Cpu, Key, FileCheck } from 'lucide-react';
+import {
+  IconLock,
+  IconShieldCheck,
+  IconWifiOff,
+  IconCpu,
+  IconKey,
+  IconFileCheck,
+} from '@tabler/icons-react';
 
 export default function Security() {
   const points = [
     {
       title: 'Localhost Binding Only (127.0.0.1)',
       desc: 'dbportal binds strictly to your loopback address 127.0.0.1:4444. It is never exposed over public networks or external interfaces.',
-      icon: Lock,
+      icon: IconLock,
       color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
     },
     {
       title: 'Enforced Read-Only Execution Engine',
       desc: 'All database connections operate under strict read-only parameters. Destructive transactions like UPDATE, DELETE, and DROP are blocked at driver level.',
-      icon: ShieldCheck,
-      color: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10',
+      icon: IconShieldCheck,
+      color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
     },
     {
       title: 'Zero Cloud Telemetry & 100% Offline',
       desc: 'Zero analytics tracking, zero third-party cloud pings, zero tracking scripts. Operates fully air-gapped without active internet connections.',
-      icon: WifiOff,
-      color: 'text-cyan-400 border-cyan-400/30 bg-cyan-400/10',
+      icon: IconWifiOff,
+      color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
     },
     {
       title: 'Local Docker Socket Isolation',
       desc: 'Communicates directly with your local Docker daemon socket (/var/run/docker.sock or //./pipe/docker_engine) using native dockerode bindings.',
-      icon: Cpu,
-      color: 'text-sky-400 border-sky-400/30 bg-sky-400/10',
+      icon: IconCpu,
+      color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
     },
     {
       title: 'Zero Cloud Credential Storage',
       desc: 'Your database connection credentials remain isolated inside your local .env file. No tokens or keys are saved externally.',
-      icon: Key,
-      color: 'text-amber-400 border-amber-400/30 bg-amber-400/10',
+      icon: IconKey,
+      color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
     },
     {
       title: 'Open Source MIT License Integrity',
       desc: 'Fully transparent codebase published on GitHub and npmjs. Audit the source code, verify dependencies, and contribute directly.',
-      icon: FileCheck,
-      color: 'text-indigo-400 border-indigo-400/30 bg-indigo-400/10',
+      icon: IconFileCheck,
+      color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
     },
   ];
 
@@ -58,10 +65,10 @@ export default function Security() {
             <div key={p.title} className="tech-card p-6 flex flex-col justify-between">
               <div>
                 <div className={`w-10 h-10 rounded-lg border flex items-center justify-center mb-4 ${p.color}`}>
-                  <Icon className="w-5 h-5" />
+                  <Icon size={20} stroke={1.75} />
                 </div>
                 <h3 className="text-base font-bold text-white mb-2 font-sans">{p.title}</h3>
-                <p className="text-slate-400 text-xs leading-relaxed">{p.desc}</p>
+                <p className="text-slate-400 text-xs leading-relaxed font-sans">{p.desc}</p>
               </div>
             </div>
           );
@@ -70,4 +77,6 @@ export default function Security() {
     </section>
   );
 }
+
+
 

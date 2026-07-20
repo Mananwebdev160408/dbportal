@@ -1,7 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Database, Container, Layers, Server, Zap, Play, Plus, FileCode, Cpu, HardDrive, Disc, Box, Check, Copy } from 'lucide-react';
+import {
+  IconDatabase,
+  IconBox,
+  IconLayoutGrid,
+  IconBolt,
+  IconPlayerPlay,
+  IconPlus,
+  IconCode,
+  IconCpu,
+  IconCheck,
+  IconCopy,
+  IconServer,
+} from '@tabler/icons-react';
+
+
+
+
+
 
 interface SimulatorProps {
   onToast: (msg: string) => void;
@@ -132,7 +149,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Database className="w-3.5 h-3.5 text-rose-400" />
+              <IconDatabase size={16} stroke={1.75} className="text-rose-400" />
               <span>Database Fleet</span>
             </button>
             <button
@@ -143,11 +160,14 @@ export default function Simulator({ onToast }: SimulatorProps) {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Container className="w-3.5 h-3.5 text-sky-400" />
+              <IconBox size={16} stroke={1.75} className="text-rose-400" />
               <span>Docker Manager</span>
             </button>
           </div>
+
         </div>
+
+
 
 
         {/* DATABASE MODE */}
@@ -170,7 +190,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Database className="w-3.5 h-3.5 text-rose-400" />
+                    <IconDatabase size={16} stroke={1.75} className="text-rose-400" />
                     <div>
                       <div className="font-bold text-white">production_pg</div>
                       <div className="text-[10px] text-slate-400">PostgreSQL 16</div>
@@ -188,7 +208,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                    <IconLayoutGrid size={16} stroke={1.75} className="text-rose-400" />
                     <div>
                       <div className="font-bold text-slate-200">user_analytics</div>
                       <div className="text-[10px] text-slate-500">MongoDB 7</div>
@@ -206,7 +226,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Server className="w-3.5 h-3.5 text-sky-400" />
+                    <IconDatabase size={16} stroke={1.75} className="text-rose-400" />
                     <div>
                       <div className="font-bold text-slate-200">store_ecommerce</div>
                       <div className="text-[10px] text-slate-500">MySQL 8</div>
@@ -224,7 +244,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-rose-400" />
+                    <IconBolt size={16} stroke={1.75} className="text-rose-400" />
                     <div>
                       <div className="font-bold text-slate-200">cache_fleet</div>
                       <div className="text-[10px] text-slate-500">Redis 7</div>
@@ -342,7 +362,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                   <div className="text-xs text-slate-400 mb-2 font-mono">Relational Entity-Relationship Diagram</div>
                   <svg className="w-full h-64" viewBox="0 0 600 220" fill="none">
                     <path d="M160 80 C 230 80, 230 140, 300 140" stroke="#f43f5e" strokeWidth="2" strokeDasharray="4 4" className="animate-dash" />
-                    <path d="M440 140 C 490 140, 490 80, 540 80" stroke="#38bdf8" strokeWidth="2" />
+                    <path d="M440 140 C 490 140, 490 80, 540 80" stroke="#f43f5e" strokeWidth="2" />
 
                     <g transform="translate(40, 30)">
                       <rect width="120" height="90" rx="6" fill="#0e121e" stroke="#f43f5e" strokeWidth="1.5" />
@@ -354,9 +374,9 @@ export default function Simulator({ onToast }: SimulatorProps) {
                     </g>
 
                     <g transform="translate(260, 90)">
-                      <rect width="130" height="105" rx="6" fill="#0e121e" stroke="#38bdf8" strokeWidth="1.5" />
+                      <rect width="130" height="105" rx="6" fill="#0e121e" stroke="#f43f5e" strokeWidth="1.5" />
                       <rect width="130" height="24" rx="6" fill="#141a2b" />
-                      <text x="12" y="16" fill="#38bdf8" fontFamily="monospace" fontSize="11" fontWeight="bold">orders</text>
+                      <text x="12" y="16" fill="#fb7185" fontFamily="monospace" fontSize="11" fontWeight="bold">orders</text>
                       <text x="12" y="42" fill="#94a3b8" fontFamily="monospace" fontSize="9">🔑 id (PK)</text>
                       <text x="12" y="58" fill="#fb7185" fontFamily="monospace" fontSize="9">🔗 user_id (FK)</text>
                       <text x="12" y="74" fill="#94a3b8" fontFamily="monospace" fontSize="9">total_amount</text>
@@ -364,9 +384,9 @@ export default function Simulator({ onToast }: SimulatorProps) {
                     </g>
 
                     <g transform="translate(460, 30)">
-                      <rect width="120" height="90" rx="6" fill="#0e121e" stroke="#818cf8" strokeWidth="1.5" />
+                      <rect width="120" height="90" rx="6" fill="#0e121e" stroke="#f43f5e" strokeWidth="1.5" />
                       <rect width="120" height="24" rx="6" fill="#141a2b" />
-                      <text x="12" y="16" fill="#818cf8" fontFamily="monospace" fontSize="11" fontWeight="bold">products</text>
+                      <text x="12" y="16" fill="#fb7185" fontFamily="monospace" fontSize="11" fontWeight="bold">products</text>
                       <text x="12" y="42" fill="#94a3b8" fontFamily="monospace" fontSize="9">🔑 id (PK)</text>
                       <text x="12" y="58" fill="#94a3b8" fontFamily="monospace" fontSize="9">title</text>
                       <text x="12" y="74" fill="#94a3b8" fontFamily="monospace" fontSize="9">price</text>
@@ -385,7 +405,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                         onClick={handleRunSql}
                         className="px-3.5 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-md font-bold transition flex items-center gap-1.5 shadow-lg shadow-rose-500/20"
                       >
-                        <Play className="w-3 h-3 fill-current" /> Run Query
+                        <IconPlayerPlay size={14} stroke={2} /> Run Query
                       </button>
                     </div>
                     <textarea
@@ -417,23 +437,23 @@ export default function Simulator({ onToast }: SimulatorProps) {
                 <div className="text-xs text-slate-400">Active Containers</div>
                 <div className="text-2xl font-bold text-rose-400 mt-1 flex items-center justify-between">
                   <span>{containers.filter((c) => c.status === 'Running').length} Active</span>
-                  <Box className="w-5 h-5 opacity-40" />
+                  <IconBox size={20} stroke={1.5} className="opacity-40" />
                 </div>
               </div>
 
               <div className="bg-[#0e121e] border border-[#1e2638] rounded-lg p-3">
                 <div className="text-xs text-slate-400">CPU Usage</div>
-                <div className="text-2xl font-bold text-cyan-400 mt-1 flex items-center justify-between">
+                <div className="text-2xl font-bold text-rose-300 mt-1 flex items-center justify-between">
                   <span>{cpuUsage}</span>
-                  <Cpu className="w-5 h-5 opacity-40" />
+                  <IconCpu size={20} stroke={1.5} className="opacity-40" />
                 </div>
               </div>
 
               <div className="bg-[#0e121e] border border-[#1e2638] rounded-lg p-3">
                 <div className="text-xs text-slate-400">RAM Footprint</div>
-                <div className="text-2xl font-bold text-indigo-400 mt-1 flex items-center justify-between">
+                <div className="text-2xl font-bold text-rose-300 mt-1 flex items-center justify-between">
                   <span>342 MB</span>
-                  <HardDrive className="w-5 h-5 opacity-40" />
+                  <IconServer size={20} stroke={1.5} className="opacity-40" />
                 </div>
               </div>
 
@@ -441,7 +461,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
                 <div className="text-xs text-slate-400">Images & Volumes</div>
                 <div className="text-2xl font-bold text-slate-200 mt-1 flex items-center justify-between">
                   <span>6 Volumes</span>
-                  <Disc className="w-5 h-5 opacity-40" />
+                  <IconServer size={20} stroke={1.5} className="opacity-40" />
                 </div>
               </div>
             </div>
@@ -449,7 +469,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
             <div className="bg-[#0e121e] border border-[#1e2638] rounded-lg overflow-hidden font-mono">
               <div className="p-4 bg-[#141a2b] border-b border-[#1e2638] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Box className="w-4 h-4 text-rose-400" />
+                  <IconBox size={16} stroke={1.75} className="text-rose-400" />
                   <span className="font-bold text-sm text-white">Docker Daemon Manager</span>
                 </div>
 
@@ -458,18 +478,19 @@ export default function Simulator({ onToast }: SimulatorProps) {
                     onClick={() => onToast('Opening Container Launcher (pulled redis:alpine)')}
                     className="px-3.5 py-1.5 rounded bg-rose-500 hover:bg-rose-600 text-white font-bold transition flex items-center gap-1.5 shadow-md shadow-rose-500/20"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Launch Container
+                    <IconPlus size={15} stroke={2} /> Launch Container
                   </button>
                   <button
                     onClick={() => onToast('Exported clean docker-compose.yml!')}
                     className="px-3.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 border border-[#1e2638] font-bold transition flex items-center gap-1.5"
                   >
-                    <FileCode className="w-3.5 h-3.5 text-rose-400" /> Export Compose
+                    <IconCode size={15} stroke={1.75} className="text-rose-400" /> Export Compose
                   </button>
                 </div>
               </div>
 
               <div className="overflow-x-auto">
+
                 <table className="w-full text-left text-xs">
                   <thead className="bg-[#080a11] border-b border-[#1e2638] text-slate-400">
                     <tr>
@@ -487,12 +508,12 @@ export default function Simulator({ onToast }: SimulatorProps) {
                         <td className="p-3 font-semibold text-white flex items-center gap-2">
                           <span
                             className={`w-2 h-2 rounded-full ${
-                              c.status === 'Running' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'
+                              c.status === 'Running' ? 'bg-rose-400 animate-pulse' : 'bg-slate-600'
                             }`}
                           ></span>
                           <span>{c.name}</span>
                         </td>
-                        <td className="p-3 text-cyan-300">{c.image}</td>
+                        <td className="p-3 text-rose-300">{c.image}</td>
                         <td className="p-3">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] ${

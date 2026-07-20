@@ -1,11 +1,12 @@
 'use client';
 
-import { Terminal, Copy, Check, MessageSquare, ExternalLink } from 'lucide-react';
+import { IconTerminal, IconCopy, IconCheck, IconMessage, IconExternalLink, IconBrandGithub, IconBrandNpm } from '@tabler/icons-react';
 import { useState } from 'react';
 
 interface NavbarProps {
   onToast: (msg: string) => void;
 }
+
 
 export function GithubIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -39,14 +40,14 @@ export default function Navbar({ onToast }: NavbarProps) {
         
         {/* Brand */}
         <a href="#hero" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 rounded-lg bg-lime-400/10 border border-lime-400/30 flex items-center justify-center text-lime-400 group-hover:border-lime-400 transition">
-            <Terminal className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 group-hover:border-rose-400 transition">
+            <IconTerminal size={16} stroke={1.75} />
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-base tracking-tight text-white group-hover:text-lime-300 transition font-mono">
+            <span className="font-bold text-base tracking-tight text-white group-hover:text-rose-300 transition font-mono">
               dbportal
             </span>
-            <span className="px-2 py-0.5 text-[10px] font-mono rounded bg-slate-900 text-lime-400 border border-lime-400/30">
+            <span className="px-2 py-0.5 text-[10px] font-mono rounded bg-slate-900 text-rose-400 border border-rose-500/30">
               v1.1.0
             </span>
           </div>
@@ -57,11 +58,11 @@ export default function Navbar({ onToast }: NavbarProps) {
           {/* Quick Copy */}
           <button
             onClick={handleCopy}
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#1e2638] hover:border-lime-400/40 transition"
+            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#1e2638] hover:border-rose-400/40 transition"
           >
-            <span className="text-lime-400 font-bold">$</span>
+            <span className="text-rose-400 font-bold">$</span>
             <span>npx dbportal</span>
-            {copied ? <Check className="w-3.5 h-3.5 text-lime-400 ml-1" /> : <Copy className="w-3.5 h-3.5 text-slate-400 ml-1" />}
+            {copied ? <IconCheck size={14} stroke={2} className="text-rose-400 ml-1" /> : <IconCopy size={14} stroke={1.75} className="text-slate-400 ml-1" />}
           </button>
 
           {/* npmjs Link */}
@@ -71,9 +72,9 @@ export default function Navbar({ onToast }: NavbarProps) {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition"
           >
-            <NpmIcon className="w-3.5 h-3.5 text-rose-400" />
+            <IconBrandNpm size={16} className="text-rose-400" />
             <span className="hidden sm:inline">npmjs.com/dbportal</span>
-            <ExternalLink className="w-3 h-3 text-rose-400/70" />
+            <IconExternalLink size={14} className="text-rose-400/70" />
           </a>
 
           {/* GitHub Link */}
@@ -83,7 +84,7 @@ export default function Navbar({ onToast }: NavbarProps) {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-200 border border-[#1e2638] transition"
           >
-            <GithubIcon className="w-3.5 h-3.5" />
+            <IconBrandGithub size={16} />
             <span className="hidden sm:inline">GitHub</span>
           </a>
 
@@ -92,12 +93,13 @@ export default function Navbar({ onToast }: NavbarProps) {
             href="https://discord.gg/YnRq6df2RY"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition"
           >
-            <MessageSquare className="w-3.5 h-3.5" />
+            <IconMessage size={16} />
             <span className="hidden lg:inline">Discord</span>
           </a>
         </div>
+
 
       </div>
     </header>
