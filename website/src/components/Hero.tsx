@@ -59,7 +59,7 @@ export default function Hero({ onToast }: HeroProps) {
       </div>
 
       {/* Main Headline */}
-      <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-[1.08] mb-6 max-w-4xl mx-auto font-sans">
+      <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-[1.08] mb-6 max-w-4xl mx-auto font-display">
         Single-Command <span className="text-rose-400">Database Explorer</span>{" "}
         & Docker Manager
       </h1>

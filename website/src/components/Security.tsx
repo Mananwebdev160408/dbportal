@@ -11,7 +11,7 @@ export default function Security() {
   return (
     <section id="security" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24">
       <div className="text-center mb-14">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-3 font-sans">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-3 font-display">
           Security & Local Architecture
         </h2>
         <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base font-sans">

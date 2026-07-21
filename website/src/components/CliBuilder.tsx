@@ -53,7 +53,7 @@ export default function CliBuilder({ onToast }: CliBuilderProps) {
     <section id="quickstart" className="px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto scroll-mt-24">
       <div className="glass-panel border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl">
         <div className="text-center mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 font-sans">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 font-display">
             Interactive CLI Command Builder
           </h2>
           <p className="text-slate-400 text-sm font-sans">

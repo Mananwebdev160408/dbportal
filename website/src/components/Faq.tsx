@@ -36,7 +36,7 @@ export default function Faq() {
   return (
     <section id="faq" className="px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto scroll-mt-24">
       <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-white tracking-tight mb-3 font-sans">
+        <h2 className="text-3xl font-bold text-white tracking-tight mb-3 font-display">
           Frequently Asked Questions
         </h2>
         <p className="text-slate-400 text-sm font-sans">

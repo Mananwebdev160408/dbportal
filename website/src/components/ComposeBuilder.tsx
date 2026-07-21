@@ -77,7 +77,7 @@ ${envString}    restart: unless-stopped`;
     <section id="compose-builder" className="px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto scroll-mt-24">
       <div className="glass-panel rounded-2xl border border-white/10 p-6 sm:p-8 shadow-2xl">
         <div className="text-center mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 font-sans">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 font-display">
             Visual Container Launcher & Compose Exporter
           </h2>
           <p className="text-slate-400 text-sm font-sans">

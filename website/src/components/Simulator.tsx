@@ -120,7 +120,7 @@ export default function Simulator({ onToast }: SimulatorProps) {
     <section id="simulator" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24">
       {/* Section Header */}
       <div className="text-center mb-10">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-3 font-sans">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-3 font-display">
           Live Product Sandbox
         </h2>
         <p className="text-slate-400 max-w-xl mx-auto text-sm sm:text-base font-sans">

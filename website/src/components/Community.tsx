@@ -56,7 +56,7 @@ export default function Community() {
           <HeartIcon className="w-3.5 h-3.5 text-rose-400" />
           <span>Open-Source Ecosystem</span>
         </div>
-        <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-3 font-sans">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-3 font-display">
           Community & Contributions
         </h2>
         <p className="text-slate-400 max-w-xl mx-auto text-sm sm:text-base font-sans">
