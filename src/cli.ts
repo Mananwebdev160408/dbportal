@@ -693,7 +693,12 @@ const main = async () => {
     let filters: Record<string, string> = {};
     if (request.query.filters) {
       try {
-        filters = JSON.parse(String(request.query.filters));
+        const parsed = JSON.parse(String(request.query.filters));
+        if (typeof parsed === "object" && parsed !== null) {
+          for (const [key, val] of Object.entries(parsed)) {
+            filters[key] = String(val ?? "");
+          }
+        }
       } catch {
         filters = {};
       }
