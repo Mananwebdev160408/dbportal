@@ -52,12 +52,12 @@ function buildMongoFilter(rules: FilterRule[]): Record<string, unknown> {
         break;
       case "greater_than":
         filter[rule.field] = {
-          $gt: isNaN(Number(rule.value)) ? rule.value : Number(rule.value),
+          $gt: Number.isNaN(Number(rule.value)) ? rule.value : Number(rule.value),
         };
         break;
       case "less_than":
         filter[rule.field] = {
-          $lt: isNaN(Number(rule.value)) ? rule.value : Number(rule.value),
+          $lt: Number.isNaN(Number(rule.value)) ? rule.value : Number(rule.value),
         };
         break;
       case "exists":
