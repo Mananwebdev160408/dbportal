@@ -201,7 +201,7 @@ export class DatabaseConnection {
   async getOverview(): Promise<DatabaseOverview> {
     const tableNames = await this.getTables();
     const counts = await Promise.all(
-      tableNames.map(async (name) => ({
+      (tableNames ?? []).map(async (name) => ({
         name,
         count: await this.driver.getTableCount(name),
       })),
