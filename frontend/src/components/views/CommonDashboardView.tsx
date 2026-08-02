@@ -48,7 +48,7 @@ export default function CommonDashboardView({
   }, [databases]);
 
   const typeSummary =
-    dbTypes.length > 0 ? dbTypes.map((item) => item.type).join(", ") : "None";
+    dbTypesArray.isArray(dbTypes) ? dbTypes.map((item) => item.type).join(", ") : "None";
   const maxRecords = databases.reduce(
     (max, db) => Math.max(max, db.totalRecords || 0),
     0,

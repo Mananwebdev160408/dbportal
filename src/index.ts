@@ -153,7 +153,7 @@ export class DatabaseConnection {
     try {
       const url = new URL(databaseUrl);
       const dbName = url.pathname.replace(/^\//, "") || url.hostname;
-      this.name = `${this.databaseKind.charAt(0).toUpperCase() + this.databaseKind.slice(1)} (${dbName})`;
+      this.name = `${this.databaseKind[0].toUpperCase() + this.databaseKind.slice(1)} (${dbName})`;
     } catch {
       this.name = `${this.databaseKind} (${id})`;
     }
