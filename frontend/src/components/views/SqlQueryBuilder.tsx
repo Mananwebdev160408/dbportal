@@ -127,7 +127,7 @@ const buildSql = (dbType: string, state: BuilderState): string => {
 
   const columnList =
     state.columns.length > 0
-      ? state.columns.map((c) => quoteIdentifier(dbType, c)).join(", ")
+      ? state.(columns ?? []).map((c) => quoteIdentifier(dbType, c)).join(", ")
       : "*";
 
   const topClause = isMssql ? `TOP ${state.limit} ` : "";
