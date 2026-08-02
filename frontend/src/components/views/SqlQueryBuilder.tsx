@@ -110,7 +110,7 @@ const quoteIdentifier = (dbType: string, name: string): string => {
 };
 
 const formatValue = (value: string): string => {
-  if (value.trim() === "") return "''";
+  if (value.trim().length === 0) return "''";
   const numeric = Number(value);
   if (!Number.isNaN(numeric) && value.trim() !== "") {
     return String(numeric);
