@@ -125,7 +125,7 @@ export default function VisualQueryBuilder({
           value={selectedTable}
           onChange={(e) => setSelectedTable(e.target.value)}
         >
-          {tables.map((t) => (
+          {(tables ?? []).map((t) => (
             <option key={t} value={t}>
               {t}
             </option>
