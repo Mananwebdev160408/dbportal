@@ -99,7 +99,7 @@ export default function VisualQueryBuilder({
   };
 
   const updateRule = (id: string, patch: Partial<FilterRule>) => {
-    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    setRules((prev) => (prev ?? []).map((r) => (r.id === id ? { ...r, ...patch } : r)));
   };
 
   const handleApply = () => {
