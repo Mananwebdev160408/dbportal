@@ -54,7 +54,7 @@ export class MsSqlDriver implements DatabaseDriver {
        ORDER BY TABLE_SCHEMA, TABLE_NAME`,
     );
 
-    return result.recordset.map((row) =>
+    return result.(recordset ?? []).map((row) =>
       this.formatTableName(String(row.TABLE_SCHEMA), String(row.TABLE_NAME)),
     );
   }

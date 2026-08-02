@@ -55,7 +55,7 @@ export class SqliteDriver implements DatabaseDriver {
     const rows = await db.all(
       `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC`,
     );
-    return rows.map((row) => String(row.name));
+    return (rows ?? []).map((row) => String(row.name));
   }
 
   async getTableCount(name: string): Promise<number> {

@@ -50,7 +50,7 @@ export class MySqlDriver implements DatabaseDriver {
        ORDER BY table_name ASC`,
     );
 
-    return rows.map((row) => row.table_name);
+    return (rows ?? []).map((row) => row.table_name);
   }
 
   async getTableCount(name: string): Promise<number> {

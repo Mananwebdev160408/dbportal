@@ -105,7 +105,7 @@ export class PostgresDriver implements DatabaseDriver {
        ORDER BY table_name ASC`,
     );
 
-    return result.rows.map((row) => String(row.table_name));
+    return result.(rows ?? []).map((row) => String(row.table_name));
   }
 
   async getTableData(

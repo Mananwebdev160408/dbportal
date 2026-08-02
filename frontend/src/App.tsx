@@ -333,7 +333,7 @@ export default function App() {
 
         // Check health for each connection
         const withHealth = await Promise.all(
-          list.map((conn: DatabaseConnectionInfo) =>
+          (list ?? []).map((conn: DatabaseConnectionInfo) =>
             withConnectionHealth(conn),
           ),
         );
