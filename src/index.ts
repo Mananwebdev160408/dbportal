@@ -35,7 +35,7 @@ export const registerDatabaseDriver = (
 };
 
 export const listSupportedProtocols = (): string[] => {
-  return Array.from(driverRegistry.keys()).sort();
+  return Array.from(driverRegistry.keys()).sort((a, b) => a - b);
 };
 
 const registerBuiltInDrivers = (): void => {
