@@ -334,7 +334,7 @@ export default function QueryWorkbench({
     () =>
       Array.from(
         new Set(favorites.map((f) => f.folder).filter(Boolean)),
-      ).sort(),
+      ).sort((a, b) => a - b),
     [favorites],
   );
 
