@@ -66,7 +66,7 @@ export class MsSqlDriver implements DatabaseDriver {
       .request()
       .query(`SELECT COUNT(*) AS count FROM ${safeName}`);
     const raw = result.recordset[0]?.count;
-    const parsed = Number.parseInt(String(raw ?? "0"), 10);
+    const parsed = Number.parseInt(String(raw ?? "0", 10), 10);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
