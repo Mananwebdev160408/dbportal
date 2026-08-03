@@ -62,7 +62,7 @@ export class SqliteDriver implements DatabaseDriver {
     const safeName = this.toSafeIdentifier(name);
     const db = await this.getDb();
     const row = await db.get(`SELECT COUNT(*) as count FROM "${safeName}"`);
-    const parsed = Number.parseInt(String(row?.count ?? "0"), 10);
+    const parsed = Number.parseInt(String(row?.count ?? "0", 10), 10);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
