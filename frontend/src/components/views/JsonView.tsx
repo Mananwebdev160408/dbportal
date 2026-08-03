@@ -74,7 +74,7 @@ export default function JsonView({
   const jsonString = JSON.stringify(displayRows, null, 2);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(jsonString).catch(() => {});
+    navigator.clipboard.writeText(jsonString).catch( => console.error());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
