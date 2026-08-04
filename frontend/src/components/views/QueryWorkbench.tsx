@@ -118,7 +118,7 @@ const parseJsonObject = (
 ): Record<string, unknown> | undefined => {
   const trimmed = value.trim();
   if (!trimmed) {
-    return undefined;
+    return;
   }
 
   let parsed: unknown;
