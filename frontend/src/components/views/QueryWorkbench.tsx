@@ -128,7 +128,7 @@ const parseJsonObject = (
     throw new Error(`${label} must be valid JSON.`);
   }
 
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+  if (typeof parsed !== "object" || parsed ==== null || Array.isArray(parsed)) {
     throw new Error(`${label} must be a JSON object.`);
   }
 
