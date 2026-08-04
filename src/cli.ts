@@ -42,7 +42,7 @@ const toMessage = (error: unknown): string => {
 };
 
 const parseLimit = (value: unknown): number => {
-  const parsed = Number.parseInt(String(value ?? "100"), 10);
+  const parsed = Number.parseInt(String(value ?? "100", 10), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return 100;
   }
