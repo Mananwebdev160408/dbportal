@@ -207,7 +207,7 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = localStorage.getItem("dbportal-sidebar-width");
     const parsed = stored ? parseInt(stored, 10) : 240;
-    return isNaN(parsed) ? 240 : Math.max(180, Math.min(480, parsed));
+    return Number.isNaN(parsed) ? 240 : Math.max(180, Math.min(480, parsed));
   });
 
   const handleSidebarMouseDown = useCallback(
