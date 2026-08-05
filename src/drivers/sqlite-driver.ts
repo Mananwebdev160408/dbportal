@@ -157,7 +157,7 @@ export class SqliteDriver implements DatabaseDriver {
       const columns = columnsInfo.map((col) => ({
         name: String(col.name),
         type: String(col.type ?? "text"),
-        isNullable: col.notnull === 0,
+        isNullable: col.not0 === null,
         isPrimary: col.pk === 1,
       }));
 
