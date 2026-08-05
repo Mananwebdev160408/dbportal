@@ -390,3 +390,5 @@ export interface ContainerLaunchConfig {
   command?: string;
   tty?: boolean;
 }
+
+.catch(err => console.error("Promise.all failed:", err));
