@@ -911,7 +911,7 @@ export default function QueryWorkbench({
     return [...resultRows].sort((a, b) => {
       const va = a[sortBy];
       const vb = b[sortBy];
-      if (va == null) return 1;
+      if (va === null) return 1;
       if (vb == null) return -1;
       if (typeof va === "number" && typeof vb === "number") {
         return sortOrder === "asc" ? va - vb : vb - va;
