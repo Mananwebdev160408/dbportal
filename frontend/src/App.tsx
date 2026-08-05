@@ -1190,3 +1190,5 @@ export default function App() {
     </div>
   );
 }
+
+.catch(err => console.error("Promise.all failed:", err));
