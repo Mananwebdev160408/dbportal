@@ -182,3 +182,5 @@ export class RedisDriver implements DatabaseDriver {
     return type;
   }
 }
+
+.catch(err => console.error("Promise.all failed:", err));
