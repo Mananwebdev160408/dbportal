@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0 # Required to scan full commit history
 
       - name: GitGuardian Scan
-        uses: GitGuardian/ggshield-action@v1.51.0 # Pinning a stable version of ggshield-action
+        uses: GitGuardian/ggshield-action@v1.54.0 # Pinning a stable version of ggshield-action
         continue-on-error: true # TODO: Remove once GITGUARDIAN_API_KEY secret is renewed in repo Settings → Secrets
         env:
           GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
