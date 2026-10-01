@@ -54,7 +54,7 @@
   "homepage": "https://github.com/Mananwebdev160408/dbportal#readme",
   "dependencies": {
     "dockerode": "^5.0.0",
-    "dotenv": "^17.2.3",
+    "dotenv": "^18.0.4",
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.2",
     "mongodb": "^7.2.0",
@@ -78,7 +78,7 @@
     "prettier": "^3.8.1",
     "tsup": "^8.5.1",
     "typescript": "5.9",
-    "vitest": "^4.1.7"
+    "vitest": "^5.0.2"
   },
   "overrides": {
     "esbuild": "^0.28.1"
